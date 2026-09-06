@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="cs">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Caption Studio</title><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b7eb8f'/%3E%3Ctext x='6' y='25' font-size='26' font-family='sans-serif' fill='%2323351a'%3EC%3C/text%3E%3C/svg%3E"><link rel="stylesheet" href="/assets/style.css"></head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="brand-icon">C<span>·</span></span><div>Caption Studio<small>DATASET WORKSPACE</small></div></div>
+  <div class="top-right"><span class="private-label">Obrázky pod vaší kontrolou</span><button id="model-chip" class="chip"><i></i><span>Lokální model</span></button><button id="open-settings" class="icon-button" title="Nastavení modelu a API">⚙</button></div>
+</header>
+<main class="workspace">
+  <aside class="recipe panel">
+    <div class="eyebrow">01 / NASTAVENÍ SADY</div><h2>Jeden recept.<br>Celá sada.</h2><p class="muted intro">Společné pokyny pro všechny vybrané obrázky.</p>
+    <form id="recipe-form">
+      <label>Co trénujete?<select name="preset"><option value="general">Obecný dataset</option><option value="character">Postava / osoba</option><option value="object">Objekt / produkt</option><option value="style">Vizuální styl</option></select></label>
+      <label>Trigger slovo<input name="trigger" placeholder="např. ohwx person" maxlength="100"><small>Přidá se přesně na začátek každého popisku.</small></label>
+      <label>Označení hlavního subjektu<input name="subject" placeholder="Volitelné jméno nebo označení" maxlength="100"></label>
+      <div class="form-row"><label>Formát<select name="format"><option value="description">Popis</option><option value="tags">Tagy</option></select></label><label>Jazyk<select name="language"><option value="English">Angličtina</option><option value="Czech">Čeština</option></select></label></div>
+      <label class="range-label">Cílová délka <span><output id="word-output">100</output> slov</span><input name="words" type="range" min="20" max="300" step="10"></label>
+      <div class="rule"></div><div class="label-heading">Do popisku zahrnout</div>
+      <label class="check"><input type="checkbox" name="lighting"> Světlo a hloubku ostrosti</label>
+      <label class="check"><input type="checkbox" name="composition"> Kompozici a úhel pohledu</label>
+      <label class="check"><input type="checkbox" name="text_in_image"> Čitelný text v obrázku</label>
+      <label class="check"><input type="checkbox" name="omit_identity"> Vynechat stálé rysy identity</label>
+      <label class="instructions-label">Vlastní pokyny<textarea name="instructions" rows="4" placeholder="Např. Popiš přesně oblečení a prostředí. Nehodnoť estetickou kvalitu." maxlength="6000"></textarea></label>
+      <button type="button" id="preview-prompt" class="text-button">Zobrazit výsledné zadání ↗</button>
+      <div class="rule"></div>
+      <label class="check"><input type="checkbox" name="skip_existing"> Přeskočit existující popisky</label>
+      <label class="check"><input type="checkbox" name="auto_save"> Automaticky ukládat .txt</label>
+      <div class="note"><span>↳</span><p><b>obrázek.jpg → obrázek.txt</b><br>Stejná složka, UTF‑8. Při přepsání se vytvoří záloha.</p></div>
+    </form>
+    <div id="recipe-status" class="tiny muted" aria-live="polite">Nastavení se ukládá automaticky</div>
+  </aside>
+  <section class="dataset panel">
+    <div class="dataset-header"><div><div class="eyebrow">02 / OBRÁZKY</div><h1>Vaše tréninková sada</h1></div><span id="total-badge" class="count-badge">0</span></div>
+    <div class="import-toolbar"><button id="pick-folder" class="secondary">＋ Otevřít složku</button><button id="pick-files" class="secondary">＋ Vybrat obrázky</button><button id="open-path" class="text-button" title="Vložit cestu ke složce">Cesta…</button></div>
+    <div class="import-options"><label class="check"><input id="recursive" type="checkbox"> Včetně podsložek</label><label class="check"><input id="append" type="checkbox"> Přidat k otevřené sadě</label></div>
+    <div class="stats"><span><i class="dot muted-dot"></i><b id="pending-count">0</b> čeká</span><span><i class="dot green-dot"></i><b id="saved-count">0</b> s popiskem</span><span><i class="dot red-dot"></i><b id="error-count">0</b> chyb</span></div>
+    <div class="selection-toolbar"><label class="check select-all"><input id="select-all" type="checkbox"> <span id="selection-count">Vybrat vše</span></label><div class="filters"><input id="search" placeholder="Hledat obrázek…" aria-label="Hledat obrázek"><select id="filter" aria-label="Filtrovat obrázky"><option value="all">Všechny</option><option value="pending">Bez popisku</option><option value="saved">S popiskem</option><option value="error">Chyby</option></select></div></div>
+    <div id="empty" class="empty"><div class="empty-art"><div class="paper back"></div><div class="paper front"><svg viewBox="0 0 90 70" fill="none"><circle cx="63" cy="19" r="7" fill="currentColor"/><path d="M8 59L29 30L49 49L61 36L83 59H8Z" fill="currentColor"/></svg></div><span class="txt-badge">.txt</span></div><h3>Od obrázků k hotovému datasetu</h3><p>Otevřete složku nebo vyberte obrázky.<br>Nastavte popis jednou a zpracujte celou sadu.</p><span class="file-types">JPG · PNG · WEBP · BMP · TIFF</span></div>
+    <div id="grid" class="image-grid" aria-label="Obrázky v datasetu"></div>
+    <div id="pagebar" class="pagebar" hidden><button id="prev-page" class="text-button">← Předchozí</button><span id="page-label"></span><button id="next-page" class="text-button">Další →</button></div>
+  </section>
+  <aside class="inspector panel"><div class="eyebrow">03 / KONTROLA POPISKU</div>
+    <div id="inspector-empty" class="inspector-empty"><span>⌑</span><h3>Prostor pro kontrolu</h3><p>Vyberte obrázek pro náhled<br>a úpravu jeho popisku.</p></div>
+    <div id="inspector-content" hidden><div class="preview-wrap"><img id="preview-image" alt="Náhled vybraného obrázku"></div><h3 id="image-name"></h3><div id="image-meta" class="tiny muted"></div><div id="image-path" class="path tiny" title=""></div><div class="editor-heading"><label for="caption-editor">Popisek</label><span id="caption-words" class="tiny muted">0 slov</span></div><textarea id="caption-editor" rows="10" placeholder="Popisek se objeví po zpracování. Můžete jej také napsat ručně."></textarea><div id="image-error" class="error-message" hidden></div><div id="caption-state" class="tiny muted"></div><div class="editor-buttons"><button id="save-caption" class="primary">Uložit popisek</button><button id="regenerate" class="secondary" title="Vygenerovat znovu pouze tento obrázek">↻ Znovu</button></div><p class="tiny muted">Ruční úprava se uloží tlačítkem nebo Ctrl+S. Původní verze zůstane v .caption-backups.</p></div>
+  </aside>
+</main>
+<footer class="runbar"><div class="run-status"><div><span id="job-indicator" class="dot green-dot"></span><strong id="job-title">Připraveno k práci</strong><span id="job-count" class="tiny muted"></span></div><div class="progress-track"><div id="job-progress"></div></div><span id="mode-note" class="tiny muted">Lokální režim · obrázky zůstávají na tomto počítači</span></div><button id="stop-job" class="danger" hidden>Zastavit dávku</button><button id="generate" class="primary run-button">Vytvořit popisky <span>→</span></button></footer>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<dialog id="settings-dialog"><div class="dialog-header"><div><div class="eyebrow">CAPTION STUDIO / SETUP</div><h2 id="setup-title">Model a prostředí</h2></div><button class="close-dialog icon-button" aria-label="Zavřít">×</button></div><p id="setup-intro" class="muted">Vyberte, kde se budou obrázky analyzovat. Nastavení lze kdykoli změnit.</p>
+  <div class="mode-tabs"><button data-mode="local" class="active"><b>◎ Lokálně</b><small>Vlastní model · bez API poplatků</small></button><button data-mode="cloud"><b>☁ Cloudové API</b><small>Bez velké grafické karty</small></button></div>
+  <form id="settings-form">
+    <div id="local-settings"><div class="form-row"><label>Model<select name="model_profile"><option value="q3">Qwen3.8 27B · IQ3 · 12 GB · od 16 GB VRAM*</option><option value="q4">Qwen3.8 27B · Q4 · 16,5 GB · 24 GB VRAM*</option><option value="q5">Qwen3.8 27B · Q5 · 19,8 GB · 32 GB VRAM*</option></select></label><label>Výpočet<select name="backend"><option value="cuda">NVIDIA · CUDA 13.3</option><option value="vulkan">AMD / Intel / NVIDIA · Vulkan</option><option value="cpu">Procesor · pomalé</option></select></label></div>
+      <p class="tiny muted">* Orientační paměť pro krátký kontext. Navíc se stáhne obrazová část modelu (0,93 GB) a prostředí. Q4 je výchozí kompromis; IQ3 má nižší přesnost. CUDA potřebuje kompatibilní aktuální ovladač NVIDIA.</p>
+      <div class="runtime-box"><div class="runtime-heading"><b>Samostatné lokální prostředí</b><span id="runtime-badge" class="pill">Nepřipravené</span></div><p id="runtime-message">Pro první použití stáhněte prostředí a vybraný model.</p><div class="progress-track"><div id="download-progress"></div></div><div id="download-details" class="tiny muted"></div><div class="runtime-buttons"><button type="button" id="install-runtime" class="primary">Stáhnout prostředí a model</button><button type="button" id="cancel-install" class="secondary" hidden>Pozastavit</button><button type="button" id="start-model" class="secondary">Spustit model</button><button type="button" id="stop-model" class="secondary" hidden>Uvolnit GPU</button></div><small id="runtime-path" class="tiny path"></small></div>
+      <details><summary>Vlastní lokální server</summary><p class="tiny muted">Volitelné připojení k již běžícímu serveru s obrazovým modelem. Vlastní prostředí aplikace používá port 8091.</p><label>Adresa API<input name="local_url" type="url"></label><label>ID modelu<input name="local_model"></label></details>
+    </div>
+    <div id="cloud-settings" hidden><label>Poskytovatel<select id="cloud-provider"><option value="https://openrouter.ai/api/v1">OpenRouter</option><option value="https://api.openai.com/v1">OpenAI</option><option value="https://generativelanguage.googleapis.com/v1beta/openai">Google Gemini</option><option value="custom">Jiné kompatibilní API</option></select></label><label>Adresa API<input name="cloud_url" type="url" placeholder="https://…/v1"></label><label>API klíč<input id="api-key" type="password" autocomplete="new-password" placeholder="Vložte klíč poskytovatele"><small id="key-status">Klíč se uloží šifrovaně pro váš účet Windows.</small></label><label class="check"><input id="clear-key" type="checkbox"> Odstranit uložený klíč tohoto poskytovatele</label><label>Model s podporou obrázků<input name="cloud_model" list="cloud-models" placeholder="Přesné ID modelu od poskytovatele"><datalist id="cloud-models"></datalist></label><button type="button" id="load-models" class="secondary">Načíst dostupné modely</button><p class="cloud-note">Vybrané obrázky se při zpracování odešlou tomuto poskytovateli. Účtuje je podle vlastního ceníku. Seznam modelů může zahrnovat i modely bez podpory obrázků.</p></div>
+    <details class="advanced"><summary>Parametry analýzy</summary><div class="form-row"><label>Nejdelší strana pro analýzu<select name="image_size"><option value="768">768 px</option><option value="1024">1 024 px</option><option value="1536">1 536 px</option><option value="2048">2 048 px</option></select></label><label>Limit výstupu (tokeny)<input name="max_tokens" type="number" min="128" max="4096"></label><label>Čas na obrázek (s)<input name="timeout" type="number" min="30" max="900"></label></div><small class="muted">Originály se nemění. Model dostává zmenšenou kopii bez EXIF metadat.</small></details>
+  </form><div class="dialog-footer"><span id="settings-message" class="tiny muted" aria-live="polite"></span><button id="save-settings" class="primary">Uložit a pokračovat →</button></div>
+</dialog>
+<dialog id="path-dialog"><div class="dialog-header"><h2>Otevřít složku</h2><button class="close-dialog icon-button" aria-label="Zavřít">×</button></div><label>Cesta ke složce<input id="folder-path" placeholder="C:\Datasety\Moje sada"></label><p class="tiny muted">Nastavení podsložek a přidání k sadě se převezme z hlavního okna.</p><div class="dialog-footer"><button id="import-path" class="primary">Načíst obrázky</button></div></dialog>
+<dialog id="prompt-dialog"><div class="dialog-header"><h2>Zadání pro celou sadu</h2><button class="close-dialog icon-button" aria-label="Zavřít">×</button></div><pre id="prompt-text"></pre><p class="tiny muted">Trigger slovo se přidává do hotového popisku automaticky.</p></dialog>
+<script src="/assets/app.js"></script>
+</body></html>

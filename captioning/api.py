@@ -1,0 +1,169 @@
+from __future__ import annotations
+
+import asyncio
+from contextlib import asynccontextmanager
+from pathlib import Path
+import secrets
+import sys
+import uuid
+from urllib.parse import urlsplit
+
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
+
+from .models import Settings, make_prompt
+from .provider import image_bytes, list_models
+from .service import Studio
+
+
+class ImportRequest(BaseModel):
+    paths: list[str] = Field(default_factory=list, max_length=20000)
+    folder: str = ""
+    recursive: bool = False
+    append: bool = False
+
+
+class SettingsRequest(BaseModel):
+    settings: Settings
+    api_key: str | None = None
+    clear_key: bool = False
+
+
+class JobRequest(BaseModel):
+    ids: list[str] = Field(max_length=20000)
+    regenerate: bool = False
+
+
+class CaptionRequest(BaseModel):
+    text: str = Field(max_length=50000)
+
+
+def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
+    @asynccontextmanager
+    async def lifespan(app):
+        yield
+        await studio.close()
+
+    app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+    origin = f"http://127.0.0.1:{port}"
+
+    @app.middleware("http")
+    async def local_session(request: Request, call_next):
+        if request.headers.get("host") != f"127.0.0.1:{port}":
+            return Response(status_code=403)
+        if request.url.path == "/" and secrets.compare_digest(request.query_params.get("token", ""), token):
+            response = RedirectResponse("/", status_code=303)
+            response.set_cookie("caption_session", token, httponly=True, samesite="strict")
+        else:
+            if not secrets.compare_digest(request.cookies.get("caption_session", ""), token):
+                return Response("Otevřete aplikaci pomocí jejího zástupce.", status_code=403)
+            if request.method not in ("GET", "HEAD"):
+                if request.headers.get("origin", origin) != origin or request.headers.get("x-caption-client") != "1":
+                    return Response(status_code=403)
+            response = await call_next(request)
+        response.headers.update({"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
+                                 "Referrer-Policy": "no-referrer", "X-Frame-Options": "DENY"})
+        return response
+
+    @app.exception_handler(ValueError)
+    async def value_error(request, exc):
+        return JSONResponse({"detail": str(exc)}, status_code=400)
+
+    @app.exception_handler(OSError)
+    async def io_error(request, exc):
+        return JSONResponse({"detail": "Soubor není dostupný nebo není povolen zápis: " + str(exc)}, status_code=400)
+
+    @app.get("/")
+    async def index():
+        return FileResponse(assets / "index.html")
+
+    @app.get("/api/state")
+    async def state():
+        return studio.snapshot()
+
+    @app.post("/api/settings")
+    async def settings(body: SettingsRequest):
+        studio.save_settings(body.settings, body.api_key, body.clear_key)
+        return {"ok": True, "has_key": studio.keys.has(studio.settings.cloud_url)}
+
+    @app.post("/api/prompt")
+    async def prompt(body: Settings):
+        return {"prompt": make_prompt(body)}
+
+    @app.post("/api/models")
+    async def models(body: Settings):
+        key = studio.keys.get(body.cloud_url) if body.mode == "cloud" else (
+            studio.runtime.api_key if body.local_url == "http://127.0.0.1:8091/v1" and studio.runtime.process else "")
+        return {"models": await list_models(body, key)}
+
+    @app.post("/api/import")
+    async def import_images(body: ImportRequest):
+        await studio.import_images(body.paths, body.folder, body.recursive, body.append)
+        return {"count": len(studio.rows)}
+
+    @app.post("/api/pick/{kind}")
+    async def pick(kind: str):
+        studio.idle()
+        if kind not in ("files", "folder"):
+            raise ValueError("Neznámý druh výběru.")
+        result = studio.root / ("picker-" + uuid.uuid4().hex + ".json")
+        if getattr(sys, "frozen", False):
+            args = [sys.executable]
+        else:
+            args = [sys.executable, str(Path(__file__).resolve().parent.parent / "app.py")]
+        process = await asyncio.create_subprocess_exec(*args, "--pick", kind, "--result", str(result))
+        try:
+            await process.wait()
+            import json
+            return {"paths": json.loads(result.read_text(encoding="utf-8")) if result.exists() else []}
+        finally:
+            result.unlink(missing_ok=True)
+
+    @app.get("/api/image/{image_id}")
+    async def image(image_id: str, full: bool = False):
+        row = studio.row(image_id)
+        data = await asyncio.to_thread(image_bytes, Path(row["path"]), 2048 if full else 360, 88)
+        return Response(data, media_type="image/jpeg")
+
+    @app.put("/api/caption/{image_id}")
+    async def caption(image_id: str, body: CaptionRequest):
+        studio.save_row(image_id, body.text)
+        return {"ok": True}
+
+    @app.post("/api/jobs")
+    async def jobs(body: JobRequest):
+        await studio.start_job(body.ids, body.regenerate)
+        return {"ok": True}
+
+    @app.post("/api/jobs/stop")
+    async def stop_job():
+        await studio.cancel_job()
+        return {"ok": True}
+
+    @app.post("/api/runtime/install")
+    async def install():
+        studio.idle()
+        studio.runtime.install(studio.settings.model_profile, studio.settings.backend)
+        return {"ok": True}
+
+    @app.post("/api/runtime/cancel")
+    async def cancel_install():
+        studio.runtime.cancel.set()
+        return {"ok": True}
+
+    @app.post("/api/runtime/start")
+    async def start_model():
+        studio.idle()
+        await studio.runtime.start(studio.settings.model_profile, studio.settings.backend)
+        return {"ok": True}
+
+    @app.post("/api/runtime/stop")
+    async def stop_model():
+        studio.idle()
+        await asyncio.to_thread(studio.runtime.stop)
+        return {"ok": True}
+
+    app.mount("/assets", StaticFiles(directory=assets), name="assets")
+    return app
