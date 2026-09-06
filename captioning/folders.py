@@ -13,6 +13,26 @@ class FolderBrowser:
     def __init__(self):
         self.previews = OrderedDict()
 
+    @staticmethod
+    def describe(directory: Path):
+        return {"name": directory.name or directory.anchor, "path": str(directory)}
+
+    def children(self, path: str):
+        """One tree level only; never scan descendants or decode images."""
+        directory = Path(path).expanduser().resolve(strict=True)
+        if not directory.is_dir():
+            raise ValueError("Tato cesta není složka.")
+        folders = []
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                try:
+                    if entry.is_dir():
+                        folders.append(self.describe(directory / entry.name))
+                except OSError:
+                    continue
+        folders.sort(key=lambda item: item["name"].casefold())
+        return {"path": str(directory), "folders": folders}
+
     def listing(self, path: str, page: int = 0):
         directory = Path(path).expanduser().resolve(strict=True)
         if not directory.is_dir():
@@ -48,7 +68,8 @@ class FolderBrowser:
             roots.append({"name": "/", "path": "/"})
         return {"path": str(directory), "parent": str(directory.parent), "folders": folders,
                 "images": previews, "image_count": len(images), "page": page, "pages": pages,
-                "roots": roots}
+                "roots": roots,
+                "breadcrumbs": [self.describe(p) for p in [*reversed(directory.parents), directory]]}
 
     def image(self, identifier: str):
         if identifier not in self.previews:

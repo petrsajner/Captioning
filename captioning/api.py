@@ -139,6 +139,10 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
         data = await asyncio.to_thread(image_bytes, path, 240, 85)
         return Response(data, media_type="image/jpeg")
 
+    @app.post("/api/folder-tree")
+    async def folder_tree(body: FolderRequest):
+        return await asyncio.to_thread(folder_browser.children, body.path or str(Path.home()))
+
     @app.get("/api/image/{image_id}")
     async def image(image_id: str, full: bool = False):
         row = studio.row(image_id)

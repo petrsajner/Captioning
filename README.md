@@ -1,4 +1,4 @@
-# Caption Studio 0.1.1
+# Caption Studio 0.1.2
 
 Samostatný lokální Windows nástroj pro přípravu obrazových datasetů pro LoRA.
 Nastavení popisku zadáte jednou pro celou dávku. Výsledky se ukládají jako
@@ -6,7 +6,7 @@ Nastavení popisku zadáte jednou pro celou dávku. Výsledky se ukládají jako
 
 ## Instalace a první spuštění
 
-1. Spusťte `Caption-Studio-Setup-0.1.1-Windows-x64.exe`. Instalace je pro aktuálního
+1. Spusťte `Caption-Studio-Setup-0.1.2-Windows-x64.exe`. Instalace je pro aktuálního
    uživatele, bez správce. Aplikace obsahuje vlastní Python a knihovny; nepotřebuje
    předinstalovaný Python, Node.js, Marvin, CUDA Toolkit ani jiné AI aplikace.
 2. Spusťte **Caption Studio** ze Start menu. Průvodce nabídne lokální nebo cloudový režim.
@@ -50,7 +50,12 @@ Cloudový režim nepotřebuje stažení žádného z těchto velkých souborů.
 1. **Otevřít složku** nebo **Vybrat obrázky**; volitelně zahrňte podsložky nebo
    přidávejte k současné sadě. Tlačítko **Cesta…** přijímá přímo cestu ke složce.
    Výběr složky přímo v aplikaci zobrazuje náhledy obrázků, jejich počet a podsložky.
-   Složku otevřete kliknutím, nahoru se vrátíte šipkou; výběr potvrďte tlačítkem
+   Vlevo je rozbalovací strom automaticky otevřený k aktuálnímu adresáři.
+   Šipka u uzlu rozbaluje podsložky, kliknutí na název složku otevře.
+   Tlačítka **Zpět**, **Vpřed**, **O složku výš**, **Domů** a **Obnovit** doplňuje
+   klikací cesta po jednotlivých složkách. Zkratky: Alt+←/→ historie, Alt+↑ rodič,
+   Ctrl+L zadání cesty, F5 obnova. Ve stromu fungují kurzorové šipky a Enter.
+   Chybná cesta zachová otevřenou složku i historii. Výběr potvrďte tlačítkem
    **Použít tuto složku**. Větší adresáře mají náhledy rozdělené po 80 obrázcích.
 2. Zvolte zaměření (obecné / postava / objekt / styl), formát (souvislý popis / tagy),
    jazyk, cílovou délku a volitelné trigger slovo, označení subjektu a vlastní pokyny.

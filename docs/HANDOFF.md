@@ -1,5 +1,32 @@
 # Caption Studio — handoff 2026-09-06
 
+## Aktualizace 0.1.2 — plná navigace výběru složky
+
+Uživatel odmítl omezenou náhradu systémového dialogu: vlevo byly pouze kořeny
+disků, nešlo přejít na sousední větev bez nového průchodu celou cestou a malé
+tlačítko ↑ nebylo dostatečně zřejmé. Výběr složky nyní obsahuje:
+
+- Strom složek vlevo, načítaný po úrovních; automaticky rozbalená cesta k aktuální
+  složce, zvýrazněný výběr, zachování rozbalených vedlejších větví.
+- Klikací breadcrumb cestu pro přímý skok na libovolného předka.
+- Viditelně popsané Zpět, Vpřed, O složku výš, Domů, Obnovit. Historie se mění
+  jen po úspěšném přechodu; chyba cesty zachová předchozí složku a historii.
+- Alt+←/→, Alt+↑, Ctrl+L, F5; šipky, Home/End a Enter ve stromu.
+- Ochranu proti přepsání nově psané cesty ještě dobíhajícím načítáním.
+  Klávesové zkratky fungují i po přerenderování kliknuté breadcrumb položky.
+
+Řadič výběru přesunut z `ui/app.js` do `ui/folder-browser.js`. Backend vrací
+breadcrumb segmenty a má samostatné čtení jediné úrovně `/api/folder-tree`.
+To nestahuje obrázky, negeneruje popisky ani neprochází rekurzivně celý disk.
+
+Ověření: 21 backend testů a 12 skutečných UI kontrol ve `scripts/check_navigation.js`.
+Kontroly zahrnují sourozence, rodiče, breadcrumb předka, historii, větvení historie,
+klávesnici ve stromu, disabled rodiče v kořeni, neplatnou cestu bez ztráty kontextu,
+zachování rozbalené vedlejší větve při obnově, viditelný JPEG náhled a konečný import.
+Výsledek `output/navigation-check-result.txt`; snímek `output/playwright/navigation-final.png`.
+Build `output/build-0.1.2-final.log`. Distribuční verze 0.1.2, samostatný instalátor
+a portable ZIP v `dist/`. Runtime a inference se touto úpravou nemění.
+
 ## Aktualizace 0.1.1 — obrázky při výběru složky
 
 Uživatel hlásil zdánlivě prázdnou složku při výběru datasetu. Příčinou byl

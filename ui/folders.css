@@ -1,9 +1,24 @@
-#folder-dialog { width: 900px; }
-.folder-address { display: flex; gap: 8px; margin: 18px 0; }
+#folder-dialog { width: 1120px; }
+.folder-navigation { display: flex; gap: 8px; margin: 18px 0 10px; flex-wrap: wrap; }
+.folder-navigation button { font-size: 12px; }
+#folder-breadcrumbs { display: flex; align-items: center; gap: 3px; overflow-x: auto; padding: 5px 0; scrollbar-width: thin; }
+#folder-breadcrumbs button { flex: none; border-color: transparent; background: none; padding: 5px 8px; font-size: 12px; }
+#folder-breadcrumbs button:hover { background: var(--elevated); color: var(--accent); }
+#folder-breadcrumbs button[aria-current] { color: var(--accent); background: #26351e; }
+.crumb-separator { color: var(--muted); }
+.folder-address { display: flex; align-items: center; gap: 8px; margin: 10px 0 16px; }
+.folder-address label { margin: 0; color: var(--muted); }
 .folder-address input { flex: 1; }
-.folder-browser { display: grid; grid-template-columns: 130px minmax(0, 1fr); height: 430px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-#folder-roots { padding: 12px 10px; border-right: 1px solid var(--line); background: #111912; overflow-y: auto; }
-.folder-root { display: block; width: 100%; text-align: left; padding: 9px 4px; }
+.folder-browser { display: grid; grid-template-columns: minmax(240px, 32%) minmax(0, 1fr); height: 430px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+#folder-roots { padding: 12px 6px; border-right: 1px solid var(--line); background: #111912; overflow: auto; scrollbar-width: thin; }
+.tree-heading { padding: 0 8px 10px; font-size: 9px; letter-spacing: 1.3px; color: var(--muted); }
+.tree-row { display: flex; align-items: center; min-width: max-content; padding-left: calc(var(--tree-level) * 14px); border-radius: 4px; }
+.tree-row.selected { background: #2c3c23; }
+.tree-toggle { width: 24px; min-width: 24px; padding: 3px; height: 29px; background: none; border: 0; color: var(--muted); }
+.tree-label { background: none; border: 0; border-radius: 3px; padding: 5px 6px 5px 2px; white-space: nowrap; text-align: left; font-size: 11px; }
+.tree-label[aria-current] { color: var(--accent); }
+.tree-error { font-size: 10px; color: var(--error); padding: 5px 12px; }
+.is-loading { opacity: .45; pointer-events: none; }
 .folder-contents { padding: 16px; overflow-y: auto; scrollbar-width: thin; }
 #folder-summary { font-size: 11px; margin-bottom: 15px; }
 #folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 12px; }

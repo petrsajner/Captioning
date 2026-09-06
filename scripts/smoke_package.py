@@ -48,6 +48,10 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
             assert listing_response.status_code == 200, listing_response.text
             listing = listing_response.json()
             assert listing["image_count"] == 1 and listing["images"][0]["name"] == "test.png"
+            assert listing["breadcrumbs"][-1]["path"] == str(path.parent)
+            tree_response = client.post(base + "/api/folder-tree", json={"path": str(root)}, headers=headers)
+            assert tree_response.status_code == 200
+            assert "dataset" in [f["name"] for f in tree_response.json()["folders"]]
             preview = client.get(base + "/api/folder-image/" + listing["images"][0]["id"])
             assert preview.status_code == 200 and preview.headers["content-type"] == "image/jpeg"
             assert client.get(base + "/api/state").json()["rows"] == []

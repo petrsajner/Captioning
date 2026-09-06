@@ -300,3 +300,38 @@ def test_folder_preview_api_does_not_import_until_confirmed(tmp_path):
         assert client.post("/api/pick/folder", json={}, headers=headers).status_code == 400
         assert client.post("/api/import", json={"folder": listing["path"]}, headers=headers).status_code == 200
         assert len(studio.rows) == 1 and not image.with_suffix(".txt").exists()
+
+
+def test_folder_tree_is_one_level_and_breadcrumbs_reach_root(tmp_path):
+    root = tmp_path / "kolekce"
+    first = root / "Sada A" / "Vybrané"
+    first.mkdir(parents=True)
+    (root / "Sada B").mkdir()
+    (root / "ignored.png").write_bytes(b"not an image; tree must not decode it")
+    browser = FolderBrowser()
+    tree = browser.children(str(root))
+    assert [f["name"] for f in tree["folders"]] == ["Sada A", "Sada B"]
+    assert browser.previews == {}
+    listing = browser.listing(str(first))
+    crumbs = listing["breadcrumbs"]
+    assert crumbs[-1]["path"] == str(first)
+    assert crumbs[-2]["path"] == str(first.parent)
+    assert crumbs[0]["path"] == str(Path(first.anchor))
+    assert all(Path(child["path"]).parent == Path(parent["path"]) for parent, child in zip(crumbs, crumbs[1:]))
+    assert browser.listing(first.anchor)["parent"] == first.anchor
+
+
+def test_tree_api_auth_and_invalid_navigation_leave_dataset_intact(tmp_path):
+    image = picture(tmp_path / "dataset" / "red.png")
+    studio = Studio(tmp_path / "profile")
+    asyncio.run(studio.import_images([str(image)], "", False, False))
+    previous = json.dumps(studio.rows)
+    app = make_app(studio, "test-token", 8888, Path(__file__).parents[1] / "ui")
+    headers = {"X-Caption-Client": "1"}
+    with TestClient(app, base_url="http://127.0.0.1:8888") as client:
+        assert client.post("/api/folder-tree", json={"path": str(tmp_path)}, headers=headers).status_code == 403
+        client.get("/?token=test-token")
+        assert client.post("/api/folder-tree", json={"path": str(tmp_path)}, headers=headers).status_code == 200
+        assert client.post("/api/folders", json={"path": str(tmp_path / 'missing')}, headers=headers).status_code == 400
+        assert client.post("/api/folder-tree", json={"path": str(image)}, headers=headers).status_code == 400
+    assert json.dumps(studio.rows) == previous
