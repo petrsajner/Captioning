@@ -18,6 +18,7 @@ from captioning.provider import clean_caption, generate, image_bytes
 from captioning.runtime import Runtime, SetupCancelled, safe_extract
 from captioning.service import Studio
 from captioning.storage import KeyStore, fingerprint, write_caption
+from captioning.folders import FolderBrowser, PAGE_SIZE
 
 
 def picture(path, color="red"):
@@ -259,3 +260,43 @@ def test_external_change_during_inference_keeps_user_caption(tmp_path, monkeypat
         assert studio.rows[0]["status"] == "error"
         assert studio.rows[0]["caption"] == "New generated draft"
     asyncio.run(run())
+
+
+def test_folder_browser_shows_images_subfolders_and_pages(tmp_path):
+    folder = tmp_path / "výběr"
+    (folder / "podsložka").mkdir(parents=True)
+    for i in range(PAGE_SIZE + 1):
+        picture(folder / f"foto-{i:03d}.PNG")
+    (folder / "foto-000.txt").write_text("untouched")
+    browser = FolderBrowser()
+    first = browser.listing(str(folder))
+    assert first["image_count"] == PAGE_SIZE + 1
+    assert first["folders"] == [{"name": "podsložka", "path": str(folder / "podsložka")}]
+    assert len(first["images"]) == PAGE_SIZE and first["pages"] == 2
+    assert browser.image(first["images"][0]["id"]) == folder / "foto-000.PNG"
+    second = browser.listing(str(folder), 1)
+    assert [i["name"] for i in second["images"]] == [f"foto-{PAGE_SIZE:03d}.PNG"]
+    empty = browser.listing(str(folder / "podsložka"))
+    assert empty["image_count"] == 0 and empty["parent"] == str(folder)
+    assert (folder / "foto-000.txt").read_text() == "untouched"
+    with pytest.raises(ValueError):
+        browser.image("not-registered")
+
+
+def test_folder_preview_api_does_not_import_until_confirmed(tmp_path):
+    image = picture(tmp_path / "dataset" / "red.png")
+    studio = Studio(tmp_path / "profile")
+    app = make_app(studio, "test-token", 8888, Path(__file__).parents[1] / "ui")
+    headers = {"X-Caption-Client": "1"}
+    with TestClient(app, base_url="http://127.0.0.1:8888") as client:
+        assert client.post("/api/folders", json={"path": str(image.parent)}, headers=headers).status_code == 403
+        client.get("/?token=test-token")
+        listing = client.post("/api/folders", json={"path": str(image.parent)}, headers=headers).json()
+        assert listing["image_count"] == 1 and studio.rows == []
+        response = client.get("/api/folder-image/" + listing["images"][0]["id"])
+        assert response.headers["content-type"] == "image/jpeg"
+        assert Image.open(io.BytesIO(response.content)).size == (80, 60)
+        assert client.get("/api/folder-image/unknown").status_code == 400
+        assert client.post("/api/pick/folder", json={}, headers=headers).status_code == 400
+        assert client.post("/api/import", json={"folder": listing["path"]}, headers=headers).status_code == 200
+        assert len(studio.rows) == 1 and not image.with_suffix(".txt").exists()

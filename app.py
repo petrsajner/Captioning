@@ -20,12 +20,8 @@ def pick(kind, result):
     root.withdraw()
     root.attributes("-topmost", True)
     try:
-        if kind == "folder":
-            value = filedialog.askdirectory(parent=root, title="Vyberte složku s obrázky")
-            paths = [value] if value else []
-        else:
-            paths = list(filedialog.askopenfilenames(parent=root, title="Vyberte obrázky", filetypes=[
-                ("Obrázky", "*.jpg *.jpeg *.png *.webp *.bmp *.tif *.tiff"), ("Všechny soubory", "*.*")]))
+        paths = list(filedialog.askopenfilenames(parent=root, title="Vyberte obrázky", filetypes=[
+            ("Obrázky", "*.jpg *.jpeg *.png *.webp *.bmp *.tif *.tiff"), ("Všechny soubory", "*.*")]))
         Path(result).write_text(json.dumps(paths, ensure_ascii=False), encoding="utf-8")
     finally:
         root.destroy()
@@ -36,7 +32,7 @@ def main():
     parser.add_argument("--browser", action="store_true")
     parser.add_argument("--no-open", action="store_true")
     parser.add_argument("--port", type=int, default=0)
-    parser.add_argument("--pick", choices=["files", "folder"])
+    parser.add_argument("--pick", choices=["files"])
     parser.add_argument("--result")
     args = parser.parse_args()
     if args.pick:

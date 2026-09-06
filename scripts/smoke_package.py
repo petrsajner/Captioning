@@ -44,6 +44,13 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
             path.parent.mkdir()
             Image.new("RGB", (60, 40), "green").save(path)
             headers = {"X-Caption-Client": "1"}
+            listing_response = client.post(base + "/api/folders", json={"path": str(path.parent)}, headers=headers)
+            assert listing_response.status_code == 200, listing_response.text
+            listing = listing_response.json()
+            assert listing["image_count"] == 1 and listing["images"][0]["name"] == "test.png"
+            preview = client.get(base + "/api/folder-image/" + listing["images"][0]["id"])
+            assert preview.status_code == 200 and preview.headers["content-type"] == "image/jpeg"
+            assert client.get(base + "/api/state").json()["rows"] == []
             response = client.post(base + "/api/import", json={"paths": [str(path)]}, headers=headers)
             assert response.status_code == 200, response.text
             s = client.get(base + "/api/state").json()
@@ -53,7 +60,8 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
             assert response.status_code == 200, response.text
             assert path.with_suffix(".txt").read_bytes() == b"Zeleny obrazek.\n"
             report = {"exe": str(exe), "version": s["version"], "fresh_profile": True,
-                      "isolated_PATH": True, "image_preview": True, "sidecar_write": True}
+                      "isolated_PATH": True, "image_preview": True, "folder_preview_before_import": True,
+                      "sidecar_write": True}
             (output / "package-smoke.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
             print(json.dumps(report, indent=2))
     finally:

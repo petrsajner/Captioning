@@ -1,5 +1,24 @@
 # Caption Studio — handoff 2026-09-06
 
+## Aktualizace 0.1.1 — obrázky při výběru složky
+
+Uživatel hlásil zdánlivě prázdnou složku při výběru datasetu. Příčinou byl
+`tkinter.filedialog.askdirectory`, který ukazuje pouze adresáře a skrývá soubory.
+Tlačítko Otevřít složku nyní otevírá prohlížeč uvnitř aplikace: náhledy a názvy
+obrázků, celkový počet, podsložky, disky, zadání cesty a návrat do nadřazené složky.
+Potvrzuje se právě prohlížený adresář, včetně volby rekurze. Náhledy jsou stránkované
+po 80; nečitelný obrázek zůstane viditelný s náhradním zobrazením. Samotné prohlížení
+nemění dataset ani soubory. Systémový dialog zůstává jen pro výběr jednotlivých souborů.
+
+Nový modul `captioning/folders.py`, autentizované `/api/folders` a `/api/folder-image`,
+UI v `ui/app.js`, `ui/index.html`, `ui/folders.css`. Starý výběr adresáře odstraněn.
+Ověřeno 19 testy, skutečnými vykreslenými náhledy koček/psa před potvrzením i po
+importu, a čistým profilem zabaleného EXE bez vývojových cest. Náhled opravy:
+`output/playwright/folder-preview.png`. Build `output/build-0.1.1.log`, instalace
+`output/install-0.1.1.log`. Nový instalátor a portable ZIP v `dist/`, SHA v SHA256SUMS.txt.
+
+Níže je původní záznam 0.1.0.
+
 ## Zadání a závazná hranice
 
 Samostatná Windows aplikace pro dávkové popisky LoRA datasetů. Společný recept,

@@ -1,0 +1,56 @@
+"""Read-only folder navigation with image previews before dataset import."""
+from collections import OrderedDict
+import os
+from pathlib import Path
+import secrets
+
+from .provider import EXTENSIONS
+
+PAGE_SIZE = 80
+
+
+class FolderBrowser:
+    def __init__(self):
+        self.previews = OrderedDict()
+
+    def listing(self, path: str, page: int = 0):
+        directory = Path(path).expanduser().resolve(strict=True)
+        if not directory.is_dir():
+            raise ValueError("Tato cesta není složka.")
+        folders, images = [], []
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                try:
+                    if entry.is_dir():
+                        folders.append({"name": entry.name, "path": str(directory / entry.name)})
+                    elif entry.is_file() and Path(entry.name).suffix.lower() in EXTENSIONS:
+                        images.append(entry.name)
+                except OSError:
+                    continue
+        folders.sort(key=lambda item: item["name"].casefold())
+        images.sort(key=str.casefold)
+        pages = max(1, (len(images) + PAGE_SIZE - 1) // PAGE_SIZE)
+        page = min(page, pages - 1)
+        previews = []
+        for name in images[page * PAGE_SIZE:(page + 1) * PAGE_SIZE]:
+            identifier = secrets.token_hex(16)
+            self.previews[identifier] = directory / name
+            previews.append({"id": identifier, "name": name})
+        while len(self.previews) > 4096:
+            self.previews.popitem(last=False)
+        roots = [{"name": "Domovská složka", "path": str(Path.home())}]
+        if os.name == "nt":
+            import ctypes
+            mask = ctypes.windll.kernel32.GetLogicalDrives()
+            roots.extend({"name": chr(65 + i) + ":", "path": chr(65 + i) + ":\\"}
+                         for i in range(26) if mask & (1 << i))
+        else:
+            roots.append({"name": "/", "path": "/"})
+        return {"path": str(directory), "parent": str(directory.parent), "folders": folders,
+                "images": previews, "image_count": len(images), "page": page, "pages": pages,
+                "roots": roots}
+
+    def image(self, identifier: str):
+        if identifier not in self.previews:
+            raise ValueError("Náhled již není dostupný. Otevřete složku znovu.")
+        return self.previews[identifier]

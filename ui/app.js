@@ -156,11 +156,48 @@ async function doImport(paths=[],folder='') {
   }finally{busy=false;render();}
 }
 async function pickImages(kind){if(hasBusy())return;const result=await api('/pick/'+kind,{});if(result.paths.length)await doImport(kind==='files'?result.paths:[],kind==='folder'?result.paths[0]:'');}
-$('pick-folder').onclick=()=>action(()=>pickImages('folder'));
+$('pick-folder').onclick=()=>{if(hasBusy())return;$('folder-recursive').checked=$('recursive').checked;$('folder-dialog').showModal();browseFolder(folderListing?.path||'');};
 $('pick-files').onclick=()=>action(()=>pickImages('files'));
 $('open-path').onclick=()=>$('path-dialog').showModal();
 $('import-path').onclick=()=>action(async()=>{await doImport([],$('folder-path').value.trim());$('path-dialog').close();});
 $('folder-path').addEventListener('keydown',e=>{if(e.key==='Enter')$('import-path').click();});
+
+let folderListing=null, folderBrowsing=false;
+async function browseFolder(path, folderPage=0) {
+  if(folderBrowsing)return;
+  folderBrowsing=true;folderListing=null;
+  $('folder-error').hidden=true;$('folder-summary').textContent='Načítám obsah složky…';
+  $('folder-grid').replaceChildren();$('folder-pager').hidden=true;$('use-folder').disabled=true;
+  $('folder-up').disabled=true;$('folder-go').disabled=true;
+  try {
+    const listing=await api('/folders',{path,page:folderPage});folderListing=listing;
+    $('browse-path').value=listing.path;
+    $('folder-summary').textContent=`${listing.image_count} obrázků · ${listing.folders.length} podsložek`+(listing.image_count?'':' · V této složce nejsou podporované obrázky.');
+    $('folder-roots').innerHTML=listing.roots.map(r=>`<button class="folder-root text-button" data-path="${esc(r.path)}">${esc(r.name)}</button>`).join('');
+    $('folder-grid').innerHTML=listing.folders.map(f=>`<button class="folder-entry" data-path="${esc(f.path)}" title="Otevřít ${esc(f.name)}"><span class="folder-symbol">▰</span><span>${esc(f.name)}</span></button>`).join('')+
+      listing.images.map(im=>`<figure class="folder-thumbnail"><div><img loading="lazy" src="/api/folder-image/${im.id}" alt="${esc(im.name)}"></div><figcaption title="${esc(im.name)}">${esc(im.name)}</figcaption></figure>`).join('');
+    $('folder-pager').hidden=listing.pages<=1;$('folder-page').textContent=`${listing.page+1} / ${listing.pages}`;
+    $('folder-prev').disabled=listing.page===0;$('folder-next').disabled=listing.page+1>=listing.pages;
+    $('folder-up').disabled=listing.path===listing.parent;$('use-folder').disabled=false;
+    $('use-folder').textContent=`Použít tuto složku (${listing.image_count})`;
+  }catch(e){$('folder-summary').textContent='Složku se nepodařilo otevřít.';$('folder-error').textContent=e.message;$('folder-error').hidden=false;}
+  finally{folderBrowsing=false;$('folder-go').disabled=false;}
+}
+$('folder-go').onclick=()=>browseFolder($('browse-path').value.trim());
+$('browse-path').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('folder-go').click();}});
+$('folder-up').onclick=()=>{if(folderListing)browseFolder(folderListing.parent);};
+for(const id of ['folder-grid','folder-roots'])$(id).addEventListener('click',e=>{const b=e.target.closest('[data-path]');if(b)browseFolder(b.dataset.path);});
+$('folder-prev').onclick=()=>{if(folderListing)browseFolder(folderListing.path,folderListing.page-1);};
+$('folder-next').onclick=()=>{if(folderListing)browseFolder(folderListing.path,folderListing.page+1);};
+$('folder-grid').addEventListener('error',e=>{if(e.target.tagName==='IMG'){e.target.parentElement.classList.add('preview-failed');e.target.parentElement.title='Náhled není dostupný; soubor se zkontroluje při importu.';}},true);
+$('use-folder').onclick=async()=>{
+  if(!folderListing||folderBrowsing)return;
+  const path=folderListing.path;$('use-folder').disabled=true;
+  $('recursive').checked=$('folder-recursive').checked;
+  try{await doImport([],path);$('folder-dialog').close();}
+  catch(e){$('folder-error').textContent=e.message;$('folder-error').hidden=false;}
+  finally{$('use-folder').disabled=false;}
+};
 
 async function generate(ids,regenerate=false) {
   if(hasBusy()||!allowDiscard())return;

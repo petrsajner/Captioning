@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from .models import Settings, make_prompt
 from .provider import image_bytes, list_models
 from .service import Studio
+from .folders import FolderBrowser
 
 
 class ImportRequest(BaseModel):
@@ -40,6 +41,11 @@ class CaptionRequest(BaseModel):
     text: str = Field(max_length=50000)
 
 
+class FolderRequest(BaseModel):
+    path: str = ""
+    page: int = Field(0, ge=0)
+
+
 def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app):
@@ -48,6 +54,7 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
 
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     origin = f"http://127.0.0.1:{port}"
+    folder_browser = FolderBrowser()
 
     @app.middleware("http")
     async def local_session(request: Request, call_next):
@@ -106,7 +113,7 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
     @app.post("/api/pick/{kind}")
     async def pick(kind: str):
         studio.idle()
-        if kind not in ("files", "folder"):
+        if kind != "files":
             raise ValueError("Neznámý druh výběru.")
         result = studio.root / ("picker-" + uuid.uuid4().hex + ".json")
         if getattr(sys, "frozen", False):
@@ -120,6 +127,17 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
             return {"paths": json.loads(result.read_text(encoding="utf-8")) if result.exists() else []}
         finally:
             result.unlink(missing_ok=True)
+
+    @app.post("/api/folders")
+    async def folders(body: FolderRequest):
+        path = body.path or (str(Path(studio.rows[0]["path"]).parent) if studio.rows else str(Path.home()))
+        return await asyncio.to_thread(folder_browser.listing, path, body.page)
+
+    @app.get("/api/folder-image/{image_id}")
+    async def folder_image(image_id: str):
+        path = folder_browser.image(image_id)
+        data = await asyncio.to_thread(image_bytes, path, 240, 85)
+        return Response(data, media_type="image/jpeg")
 
     @app.get("/api/image/{image_id}")
     async def image(image_id: str, full: bool = False):

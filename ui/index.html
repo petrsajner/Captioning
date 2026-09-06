@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="cs">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Caption Studio</title><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b7eb8f'/%3E%3Ctext x='6' y='25' font-size='26' font-family='sans-serif' fill='%2323351a'%3EC%3C/text%3E%3C/svg%3E"><link rel="stylesheet" href="/assets/style.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Caption Studio</title><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b7eb8f'/%3E%3Ctext x='6' y='25' font-size='26' font-family='sans-serif' fill='%2323351a'%3EC%3C/text%3E%3C/svg%3E"><link rel="stylesheet" href="/assets/style.css"><link rel="stylesheet" href="/assets/folders.css"></head>
 <body>
 <header class="topbar">
   <div class="brand"><span class="brand-icon">C<span>·</span></span><div>Caption Studio<small>DATASET WORKSPACE</small></div></div>
@@ -61,5 +61,10 @@
 </dialog>
 <dialog id="path-dialog"><div class="dialog-header"><h2>Otevřít složku</h2><button class="close-dialog icon-button" aria-label="Zavřít">×</button></div><label>Cesta ke složce<input id="folder-path" placeholder="C:\Datasety\Moje sada"></label><p class="tiny muted">Nastavení podsložek a přidání k sadě se převezme z hlavního okna.</p><div class="dialog-footer"><button id="import-path" class="primary">Načíst obrázky</button></div></dialog>
 <dialog id="prompt-dialog"><div class="dialog-header"><h2>Zadání pro celou sadu</h2><button class="close-dialog icon-button" aria-label="Zavřít">×</button></div><pre id="prompt-text"></pre><p class="tiny muted">Trigger slovo se přidává do hotového popisku automaticky.</p></dialog>
+<dialog id="folder-dialog"><div class="dialog-header"><div><div class="eyebrow">VÝBĚR SLOŽKY</div><h2>Prohlédněte si obsah sady</h2></div><button class="close-dialog icon-button" aria-label="Zavřít">×</button></div>
+  <div class="folder-address"><button id="folder-up" class="secondary" title="O úroveň výš">↑</button><input id="browse-path" aria-label="Cesta prohlížené složky" placeholder="C:\Datasety\Moje sada"><button id="folder-go" class="secondary">Otevřít</button></div>
+  <div class="folder-browser"><nav id="folder-roots" aria-label="Disky a domovská složka"></nav><section class="folder-contents"><p id="folder-summary" class="muted" aria-live="polite">Načítám obsah složky…</p><div id="folder-error" class="error-message" role="alert" hidden></div><div id="folder-grid"></div><div id="folder-pager" class="pagebar" hidden><button id="folder-prev" class="text-button">← Předchozí obrázky</button><span id="folder-page"></span><button id="folder-next" class="text-button">Další obrázky →</button></div></section></div>
+  <div class="dialog-footer"><label class="check"><input id="folder-recursive" type="checkbox"> Včetně podsložek</label><button id="use-folder" class="primary" disabled>Použít tuto složku</button></div>
+</dialog>
 <script src="/assets/app.js"></script>
 </body></html>
