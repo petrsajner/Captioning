@@ -2,11 +2,15 @@ from __future__ import annotations
 
 from typing import Literal
 from urllib.parse import urlsplit
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+MANAGED_URL = "http://127.0.0.1:8091/v1"
+MANAGED_MODEL = "caption-qwen"
 
 
 class Settings(BaseModel):
     mode: Literal["local", "cloud"] = "local"
+    local_source: Literal["managed", "external"] = "managed"
     local_url: str = "http://127.0.0.1:8091/v1"
     local_model: str = "caption-qwen"
     cloud_url: str = "https://openrouter.ai/api/v1"
@@ -30,6 +34,22 @@ class Settings(BaseModel):
     max_tokens: int = Field(700, ge=128, le=4096)
     timeout: int = Field(240, ge=30, le=900)
     setup_complete: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_local_connection(cls, value):
+        if isinstance(value, dict) and "local_source" not in value:
+            if value.get("local_url", MANAGED_URL).rstrip("/") != MANAGED_URL:
+                value = {**value, "local_source": "external"}
+        return value
+
+    @property
+    def local_endpoint(self):
+        return MANAGED_URL if self.local_source == "managed" else self.local_url
+
+    @property
+    def local_model_id(self):
+        return MANAGED_MODEL if self.local_source == "managed" else self.local_model
 
     @field_validator("local_url", "cloud_url")
     @classmethod

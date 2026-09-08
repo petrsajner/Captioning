@@ -13,7 +13,8 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .models import Settings, make_prompt
+from .models import Settings, make_prompt, MANAGED_URL
+from .discovery import CANDIDATES, discover
 from .provider import image_bytes, list_models
 from .service import Studio
 from .folders import FolderBrowser
@@ -30,6 +31,12 @@ class SettingsRequest(BaseModel):
     settings: Settings
     api_key: str | None = None
     clear_key: bool = False
+    local_api_key: str | None = Field(None, max_length=8192)
+    clear_local_key: bool = False
+
+
+class DiscoveryRequest(BaseModel):
+    url: str = ""
 
 
 class JobRequest(BaseModel):
@@ -92,8 +99,9 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
 
     @app.post("/api/settings")
     async def settings(body: SettingsRequest):
-        studio.save_settings(body.settings, body.api_key, body.clear_key)
-        return {"ok": True, "has_key": studio.keys.has(studio.settings.cloud_url)}
+        studio.save_settings(body.settings, body.api_key, body.clear_key, body.local_api_key, body.clear_local_key)
+        return {"ok": True, "has_key": studio.keys.has(studio.settings.cloud_url),
+                "has_local_key": studio.keys.has("local:" + studio.settings.local_url)}
 
     @app.post("/api/prompt")
     async def prompt(body: Settings):
@@ -101,9 +109,23 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
 
     @app.post("/api/models")
     async def models(body: Settings):
-        key = studio.keys.get(body.cloud_url) if body.mode == "cloud" else (
-            studio.runtime.api_key if body.local_url == "http://127.0.0.1:8091/v1" and studio.runtime.process else "")
+        key = studio.keys.get(body.cloud_url) if body.mode == "cloud" else studio.local_key(body)
         return {"models": await list_models(body, key)}
+
+    @app.post("/api/local-servers")
+    async def local_servers(body: DiscoveryRequest):
+        configured = Settings(local_source="external", local_url=body.url).local_url if body.url.strip() else studio.settings.local_url
+        endpoints = {url for url, _ in CANDIDATES} | {configured}
+        keys = {}
+        for endpoint in endpoints:
+            try:
+                keys[endpoint] = studio.keys.get("local:" + endpoint)
+            except ValueError:
+                pass  # Unreadable credentials appear as an authentication request.
+        owned = studio.runtime.process is not None and studio.runtime.process.poll() is None
+        if owned:
+            keys[MANAGED_URL] = studio.runtime.api_key
+        return await discover(configured, keys, owned)
 
     @app.post("/api/import")
     async def import_images(body: ImportRequest):

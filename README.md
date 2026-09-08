@@ -1,4 +1,4 @@
-# Caption Studio 0.1.3
+# Caption Studio 0.1.4
 
 Samostatný lokální Windows nástroj pro přípravu obrazových datasetů pro LoRA.
 Nastavení popisku zadáte jednou pro celou dávku. Výsledky se ukládají jako
@@ -6,7 +6,7 @@ Nastavení popisku zadáte jednou pro celou dávku. Výsledky se ukládají jako
 
 ## Instalace a první spuštění
 
-1. Spusťte `Caption-Studio-Setup-0.1.3-Windows-x64.exe`. Instalace je pro aktuálního
+1. Spusťte `Caption-Studio-Setup-0.1.4-Windows-x64.exe`. Instalace je pro aktuálního
    uživatele, bez správce. Aplikace obsahuje vlastní Python a knihovny; nepotřebuje
    předinstalovaný Python, Node.js, Marvin, CUDA Toolkit ani jiné AI aplikace.
 2. Spusťte **Caption Studio** ze Start menu. Průvodce nabídne lokální nebo cloudový režim.
@@ -18,6 +18,34 @@ Nastavení popisku zadáte jednou pro celou dávku. Výsledky se ukládají jako
    model; samotná přítomnost modelu v seznamu neznamená, že podporuje obrázky.
 5. Uložte nastavení. V lokálním režimu se připravený model spustí automaticky při
    první dávce. Tlačítko **Uvolnit GPU** jej zastaví. Zavření aplikace zastaví její model.
+
+Číslo právě běžící verze je viditelné v záhlaví vedle názvu Caption Studio a v titulku
+desktopového okna.
+
+### Připojení k již běžícímu lokálnímu modelu
+
+V **Nastavení → Lokálně** klikněte na **Najít lokální servery**. Vyhledávání zkusí
+modelové API na běžných loopback adresách: porty 11434 (Ollama), 1234 (LM Studio),
+8080 (llama.cpp), 8000/8888 (Unsloth a další servery) a 8091 (Caption Studio).
+Kontroluje také ručně zadanou lokální adresu. Popisky aplikací jsou vodítka podle
+obvyklého portu, nikoli zaručená identifikace procesu. Hledání jen čte seznam modelů;
+žádný server ani model nestahuje, nespouští nebo nepřepíná.
+
+Vyberte nalezený server, poté ID modelu s podporou obrázků. Pokud server vyžaduje
+klíč, vložte jeho **lokální API klíč** a použijte **Načíst modely**. Klíč se ukládá
+šifrovaně a odděleně pro každou přesnou adresu serveru, nezávisle na cloudových klíčích.
+Volbu potvrďte přes **Uložit a pokračovat**. Prázdný seznam znamená, že je třeba
+nejprve zpřístupnit model v jeho původní aplikaci. Seznam modelů sám neověřuje vision.
+
+Pro vlastní port zvolte **Existující lokální server** a zadejte jeho základní API
+adresu (např. `http://127.0.0.1:1234/v1`). Původní aplikace musí server udržovat
+spuštěný; Caption Studio externí proces neukončuje. Používá jeho standardní obrazové
+Chat Completions API a respektuje serverové nastavení uvažování. Pokud model vyčerpá
+výstupní limit uvažováním, upravte jeho nastavení v původní aplikaci nebo limit tokenů.
+
+Volba **Vlastní prostředí Caption Studio** nadále používá vlastní stažení, spuštění
+a správu Qwenu. Mezi těmito dvěma způsoby připojení lze přepínat. Přímé připojení
+k souborům GGUF ani prohledávání disků součástí této funkce není.
 
 Windows 10/11 x64; desktopové okno vyžaduje Microsoft Edge WebView2 Runtime,
 který je na běžných Windows přítomen. Při jeho absenci se otevře výchozí prohlížeč.

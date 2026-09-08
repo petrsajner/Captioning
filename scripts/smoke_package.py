@@ -37,6 +37,9 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
             assert client.get(url).status_code == 200
             base = url.split("/?")[0]
             s = client.get(base + "/api/state").json()
+            assert s["settings"]["local_source"] == "managed"
+            assert client.get(base + "/assets/connections.css").status_code == 200
+            assert 'id="app-version"' in client.get(base).text
             assert s["rows"] == [] and not s["has_key"] and not s["settings"]["setup_complete"]
             assert not s["runtime"]["ready"] and not s["runtime"]["running"]
             assert Path(s["runtime"]["root"]).is_relative_to(root)

@@ -4,6 +4,7 @@ const recipe = $('recipe-form'), settingsForm = $('settings-form');
 let state, selected = new Set(), active = null, dirty = false, page = 0, settingsMode = 'local';
 let busy = false, pollBusy = false, recipeTimer, recipeDirty = false, toastTimer, lastGrid = '';
 let recipeRevision=0, recipeSaving=null;
+let localScanBusy=false, localModelsBusy=false, localServers=[];
 const labels = {pending:'Čeká',queued:'Ve frontě',processing:'Analyzuje…',saved:'Uloženo',existing:'Existující',skipped:'Přeskočeno',draft:'K uložení',error:'Chyba',invalid:'Konflikt / chyba'};
 const esc = text => String(text ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(text, error=false) { $('toast').textContent=text; $('toast').className='toast'+(error?' error':''); $('toast').hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>$('toast').hidden=true, error?11000:4500); }
@@ -97,8 +98,12 @@ function renderRuntime() {
   // Protect the profile of an in-flight install while allowing its cancellation.
   $('cancel-install').disabled=false;
   $('save-settings').disabled=r.installing||r.status==='loading'||busy;
+  $('find-local-servers').disabled=r.installing||r.status==='loading'||localScanBusy||localModelsBusy;
+  $('load-local-models').disabled=r.installing||r.status==='loading'||localModelsBusy||localScanBusy;
 }
 function render() {
+  const version='v'+state.version;
+  if($('app-version').textContent!==version){$('app-version').textContent=version;document.title='Caption Studio '+version;}
   $('total-badge').textContent=state.rows.length;
   $('pending-count').textContent=state.rows.filter(r=>!r.exists&&!['invalid','error'].includes(r.status)).length;
   $('saved-count').textContent=state.rows.filter(r=>r.exists).length;
@@ -110,7 +115,7 @@ function render() {
   $('stop-job').hidden=!j.running;
   $('generate').disabled=hasBusy()||!selected.size;
   $('generate').innerHTML=`Vytvořit popisky${selected.size?' ('+selected.size+')':''} <span>→</span>`;
-  $('model-chip').querySelector('span').textContent=state.settings.mode==='local'?`Lokální · ${state.runtime.running?'Qwen běží':'Qwen / server'}`:'Cloud · '+(state.settings.cloud_model.split('/').pop()||'vyberte model');
+  $('model-chip').querySelector('span').textContent=state.settings.mode==='local'?(state.settings.local_source==='external'?'Lokální · '+(state.settings.local_model||'externí server'):`Lokální · ${state.runtime.running?'Qwen běží':'Qwen / server'}`):'Cloud · '+(state.settings.cloud_model.split('/').pop()||'vyberte model');
   $('mode-note').textContent=state.settings.mode==='local'?'Lokální režim · obrázky zůstávají na tomto počítači':`Cloudový režim · vybrané obrázky se odešlou na ${new URL(state.settings.cloud_url).hostname}`;
   for(const id of ['pick-folder','pick-files','open-path','open-settings','model-chip'])$(id).disabled=hasBusy();
   for(const el of recipe.elements)el.disabled=hasBusy()||state.runtime.installing||state.runtime.status==='loading';
@@ -165,7 +170,7 @@ $('folder-path').addEventListener('keydown',e=>{if(e.key==='Enter')$('import-pat
 async function generate(ids,regenerate=false) {
   if(hasBusy()||!allowDiscard())return;
   await saveRecipe();dirty=false;
-  if(state.settings.mode==='local'&&state.settings.local_url==='http://127.0.0.1:8091/v1'&&!state.runtime.running) {
+  if(state.settings.mode==='local'&&state.settings.local_source==='managed'&&!state.runtime.running) {
     if(!state.runtime.ready){openSettings();toast('Nejprve stáhněte prostředí a model, nebo zvolte cloudové API.');return;}
     busy=true;render();toast('Spouštím lokální model. Načtení může chvíli trvat.');
     try{await api('/runtime/start',{});}finally{busy=false;await refresh();}
@@ -185,6 +190,9 @@ function openSettings() {
   if(!state)return;
   fillForm(settingsForm,state.settings);switchMode(state.settings.mode);
   $('api-key').value='';$('clear-key').checked=false;
+  clearLocalKeyInput();showLocalSource();
+  $('local-server-results').hidden=true;$('local-server-results').replaceChildren();localServers=[];
+  $('local-discovery-message').textContent='Vyhledá běžné lokální adresy Ollama, LM Studio, Unsloth a llama.cpp.';
   $('cloud-provider').value=[...$('cloud-provider').options].some(o=>o.value===state.settings.cloud_url)?state.settings.cloud_url:'custom';
   $('key-status').textContent=state.has_key?'Klíč je uložený. Prázdné pole ho ponechá beze změny.':'Klíč se uloží šifrovaně pro váš účet Windows.';
   $('setup-title').textContent=state.settings.setup_complete?'Model a prostředí':'Připravte si svůj pracovní prostor';
@@ -198,8 +206,10 @@ async function saveSetup(close=false) {
   await saveRecipe();
   if(!settingsForm.reportValidity())throw Error('Opravte označené hodnoty.');
   const config=formValues(settingsForm,liveSettings());config.mode=settingsMode;config.setup_complete=true;
-  const result=await api('/settings',{settings:config,api_key:$('api-key').value||null,clear_key:$('clear-key').checked});
+  const result=await api('/settings',{settings:config,api_key:$('api-key').value||null,clear_key:$('clear-key').checked,
+    local_api_key:$('local-api-key').value||null,clear_local_key:$('clear-local-key').checked});
   state.settings=config;state.has_key=result.has_key;$('api-key').value='';$('clear-key').checked=false;
+  state.has_local_key=result.has_local_key;clearLocalKeyInput();
   $('settings-message').textContent='Nastavení uloženo';
   await refresh();if(close)$('settings-dialog').close();
 }
@@ -216,6 +226,55 @@ $('cancel-install').onclick=()=>action(async()=>{await api('/runtime/cancel',{})
 $('start-model').onclick=()=>action(async()=>{await saveSetup();busy=true;render();try{await api('/runtime/start',{});}finally{busy=false;await refresh();}});
 $('stop-model').onclick=()=>action(async()=>{await api('/runtime/stop',{});await refresh();});
 $('preview-prompt').onclick=()=>action(async()=>{const result=await api('/prompt',liveSettings());$('prompt-text').textContent=result.prompt;$('prompt-dialog').showModal();});
+
+function showLocalSource(){
+  const external=settingsForm.elements.local_source.value==='external';
+  $('managed-settings').hidden=external;$('external-settings').hidden=!external;
+}
+function clearLocalKeyInput(){
+  $('local-api-key').value='';$('clear-local-key').checked=false;
+  const saved=state.has_local_key&&state.settings.local_url===settingsForm.elements.local_url.value.replace(/\/$/,'');
+  $('local-key-status').textContent=saved?'Klíč je uložený. Prázdné pole jej ponechá beze změny.':'Uložený klíč se použije pouze pro tuto adresu. Nový klíč lze zadat zde.';
+}
+function fillLocalModels(models){
+  $('local-models').innerHTML=models.map(id=>`<option value="${esc(id)}">`).join('');
+  if(models.length&&!models.includes(settingsForm.elements.local_model.value))settingsForm.elements.local_model.value=models[0];
+}
+$('local-source').onchange=showLocalSource;
+settingsForm.elements.local_url.addEventListener('input',()=>{clearLocalKeyInput();$('local-models').replaceChildren();$('local-model-status').textContent='Pro tuto adresu načtěte dostupné modely.';});
+$('find-local-servers').onclick=async()=>{
+  if(localScanBusy)return;localScanBusy=true;renderRuntime();
+  $('local-discovery-message').textContent='Hledám běžící lokální servery…';
+  $('local-server-results').hidden=true;
+  try{
+    const result=await api('/local-servers',{url:settingsForm.elements.local_url.value});
+    localServers=result.servers;
+    $('local-server-results').innerHTML=localServers.map((server,index)=>`<button type="button" class="local-server" data-server-index="${index}"><span><b>${esc(server.url)}</b><small>${esc(server.hint)}</small></span><span>${server.status==='requires_key'?'Vyžaduje klíč':server.models.length?'Modely: '+server.models.length:'Žádný model'} →</span></button>`).join('');
+    $('local-server-results').hidden=!localServers.length;
+    $('local-discovery-message').textContent=localServers.length?`Nalezené servery: ${localServers.length}. Kliknutím vyberte připojení.`:'Nebyl nalezen běžící server. Spusťte API v příslušné aplikaci, nebo zvolte Existující lokální server a zadejte vlastní adresu.';
+  }catch(e){$('local-discovery-message').textContent=e.message;}
+  finally{localScanBusy=false;renderRuntime();}
+};
+$('local-server-results').onclick=e=>{
+  const button=e.target.closest('[data-server-index]');if(!button||localScanBusy)return;
+  const server=localServers[Number(button.dataset.serverIndex)];if(!server)return;
+  settingsForm.elements.local_source.value=server.managed?'managed':'external';
+  if(!server.managed){settingsForm.elements.local_url.value=server.url;settingsForm.elements.local_model.value=server.models[0]||'';}
+  clearLocalKeyInput();fillLocalModels(server.models);showLocalSource();
+  $('local-model-status').textContent=server.status==='requires_key'?'Server vyžaduje klíč. Zadejte jej a klikněte na Načíst modely. Kompatibilita zatím není ověřená.':server.models.length?'Vyberte model s podporou obrázků. Jeho přítomnost v seznamu tuto podporu nezaručuje.':'Server odpovídá, ale nenabízí žádný model. Načtěte model v původní aplikaci a obnovte seznam.';
+  $('local-discovery-message').textContent='Vybráno '+server.url+'. Připojení potvrďte tlačítkem Uložit a pokračovat.';
+  if(server.status==='requires_key')$('local-api-key').focus();
+};
+$('load-local-models').onclick=async()=>{
+  if(localModelsBusy)return;localModelsBusy=true;renderRuntime();$('local-model-status').textContent='Ověřuji připojení a načítám modely…';
+  try{
+    await saveSetup();
+    const localSettings={...formValues(settingsForm,state.settings),mode:'local',local_source:'external'};
+    const result=await api('/models',localSettings);fillLocalModels(result.models);
+    $('local-model-status').textContent=result.models.length?`Připojeno. Dostupné modely: ${result.models.length}. Vyberte model s podporou obrázků a uložte nastavení.`:'Připojeno, ale seznam je prázdný. Nejprve načtěte model v jeho aplikaci.';
+  }catch(e){$('local-model-status').textContent=e.message;}
+  finally{localModelsBusy=false;renderRuntime();}
+};
 window.addEventListener('beforeunload',e=>{if(dirty||recipeDirty){e.preventDefault();e.returnValue='';}});
 
 (async()=>{

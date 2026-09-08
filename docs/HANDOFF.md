@@ -1,5 +1,46 @@
 # Caption Studio — handoff 2026-09-06
 
+## Aktualizace 0.1.4 — najít lokální servery a viditelná verze (2026-09-08)
+
+Uživatel schválil pouze připojení k existujícím lokálním serverům; nepřidávat import
+souborů GGUF ani hledání modelových souborů na disku. Zachovat vlastní stažení
+modelu pro čisté PC. Uživatel současně potvrdil úspěšné cloudové generování přes
+Gemini i OpenRouter; jejich generovací payload ani cloudová konfigurace se nemění.
+
+V lokálním nastavení je Najít lokální servery: read-only GET `/v1/models` na
+127.0.0.1, porty 11434, 1234, 8080, 8000, 8888, 8091 + případná vlastní lokální URL.
+Nejde o plošný port scan, hledání na LAN ani start/download procesů. Každá kontrola
+má celkový limit 3,5 s, neprovádí redirecty a omezuje velikost odpovědi. Názvy
+aplikací u výsledků jsou výslovně vodítka podle obvyklého portu. HTTP 401/403 je
+kandidát vyžadující klíč, nikoli prokázaná kompatibilita nebo vision podpora.
+
+Nové `local_source` rozlišuje managed/external. Staré nastavení s vlastní URL
+migruje na external; standardní adresa na managed. Vlastní prostředí vždy používá
+svůj endpoint/alias a původní řízení generování. Externí připojení používá zvolenou
+URL/model a standardní parametry, serveru nenutí llama.cpp chat_template_kwargs.
+Klíče pro lokální servery jsou oddělené přes `local:<přesná URL>` v DPAPI KeyStore.
+Discovery neposílá klíč na jiný endpoint. Žádné API nevrací plaintext klíčů.
+
+Verze je viditelná v hlavní hlavičce vedle názvu, v titulku webové stránky i
+v titulku nativního okna. Zdroj je společné `captioning.__version__`.
+
+Ověření: 27 testů včetně migrace starého nastavení, ochrany cloudového klíče,
+scope lokálních klíčů, odmítnutí ne-loopback adres, redirectů a neplatných model
+listů; dále čistý profil zabaleného EXE. Reálný oddělený Qwen server na 8080
+se záměrně zvolenou testovací autentizací: discovery našlo uzamčený server,
+UI přijalo testovací klíč, načetlo `qa-qwen-vision` a po uložení vytvořilo 2 UTF-8
+sidecary (2,8 s / 3,0 s, 0 chyb). Testovací server měl vypnuté uvažování ve své
+vlastní konfiguraci. Ukončení Caption Studio jej ponechalo běžet (health HTTP 200).
+Teprve testovací helper jej následně zastavil. Živé Ollama/LM Studio/Unsloth instance
+nebyly na tomto PC při testu dostupné; jejich endpoint varianty ověřeny simulací.
+
+Helper `python -m scripts.serve_test_model` je jen opt-in lokální test, není součástí
+instalátoru a aplikace ho nevolá. Snímky `output/playwright/local-server-connected.png`
+a `local-server-captions.png`; build `output/build-0.1.4.log`. Distribuce 0.1.4 v dist/.
+Uživatel výslovně povolil restart a instalaci. Verze 0.1.4 byla nainstalována;
+kontrolní součty jeho settings.json a šifrovaného keys.json zůstaly po instalaci
+nezměněné. Čistý profil instalovaného EXE prošel ověřením. Log `output/install-0.1.4.log`.
+
 ## Aktualizace 0.1.3 — jednotná ikona aplikace (2026-09-08)
 
 Uživatel požádal nahradit výchozí Python ikonu zástupce zeleným C z hlavičky.

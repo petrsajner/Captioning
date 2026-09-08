@@ -40,6 +40,7 @@ def main():
         return
 
     from captioning.service import Studio, data_directory
+    from captioning import __version__
     from captioning.api import make_app
     import uvicorn
 
@@ -95,7 +96,7 @@ def main():
         else:
             try:
                 import webview
-                webview.create_window("Caption Studio", url, width=1480, height=940, min_size=(1080, 700), background_color="#101412")
+                webview.create_window(f"Caption Studio {__version__}", url, width=1480, height=940, min_size=(1080, 700), background_color="#101412")
                 webview.start(gui="edgechromium", private_mode=True, icon=str(assets / "caption-studio.ico"))
             except Exception as exc:
                 print("Desktopové okno není dostupné; otevírám prohlížeč.", type(exc).__name__, flush=True)

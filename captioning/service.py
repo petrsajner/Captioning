@@ -10,7 +10,7 @@ import uuid
 
 from PIL import Image
 from . import __version__, provider
-from .models import Settings
+from .models import Settings, MANAGED_URL
 from .runtime import Runtime
 from .storage import KeyStore, fingerprint, read_json, save_json, write_caption
 
@@ -42,25 +42,36 @@ class Studio:
     def persist(self):
         save_json(self.root / "session.json", self.rows)
 
-    def save_settings(self, settings: Settings, api_key: str | None = None, clear_key=False):
+    def save_settings(self, settings: Settings, api_key: str | None = None, clear_key=False,
+                      local_api_key: str | None = None, clear_local_key=False):
         self.idle()
         if self.runtime.installing or self.runtime.state["status"] == "loading":
             raise ValueError("Počkejte na dokončení přípravy modelu.")
-        if api_key and len(api_key) > 8192:
+        if (api_key and len(api_key) > 8192) or (local_api_key and len(local_api_key) > 8192):
             raise ValueError("API klíč je příliš dlouhý.")
         if clear_key:
             self.keys.set(settings.cloud_url, "")
         elif api_key and api_key.strip():
             self.keys.set(settings.cloud_url, api_key.strip())
+        if clear_local_key:
+            self.keys.set("local:" + settings.local_url, "")
+        elif local_api_key and local_api_key.strip():
+            self.keys.set("local:" + settings.local_url, local_api_key.strip())
         save_json(self.root / "settings.json", settings.model_dump())
         self.settings = settings
 
     def snapshot(self):
         return {"version": __version__, "settings": self.settings.model_dump(),
                 "has_key": self.keys.has(self.settings.cloud_url),
+                "has_local_key": self.keys.has("local:" + self.settings.local_url),
                 "rows": self.rows, "job": self.job, "importing": self.importing,
                 "runtime": self.runtime.snapshot(self.settings.model_profile, self.settings.backend),
                 "data_dir": str(self.root)}
+
+    def local_key(self, settings: Settings):
+        if settings.local_source == "managed":
+            return self.runtime.api_key if self.runtime.process else ""
+        return self.keys.get("local:" + settings.local_url)
 
     def row(self, image_id: str):
         row = next((r for r in self.rows if r["id"] == image_id), None)
@@ -160,7 +171,7 @@ class Studio:
             if not key:
                 raise ValueError("V nastavení zadejte API klíč pro tohoto poskytovatele.")
         else:
-            key = self.runtime.api_key if settings.local_url == "http://127.0.0.1:8091/v1" and self.runtime.process else ""
+            key = self.local_key(settings)
         self.job = {"running": True, "total": len(selected), "completed": 0, "saved": 0,
                     "errors": 0, "skipped": 0, "message": "Spouštím dávku…"}
         for row in selected:

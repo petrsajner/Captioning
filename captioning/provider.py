@@ -44,7 +44,7 @@ def clean_caption(value: str, trigger: str) -> str:
 
 
 async def list_models(s: Settings, key: str = "") -> list[str]:
-    base = s.local_url if s.mode == "local" else s.cloud_url
+    base = s.local_endpoint if s.mode == "local" else s.cloud_url
     headers = {"Authorization": f"Bearer {key}"} if key else {}
     try:
         async with httpx.AsyncClient(timeout=12, trust_env=False) as client:
@@ -60,8 +60,8 @@ async def list_models(s: Settings, key: str = "") -> list[str]:
 
 
 async def generate(path: Path, s: Settings, key: str = "") -> str:
-    base = s.local_url if s.mode == "local" else s.cloud_url
-    model = s.local_model if s.mode == "local" else s.cloud_model
+    base = s.local_endpoint if s.mode == "local" else s.cloud_url
+    model = s.local_model_id if s.mode == "local" else s.cloud_model
     if not model.strip():
         raise ValueError("V nastavení vyberte nebo zadejte ID modelu s podporou obrázků.")
     if s.mode == "cloud" and not key:
@@ -75,7 +75,9 @@ async def generate(path: Path, s: Settings, key: str = "") -> str:
         ]}],
     }
     if s.mode == "local":
-        payload.update(temperature=0.6, top_p=0.95, chat_template_kwargs={"enable_thinking": False})
+        payload.update(temperature=0.6, top_p=0.95)
+        if s.local_source == "managed":
+            payload["chat_template_kwargs"] = {"enable_thinking": False}
     headers = {"Authorization": f"Bearer {key}"} if key else {}
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(s.timeout, connect=15), trust_env=False) as client:
