@@ -1,4 +1,4 @@
-#define AppVersion "0.1.2"
+#define AppVersion "0.1.3"
 [Setup]
 AppId={{3893EE78-D939-4A0B-97C2-131E58B3B430}
 AppName=Caption Studio
@@ -15,6 +15,7 @@ OutputBaseFilename=Caption-Studio-Setup-{#AppVersion}-Windows-x64
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=..\ui\caption-studio.ico
 UninstallDisplayIcon={app}\CaptionStudio.exe
 CloseApplications=yes
 RestartApplications=no
@@ -33,9 +34,9 @@ Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\THIRD_PARTY.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\Caption Studio"; Filename: "{app}\CaptionStudio.exe"; WorkingDir: "{app}"
+Name: "{group}\Caption Studio"; Filename: "{app}\CaptionStudio.exe"; WorkingDir: "{app}"; IconFilename: "{app}\_internal\ui\caption-studio.ico"
 Name: "{group}\Odinstalovat Caption Studio"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\Caption Studio"; Filename: "{app}\CaptionStudio.exe"; Tasks: desktopicon
+Name: "{autodesktop}\Caption Studio"; Filename: "{app}\CaptionStudio.exe"; WorkingDir: "{app}"; IconFilename: "{app}\_internal\ui\caption-studio.ico"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\CaptionStudio.exe"; Description: "Spustit Caption Studio a nastavit model"; Flags: nowait postinstall skipifsilent

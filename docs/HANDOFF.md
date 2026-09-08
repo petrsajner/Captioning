@@ -1,5 +1,27 @@
 # Caption Studio — handoff 2026-09-06
 
+## Aktualizace 0.1.3 — jednotná ikona aplikace (2026-09-08)
+
+Uživatel požádal nahradit výchozí Python ikonu zástupce zeleným C z hlavičky.
+Původní `.brand-icon` CSS/HTML bylo vyrenderováno prohlížečem při 12x měřítku
+na průhledné pozadí (`ui/brand-icon.png`). Nejde o ořez uživatelského screenshotu.
+`scripts/icon_from_logo.py` z tohoto assetu balí ICO s velikostmi
+16/20/24/32/40/48/64/128/256 px (`ui/caption-studio.ico`).
+
+Ikona je vložená do PyInstaller EXE, do instalačního EXE a nastavuje se přes
+pywebview `start(icon=...)` pro titulkový pruh včetně spuštění ze zdrojů.
+Desktop a Start menu mají explicitní IconFilename na instalované ICO;
+favicon používá stejný PNG asset. Původní logo v hlavičce se nemění.
+
+Desktop uživatele je přesměrovaný na OneDrive. Existující Caption Studio.lnk
+byl nalezen přes systémovou známou složku plochy a jeho původní IconLocation
+bylo prázdné (výchozí ikona EXE). První uživatelem hlášené nevytvoření zástupce
+nebylo reprodukováno; podle uživatele další instalace zástupce vytvořila.
+Nezaměňovat tuto historii s prokázanou příčinou chybějícího loga v EXE.
+
+Distribuce: verze 0.1.3, build `output/build-0.1.3.log`, instalátor a portable ZIP
+v `dist/`, kontrolní součty `dist/SHA256SUMS.txt`.
+
 ## Aktualizace 0.1.2 — plná navigace výběru složky
 
 Uživatel odmítl omezenou náhradu systémového dialogu: vlevo byly pouze kořeny

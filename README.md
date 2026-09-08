@@ -1,4 +1,4 @@
-# Caption Studio 0.1.2
+# Caption Studio 0.1.3
 
 Samostatný lokální Windows nástroj pro přípravu obrazových datasetů pro LoRA.
 Nastavení popisku zadáte jednou pro celou dávku. Výsledky se ukládají jako
@@ -6,7 +6,7 @@ Nastavení popisku zadáte jednou pro celou dávku. Výsledky se ukládají jako
 
 ## Instalace a první spuštění
 
-1. Spusťte `Caption-Studio-Setup-0.1.2-Windows-x64.exe`. Instalace je pro aktuálního
+1. Spusťte `Caption-Studio-Setup-0.1.3-Windows-x64.exe`. Instalace je pro aktuálního
    uživatele, bez správce. Aplikace obsahuje vlastní Python a knihovny; nepotřebuje
    předinstalovaný Python, Node.js, Marvin, CUDA Toolkit ani jiné AI aplikace.
 2. Spusťte **Caption Studio** ze Start menu. Průvodce nabídne lokální nebo cloudový režim.
