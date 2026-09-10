@@ -46,12 +46,14 @@ def fingerprint(path: Path) -> str | None:
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
 
 
-def write_caption(image: Path, text: str, expected: str | None, overwrite: bool) -> str:
-    """UTF-8 stem.txt; preserve existing bytes and detect external modifications."""
+def write_caption(image: Path, text: str, expected: str | None, overwrite: bool, suffix=".txt") -> str:
+    """UTF-8 sidecar; preserve existing bytes and detect external modifications."""
+    if suffix not in (".txt", ".json"):
+        raise ValueError("Neplatná přípona popisku.")
     text = text.strip()
     if not text:
         raise ValueError("Prázdný popisek nelze uložit.")
-    path = image.with_suffix(".txt")
+    path = image.with_suffix(suffix)
     current = fingerprint(path)
     if current != expected:
         raise ValueError("Popisek byl mezitím změněn mimo aplikaci. Načtěte sadu znovu.")
@@ -84,6 +86,16 @@ def write_caption(image: Path, text: str, expected: str | None, overwrite: bool)
                 raise ValueError("Popisek byl mezitím změněn mimo aplikaci.")
             atomic_bytes(path, data)
     return hashlib.sha256(data).hexdigest()
+
+
+def archive_sidecar(path: Path, expected: str):
+    """Retire the other caption format after a successful format conversion."""
+    if fingerprint(path) != expected:
+        raise ValueError("Původní popisek se změnil mimo aplikaci. Starý formát nebyl přesunut; načtěte sadu znovu.")
+    backup_dir = path.parent / ".caption-backups"
+    backup_dir.mkdir(exist_ok=True)
+    target = backup_dir / (path.name + "." + uuid.uuid4().hex + ".bak")
+    path.rename(target)
 
 
 class Blob(ctypes.Structure):

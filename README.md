@@ -1,12 +1,12 @@
-# Caption Studio 0.1.4
+# Caption Studio 0.1.5
 
 Samostatný lokální Windows nástroj pro přípravu obrazových datasetů pro LoRA.
 Nastavení popisku zadáte jednou pro celou dávku. Výsledky se ukládají jako
-`obrázek.txt` vedle `obrázek.jpg`, `obrázek.png` apod. v UTF-8 bez BOM.
+`obrázek.txt` (Normal) nebo `obrázek.json` (BRIA FIBO) vedle obrázku v UTF-8 bez BOM.
 
 ## Instalace a první spuštění
 
-1. Spusťte `Caption-Studio-Setup-0.1.4-Windows-x64.exe`. Instalace je pro aktuálního
+1. Spusťte `Caption-Studio-Setup-0.1.5-Windows-x64.exe`. Instalace je pro aktuálního
    uživatele, bez správce. Aplikace obsahuje vlastní Python a knihovny; nepotřebuje
    předinstalovaný Python, Node.js, Marvin, CUDA Toolkit ani jiné AI aplikace.
 2. Spusťte **Caption Studio** ze Start menu. Průvodce nabídne lokální nebo cloudový režim.
@@ -75,6 +75,61 @@ Cloudový režim nepotřebuje stažení žádného z těchto velkých souborů.
 
 ## Příprava sady
 
+### Co má LoRA převzít a co chcete měnit promptem
+
+U identity, vlasů, oblečení, doplňků, pózy, výrazu, pozadí, světla, kompozice
+a stylu jsou dvě přímé volby:
+
+- **Učit s LoRA:** tyto detaily se do popisku nezahrnou. Cílem je podpořit jejich
+  spojení s označením subjektu/triggerem a s vlivem naučené LoRA.
+- **Měnit promptem:** viditelné detaily se výslovně popíšou, aby měly samostatné
+  textové podmínění a daly se později měnit zadáním.
+
+Příklad postavy: identita **Učit s LoRA**, oblečení/účes/póza/pozadí **Měnit promptem**.
+Popis obsahuje trigger a měnitelné vlastnosti konkrétního snímku, ne popis obličeje.
+Tlačítko doporučeného rozdělení nastaví pro postavu/objekt učení identity, pro
+styl učení stylu; ostatní atributy ponechá popisované. Pouhé přepnutí typu datasetu
+vaše jednotlivé volby nepřepisuje.
+
+Nejde o masku tréninkového lossu ani příkaz zmrazit váhy. LoRA se stále učí z celých
+obrázků. Popisek nemůže zakázat naučení pozadí nebo garantovat změnu oblečení;
+variabilní vlastnosti musí být různorodé i ve vstupních obrázcích. Vynechání rysu
+také samo o sobě nezaručí jeho správné naučení. Popisovací model dostává přesnou
+politiku pro každý atribut, nadřazenou obecnému presetu a volným doplňujícím pokynům.
+Výstup stále vyžaduje vizuální kontrolu, zejména volné textové části JSON.
+
+Staré nastavení „Vynechat stálé rysy identity“ se převede na **Identita → Učit s LoRA**.
+Staré vypnuté zahrnutí osvětlení/kompozice se převede na jejich vynechání. Nové
+nastavení používá přímo seznam atributů, které se mají spojit s LoRA.
+
+### Normal / BRIA JSON
+
+**Normal** zachovává popis nebo tagy, cílový počet slov a `.txt` soubory.
+**BRIA JSON (FIBO)** vytváří strukturu podle veřejného BRIA `ImageAnalysis`:
+`short_description`, `objects`, `background_setting`, `lighting`, `aesthetics`,
+`photographic_characteristics`, `style_medium`, `text_render`, `context`, `artistic_style`.
+Klíče jsou anglické, jazyk popisných hodnot určuje zvolený jazyk. Trigger se přidá
+do `short_description`, nikoli před otevírací složenou závorku.
+
+JSON prochází parsováním a kontrolou povolených polí i jejich typů. Neplatný
+výstup se neuloží; je-li dostupný, zůstane jako opravitelný návrh. Při ručním
+uložení se struktura kontroluje znovu. Povinné řetězce pro vynechané atributy
+mohou být prázdné; upstream FIBO normalizátor prázdné hodnoty odstraňuje.
+BRIA nevyužívá tagový formát ani celkový cílový počet slov a dostává nejméně
+3072 výstupních tokenů. U přemýšlejícího cloudového modelu může být potřeba vyšší
+limit i pro Normal; živý test Gemini byl dokončen při limitu 4096 tokenů.
+
+JSON se ukládá jako `.json`, což rozpoznává skener projektu **LORA Train** jako
+FIBO. Jeho vlastní FIBO trénovací backend zatím není dokončený; vytvořený sidecar
+neznamená, že už lze FIBO trénink spustit. Oficiální BRIA trainer navíc používá
+`metadata.csv` s JSON řetězcem ve sloupci caption; tento export není součástí aplikace.
+
+Zdroje formátu: [BRIA ImageAnalysis](https://github.com/Bria-AI/FIBO/blob/main/src/fibo_inference/vlm/gemini_api.py),
+[FIBO fine-tuning](https://github.com/Bria-AI/FIBO/blob/main/src/fine_tuning/README.md),
+[normalizace caption](https://github.com/Bria-AI/FIBO/blob/main/src/fibo_inference/parse_caption.py).
+
+### Zpracování
+
 1. **Otevřít složku** nebo **Vybrat obrázky**; volitelně zahrňte podsložky nebo
    přidávejte k současné sadě. Tlačítko **Cesta…** přijímá přímo cestu ke složce.
    Výběr složky přímo v aplikaci zobrazuje náhledy obrázků, jejich počet a podsložky.
@@ -94,11 +149,18 @@ Cloudový režim nepotřebuje stažení žádného z těchto velkých souborů.
 5. Kliknutím na obrázek otevřete náhled a popisek. Text upravte a uložte tlačítkem
    nebo Ctrl+S. **Znovu** regeneruje pouze otevřený obrázek a dovolí přepsat jeho popisek.
 
-**Přeskočit existující popisky** je ve výchozím stavu zapnuté. Vypnutím dovolíte
-regenerovat a přepsat i existující `.txt`; před změnou se vytvoří kopie původních
-bajtů v `.caption-backups`. Při vypnutém **Automaticky ukládat .txt** výsledky
+**Přeskočit existující popisky** je ve výchozím stavu zapnuté a platí pro `.txt` i
+`.json`, i pokud je zvolený jiný výstupní formát. Pro převod použijte **Znovu**
+nebo přeskočení vypněte. Před změnou se vytvoří kopie původních
+bajtů v `.caption-backups`. Při vypnutém **Automaticky ukládat popisky** výsledky
 zůstávají jako návrhy v aplikaci; uložte je jednotlivě po kontrole. Návrhy a otevřená
 sada přežijí restart, ale otevření nové sady bez přidání nahradí předchozí pracovní seznam.
+
+Po úspěšném uložení nového formátu se původní opačný sidecar přesune do zálohy,
+aby nezůstaly soupeřící `.txt` a `.json` (LoRA Studio upřednostňuje `.txt`).
+Při generování pouhého návrhu se původní soubor ponechá až do ručního uložení.
+Editor vždy ukazuje příponu právě upravovaného popisku; samotná změna globálního
+formátu nepřepisuje již vytvořený obsah. Změny souborů mimo aplikaci zablokují zápis.
 
 Zastavení zruší čekající analýzu a další obrázky; už uložené `.txt` zůstanou zachované.
 U cloudového API zrušení místního požadavku nezaručuje zastavení účtování u poskytovatele.

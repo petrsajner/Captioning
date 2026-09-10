@@ -8,6 +8,7 @@ from pathlib import Path
 import httpx
 from PIL import Image, ImageOps
 from .models import Settings, make_prompt
+from .bria import normalize_json
 
 EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
 
@@ -68,7 +69,7 @@ async def generate(path: Path, s: Settings, key: str = "") -> str:
         raise ValueError("V nastavení chybí API klíč pro tuto adresu poskytovatele.")
     encoded = base64.b64encode(await asyncio.to_thread(image_bytes, path, s.image_size)).decode()
     payload = {
-        "model": model, "stream": False, "max_tokens": s.max_tokens,
+        "model": model, "stream": False, "max_tokens": max(s.max_tokens, 3072) if s.output_format == "bria_json" else s.max_tokens,
         "messages": [{"role": "user", "content": [
             {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + encoded}},
             {"type": "text", "text": make_prompt(s)},
@@ -78,6 +79,8 @@ async def generate(path: Path, s: Settings, key: str = "") -> str:
         payload.update(temperature=0.6, top_p=0.95)
         if s.local_source == "managed":
             payload["chat_template_kwargs"] = {"enable_thinking": False}
+            if s.output_format == "bria_json":
+                payload["response_format"] = {"type":"json_object"}
     headers = {"Authorization": f"Bearer {key}"} if key else {}
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(s.timeout, connect=15), trust_env=False) as client:
@@ -104,7 +107,7 @@ async def generate(path: Path, s: Settings, key: str = "") -> str:
                 content = msg.get("content")
                 if not isinstance(content, str):
                     raise ValueError("Model nevrátil textový popisek.")
-                return clean_caption(content, s.trigger)
+                return normalize_json(content, s) if s.output_format == "bria_json" else clean_caption(content, s.trigger)
     except httpx.TimeoutException:
         raise ValueError("Model překročil časový limit. Lze jej zvýšit v nastavení.") from None
     except httpx.HTTPError:

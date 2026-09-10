@@ -1,5 +1,67 @@
 # Caption Studio — handoff 2026-09-06
 
+## Aktualizace 0.1.5 — záměr captioningu a BRIA FIBO JSON (2026-09-11)
+
+Uživatel požádal nahradit nejasné vynechání identity přímými volbami toho, co má
+LoRA převzít a co má zůstat měnitelné promptem. Každý z 10 atributů má Učit s LoRA
+(vynechat jeho detaily z captionu) / Měnit promptem (detaily popsat). UI výslovně
+vysvětluje, že jde o caption conditioning, nikoli loss masku nebo záruku fixace či
+nenaučení. Proměnlivé atributy vyžadují variabilitu datasetu. Ze stejného seznamu
+`training.ATTRIBUTES` se skládají ovladače, souhrn a modelové instrukce.
+Volné pokyny a preset nesmějí přebít tento plán. Doporučené rozdělení se aplikuje
+jen tlačítkem; změna typu datasetu uživatelské volby automaticky neresetuje.
+Staré omit_identity/lighting/composition se přečtou při migraci; ukládá se learn_attributes.
+
+Přepínač Normal / BRIA JSON (FIBO). Normal zachovává `.txt`, věty/tagy a cílovou
+délku. BRIA používá `.json`, datové typy a názvy podle veřejného BRIA ImageAnalysis
+(`src/fibo_inference/vlm/gemini_api.py`), včetně volitelných skóre z fine-tuning
+example. Vynechané povinné popisné řetězce jsou prázdné; optional fields se mohou
+vynechat. Původní BRIA parser prázdné hodnoty odstraňuje. Trigger jde do
+short_description. JSON se validuje při generování i každém uložení; odmítá
+neznámá pole, špatné typy, duplicitní klíče a NaN. Modelové instrukce zakazují
+únik vynechaných atributů do shrnutí či jiných polí; navíc se odstraní jednoznačně
+mapovaná strukturovaná pole. Volné textové popisy pořád vyžadují vizuální kontrolu.
+
+Uživatel jako cílový trainer určil `C:\Users\Petr\Documents\LORA Train`.
+Jeho aktuální read-only skener čte TXT před JSON a JSON s short_description/objects
+označí fibo_json. Proto při explicitním nahrazení/regenerování aplikace nejprve
+uloží validovaný cílový formát a pak druhý sidecar přesune do `.caption-backups`.
+Při skip-existing se přeskočí kterýkoliv existující formát, při draft-only se
+původní soubor nemění. Fingerprint se kontroluje pro oba soubory. Při chybě
+archivace zůstává hlášená chyba; aplikace netvrdí úspěšné dokončení převodu.
+Po chybě JSON lze návrh opravit v editoru. Samotná změna globálního výstupu
+nemění formát již načteného popisku v editoru; UI ukazuje jeho příponu.
+
+Do LORA Train nebylo zasahováno. FIBO trénovací backend tam zůstává plánovaný.
+Ověřen byl jeho skutečný scan_dataset nad naším vytvořeným `.json`: 1 obrázek,
+1 fibo_json, 0 chyb. Oficiální BRIA trainer chce metadata.csv; tento export
+nebyl požadován pro zdejší trainer a není implementovaný.
+
+Ověření: 42 automatických testů; 7 browser kontrol (volby → souhrn → skutečné
+zadání, BRIA ovladače, import JSON, viditelná chyba vadného JSON, uložení a reload).
+Živý Gemini test nad veřejným pytorch/hub dog.jpg: learned identity vynechala
+barvu/specializovaný vzhled psa, described identity zahrnula bílou barvu, uši,
+oči; BRIA JSON respektoval vynechání identity a osvětlení a prošel strukturální
+validací. První test s limitem 700 tokenů skončil neúplným výstupem bez zápisu;
+další tři testy s limitem 4096 prošly (6,3 / 6,4 / 7,0 s). BRIA vyžaduje alespoň
+3072 výstupních tokenů; ostatní modelové parametry se nemění. GPU byla obsazená
+jinou prací, která nebyla přerušena. Žádné soukromé datasetové fotografie ani
+uživatelské pokyny nebyly použity v cloudovém testu. API klíč byl pouze v paměti.
+
+Pomocné testy: `python -m scripts.check_training_live --live` (placené volání
+uživatelem nakonfigurovaného cloudu, jen opt-in), `scripts/check_training_ui.js`.
+Výsledky v `output/training-live/report.json`, `output/training-ui-result.txt`,
+snímek `output/playwright/training-final.png`. Build `output/build-0.1.5-final.log`.
+Test zabaleného EXE zahrnuje i odmítnutí chybného JSON a archivaci konkurenčního TXT.
+Verze 0.1.5 byla nainstalována a spuštěna. Instalace zachovala kontrolní součty
+uživatelských settings.json a šifrovaného keys.json; samotné staré nastavení se
+mapuje v paměti na nové volby a uloží novou podobu až při změně nastavení.
+Log instalace `output/install-0.1.5.log`. Cizí tréninkové procesy nebyly zastaveny.
+
+Zdroje: https://github.com/Bria-AI/FIBO/blob/main/src/fibo_inference/vlm/gemini_api.py
+https://github.com/Bria-AI/FIBO/blob/main/src/fibo_inference/parse_caption.py
+https://github.com/Bria-AI/FIBO/blob/main/src/fine_tuning/README.md
+
 ## Aktualizace 0.1.4 — najít lokální servery a viditelná verze (2026-09-08)
 
 Uživatel schválil pouze připojení k existujícím lokálním serverům; nepřidávat import

@@ -158,7 +158,7 @@ def test_incomplete_response_rejected(tmp_path, monkeypatch, finish, content):
 def test_prompt_trigger_and_network_boundaries():
     s = Settings(preset="character", subject="ohwx", trigger="ohwx", omit_identity=True, instructions="Describe clothing.")
     prompt = make_prompt(s)
-    assert "ohwx" in prompt and "Describe clothing." in prompt and "Omit stable identity" in prompt
+    assert "ohwx" in prompt and "Describe clothing." in prompt and "LEARN_WITH_LORA — DO NOT DESCRIBE: stable visual identity" in prompt
     assert clean_caption("ohwx, woman", "ohwx") == "ohwx, woman"
     assert clean_caption("ohwxish object", "ohwx") == "ohwx, ohwxish object"
     with pytest.raises(ValueError):

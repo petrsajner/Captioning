@@ -18,6 +18,7 @@ from .discovery import CANDIDATES, discover
 from .provider import image_bytes, list_models
 from .service import Studio
 from .folders import FolderBrowser
+from .training import training_plan
 
 
 class ImportRequest(BaseModel):
@@ -105,7 +106,7 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
 
     @app.post("/api/prompt")
     async def prompt(body: Settings):
-        return {"prompt": make_prompt(body)}
+        return {"prompt": make_prompt(body), "training_plan": training_plan(body), "output_format": body.output_format}
 
     @app.post("/api/models")
     async def models(body: Settings):

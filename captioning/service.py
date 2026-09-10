@@ -12,7 +12,9 @@ from PIL import Image
 from . import __version__, provider
 from .models import Settings, MANAGED_URL
 from .runtime import Runtime
-from .storage import KeyStore, fingerprint, read_json, save_json, write_caption
+from .storage import KeyStore, fingerprint, read_json, save_json, write_caption, archive_sidecar
+from .bria import normalize_json, CaptionValidationError
+from .training import ATTRIBUTES, training_plan
 
 
 def data_directory() -> Path:
@@ -29,6 +31,12 @@ class Studio:
         self.runtime = Runtime(root)
         self.rows: list[dict] = read_json(root / "session.json", [])
         for row in self.rows:
+            row.setdefault("caption_format", "normal")
+            if "fingerprints" not in row:
+                try:
+                    row["fingerprints"] = {".txt":row.get("fingerprint"), ".json":fingerprint(Path(row["path"]).with_suffix(".json"))}
+                except (ValueError, OSError):
+                    row["fingerprints"] = {".txt":row.get("fingerprint"), ".json":None}
             if row["status"] in ("processing", "queued"):
                 row.update(status="pending", error="Předchozí běh byl přerušen. Můžete pokračovat.")
         self.job = {"running": False, "total": 0, "completed": 0, "saved": 0, "errors": 0, "skipped": 0, "message": "Připraveno"}
@@ -62,6 +70,7 @@ class Studio:
 
     def snapshot(self):
         return {"version": __version__, "settings": self.settings.model_dump(),
+                "training_attributes": ATTRIBUTES, "training_plan": training_plan(self.settings),
                 "has_key": self.keys.has(self.settings.cloud_url),
                 "has_local_key": self.keys.has("local:" + self.settings.local_url),
                 "rows": self.rows, "job": self.job, "importing": self.importing,
@@ -124,10 +133,22 @@ class Studio:
                     if getattr(im, "n_frames", 1) > 1:
                         raise ValueError("Vícesnímkové obrázky nejsou podporované. Vyberte jeden snímek.")
                     im.verify()
-                target = path.with_suffix(".txt")
-                row["fingerprint"] = fingerprint(target)
+                row["fingerprints"] = {suffix:fingerprint(path.with_suffix(suffix)) for suffix in (".txt", ".json")}
+                preferred = ".json" if self.settings.output_format == "bria_json" else ".txt"
+                other = ".txt" if preferred == ".json" else ".json"
+                suffix = preferred if path.with_suffix(preferred).exists() else other if path.with_suffix(other).exists() else preferred
+                target = path.with_suffix(suffix)
+                row["caption_format"] = "bria_json" if suffix == ".json" else "normal"
+                row["fingerprint"] = row["fingerprints"][suffix]
                 if target.exists():
                     row.update(caption=target.read_text(encoding="utf-8-sig").strip(), exists=True, status="existing")
+                    if suffix == ".json":
+                        try:
+                            row["caption"] = normalize_json(row["caption"])
+                        except CaptionValidationError as exc:
+                            row.update(status="error", error=str(exc))
+                if all(row["fingerprints"].values()):
+                    row["notice"] = "Existují .txt i .json. LoRA Studio nyní upřednostní .txt. Uložení nebo regenerování ponechá zvolený formát a druhý přesune do zálohy."
             except Exception as e:
                 row.update(status="invalid", error=str(e))
             rows.append(row)
@@ -154,9 +175,36 @@ class Studio:
         if not image.is_file():
             raise ValueError("Původní obrázek už neexistuje.")
         self.collision(image)
-        digest = write_caption(image, text, row["fingerprint"], overwrite=True)
-        row.update(caption=text.strip(), fingerprint=digest, exists=True, status="saved", error="")
+        if row.get("caption_format") == "bria_json":
+            text = normalize_json(text)
+        self._write_row(row, text, row.get("caption_format", "normal"), overwrite=True)
         self.persist()
+
+    @staticmethod
+    def _check_sidecars(row):
+        image = Path(row["path"])
+        hashes = row.get("fingerprints", {".txt":row.get("fingerprint"), ".json":None})
+        for suffix in (".txt", ".json"):
+            if fingerprint(image.with_suffix(suffix)) != hashes.get(suffix):
+                raise ValueError("Popisek byl změněn mimo aplikaci. Načtěte sadu znovu.")
+
+    def _write_row(self, row, text, output_format, overwrite):
+        if output_format == "bria_json":
+            text = normalize_json(text)
+        self._check_sidecars(row)
+        suffix = ".json" if output_format == "bria_json" else ".txt"
+        other = ".txt" if suffix == ".json" else ".json"
+        image = Path(row["path"])
+        hashes = row["fingerprints"]
+        if hashes.get(other) is not None and not overwrite:
+            raise FileExistsError("Popisek už existuje v jiném formátu.")
+        digest = write_caption(image, text, hashes.get(suffix), overwrite=overwrite, suffix=suffix)
+        hashes[suffix] = digest
+        if hashes.get(other) is not None:
+            archive_sidecar(image.with_suffix(other), hashes[other])
+            hashes[other] = None
+        row.update(caption=text.strip(), fingerprint=digest, caption_format=output_format,
+                   exists=True, status="saved", error="", notice="")
 
     async def start_job(self, ids: list[str], regenerate=False):
         self.idle()
@@ -173,7 +221,8 @@ class Studio:
         else:
             key = self.local_key(settings)
         self.job = {"running": True, "total": len(selected), "completed": 0, "saved": 0,
-                    "errors": 0, "skipped": 0, "message": "Spouštím dávku…"}
+                    "errors": 0, "skipped": 0, "message": "Spouštím dávku…",
+                    "output_format": settings.output_format, "training_plan": training_plan(settings)}
         for row in selected:
             if row["status"] != "invalid":
                 row["status"] = "queued"
@@ -188,8 +237,10 @@ class Studio:
                     self.job["completed"] += 1
                     continue
                 image = Path(row["path"])
-                if settings.skip_existing and not regenerate and image.with_suffix(".txt").exists():
+                if settings.skip_existing and not regenerate and any(image.with_suffix(s).exists() for s in (".txt", ".json")):
                     row.update(status="skipped", error="")
+                    if row.get("caption_format", "normal") != settings.output_format:
+                        row["notice"] = "Existující popisek je v jiném formátu. Pro převod použijte Znovu nebo vypněte Přeskočit existující popisky."
                     self.job["skipped"] += 1
                     self.job["completed"] += 1
                     continue
@@ -199,20 +250,20 @@ class Studio:
                 try:
                     self.collision(image)
                     # Check for external edits before spending time or cloud credits.
-                    if fingerprint(image.with_suffix(".txt")) != row["fingerprint"]:
-                        raise ValueError("Popisek byl změněn mimo aplikaci. Načtěte sadu znovu.")
+                    self._check_sidecars(row)
                     caption = await provider.generate(image, settings, key)
-                    row.update(caption=caption, status="draft", seconds=round(time.monotonic() - started, 1))
+                    row.update(caption=caption, caption_format=settings.output_format, status="draft", notice="", seconds=round(time.monotonic() - started, 1))
                     if settings.auto_save:
                         self.collision(image)
-                        digest = write_caption(image, caption, row["fingerprint"], overwrite=regenerate or not settings.skip_existing)
-                        row.update(fingerprint=digest, exists=True, status="saved")
+                        self._write_row(row, caption, settings.output_format, overwrite=regenerate or not settings.skip_existing)
                         self.job["saved"] += 1
                 except asyncio.CancelledError:
                     row.update(status="pending", error="Zpracování bylo zastaveno.")
                     raise
                 except Exception as e:
                     row.update(status="error", error=str(e))
+                    if isinstance(e, CaptionValidationError):
+                        row.update(caption=e.draft, caption_format="bria_json")
                     self.job["errors"] += 1
                 self.job["completed"] += 1
                 self.persist()

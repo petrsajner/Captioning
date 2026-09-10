@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="cs">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Caption Studio</title><link rel="icon" type="image/png" href="/assets/brand-icon.png"><link rel="stylesheet" href="/assets/style.css"><link rel="stylesheet" href="/assets/folders.css"><link rel="stylesheet" href="/assets/connections.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Caption Studio</title><link rel="icon" type="image/png" href="/assets/brand-icon.png"><link rel="stylesheet" href="/assets/style.css"><link rel="stylesheet" href="/assets/folders.css"><link rel="stylesheet" href="/assets/connections.css"><link rel="stylesheet" href="/assets/training.css"></head>
 <body>
 <header class="topbar">
   <div class="brand"><span class="brand-icon">C<span>·</span></span><div>Caption Studio <span id="app-version" class="app-version" aria-label="Verze aplikace">…</span><small>DATASET WORKSPACE</small></div></div>
@@ -11,21 +11,25 @@
     <div class="eyebrow">01 / NASTAVENÍ SADY</div><h2>Jeden recept.<br>Celá sada.</h2><p class="muted intro">Společné pokyny pro všechny vybrané obrázky.</p>
     <form id="recipe-form">
       <label>Co trénujete?<select name="preset"><option value="general">Obecný dataset</option><option value="character">Postava / osoba</option><option value="object">Objekt / produkt</option><option value="style">Vizuální styl</option></select></label>
-      <label>Trigger slovo<input name="trigger" placeholder="např. ohwx person" maxlength="100"><small>Přidá se přesně na začátek každého popisku.</small></label>
+      <label>Výstup popisků<select name="output_format"><option value="normal">Normal · .txt</option><option value="bria_json">BRIA JSON (FIBO) · .json</option></select></label>
+      <label>Trigger slovo<input name="trigger" placeholder="např. ohwx person" maxlength="100"><small id="trigger-note">Přidá se přesně na začátek každého popisku.</small></label>
       <label>Označení hlavního subjektu<input name="subject" placeholder="Volitelné jméno nebo označení" maxlength="100"></label>
       <div class="form-row"><label>Formát<select name="format"><option value="description">Popis</option><option value="tags">Tagy</option></select></label><label>Jazyk<select name="language"><option value="English">Angličtina</option><option value="Czech">Čeština</option></select></label></div>
       <label class="range-label">Cílová délka <span><output id="word-output">100</output> slov</span><input name="words" type="range" min="20" max="300" step="10"></label>
-      <div class="rule"></div><div class="label-heading">Do popisku zahrnout</div>
-      <label class="check"><input type="checkbox" name="lighting"> Světlo a hloubku ostrosti</label>
-      <label class="check"><input type="checkbox" name="composition"> Kompozici a úhel pohledu</label>
+      <p id="json-format-note" class="tiny muted" hidden>FIBO JSON používá pevnou strukturu místo tagů a cílové délky. Pro výstup se použije alespoň 3 072 tokenů. Neplatný JSON se neuloží.</p>
+      <div class="rule"></div><div class="label-heading">Co má LoRA převzít?</div>
+      <div class="training-explanation"><p><b>Učit s LoRA</b> → detaily vynechat z popisku; podpořit jejich spojení s triggerem.</p><p><b>Měnit promptem</b> → detaily popsat; umožnit jejich samostatné zadání.</p></div>
+      <div id="training-plan" class="training-plan" aria-live="polite"></div>
+      <button type="button" id="apply-training-preset" class="text-button">Použít doporučené rozdělení pro tento typ LoRA</button>
+      <div id="training-controls"></div>
+      <p class="training-limit">Tohle řídí popisky, ne masku učení. LoRA se učí z celého obrázku. Proměnlivé vlastnosti musí být různorodé i v datasetu; přepínače nezaručí jejich úplné oddělení.</p>
       <label class="check"><input type="checkbox" name="text_in_image"> Čitelný text v obrázku</label>
-      <label class="check"><input type="checkbox" name="omit_identity"> Vynechat stálé rysy identity</label>
       <label class="instructions-label">Vlastní pokyny<textarea name="instructions" rows="4" placeholder="Např. Popiš přesně oblečení a prostředí. Nehodnoť estetickou kvalitu." maxlength="6000"></textarea></label>
       <button type="button" id="preview-prompt" class="text-button">Zobrazit výsledné zadání ↗</button>
       <div class="rule"></div>
       <label class="check"><input type="checkbox" name="skip_existing"> Přeskočit existující popisky</label>
-      <label class="check"><input type="checkbox" name="auto_save"> Automaticky ukládat .txt</label>
-      <div class="note"><span>↳</span><p><b>obrázek.jpg → obrázek.txt</b><br>Stejná složka, UTF‑8. Při přepsání se vytvoří záloha.</p></div>
+      <label class="check"><input type="checkbox" name="auto_save"> Automaticky ukládat popisky</label>
+      <div class="note"><span>↳</span><p id="output-note"><b>obrázek.jpg → obrázek.txt</b><br>Stejná složka, UTF‑8. Při přepsání se vytvoří záloha.</p></div>
     </form>
     <div id="recipe-status" class="tiny muted" aria-live="polite">Nastavení se ukládá automaticky</div>
   </aside>
@@ -41,7 +45,7 @@
   </section>
   <aside class="inspector panel"><div class="eyebrow">03 / KONTROLA POPISKU</div>
     <div id="inspector-empty" class="inspector-empty"><span>⌑</span><h3>Prostor pro kontrolu</h3><p>Vyberte obrázek pro náhled<br>a úpravu jeho popisku.</p></div>
-    <div id="inspector-content" hidden><div class="preview-wrap"><img id="preview-image" alt="Náhled vybraného obrázku"></div><h3 id="image-name"></h3><div id="image-meta" class="tiny muted"></div><div id="image-path" class="path tiny" title=""></div><div class="editor-heading"><label for="caption-editor">Popisek</label><span id="caption-words" class="tiny muted">0 slov</span></div><textarea id="caption-editor" rows="10" placeholder="Popisek se objeví po zpracování. Můžete jej také napsat ručně."></textarea><div id="image-error" class="error-message" hidden></div><div id="caption-state" class="tiny muted"></div><div class="editor-buttons"><button id="save-caption" class="primary">Uložit popisek</button><button id="regenerate" class="secondary" title="Vygenerovat znovu pouze tento obrázek">↻ Znovu</button></div><p class="tiny muted">Ruční úprava se uloží tlačítkem nebo Ctrl+S. Původní verze zůstane v .caption-backups.</p></div>
+    <div id="inspector-content" hidden><div class="preview-wrap"><img id="preview-image" alt="Náhled vybraného obrázku"></div><h3 id="image-name"></h3><div id="image-meta" class="tiny muted"></div><div id="image-path" class="path tiny" title=""></div><div class="editor-heading"><label for="caption-editor">Popisek</label><span id="caption-words" class="tiny muted">0 slov</span></div><textarea id="caption-editor" rows="10" placeholder="Popisek se objeví po zpracování. Můžete jej také napsat ručně."></textarea><div id="image-error" class="error-message" hidden></div><div id="caption-state" class="tiny muted"></div><div id="caption-output-path" class="tiny muted"></div><div id="caption-notice" class="caption-notice" hidden></div><button id="format-json" class="text-button" hidden>Naformátovat JSON</button><div class="editor-buttons"><button id="save-caption" class="primary">Uložit popisek</button><button id="regenerate" class="secondary" title="Vygenerovat znovu pouze tento obrázek">↻ Znovu</button></div><p class="tiny muted">Ruční úprava se uloží tlačítkem nebo Ctrl+S. Původní verze zůstane v .caption-backups.</p></div>
   </aside>
 </main>
 <footer class="runbar"><div class="run-status"><div><span id="job-indicator" class="dot green-dot"></span><strong id="job-title">Připraveno k práci</strong><span id="job-count" class="tiny muted"></span></div><div class="progress-track"><div id="job-progress"></div></div><span id="mode-note" class="tiny muted">Lokální režim · obrázky zůstávají na tomto počítači</span></div><button id="stop-job" class="danger" hidden>Zastavit dávku</button><button id="generate" class="primary run-button">Vytvořit popisky <span>→</span></button></footer>

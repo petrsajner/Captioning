@@ -19,7 +19,8 @@ async function api(path, body, method='POST') {
 async function action(fn) {try{await fn();}catch(e){toast(e.message,true);}}
 function formValues(form, base) {
   const out={...base};
-  for(const el of form.elements) if(el.name) out[el.name]=el.type==='checkbox'?el.checked:(['number','range'].includes(el.type)||el.name==='image_size'?Number(el.value):el.value);
+  for(const el of form.elements) if(el.name&&!el.dataset.attribute) out[el.name]=el.type==='checkbox'?el.checked:(['number','range'].includes(el.type)||el.name==='image_size'?Number(el.value):el.value);
+  if(form===recipe)out.learn_attributes=[...form.querySelectorAll('[data-attribute][value="learn"]:checked')].map(el=>el.dataset.attribute);
   return out;
 }
 function fillForm(form, values) {for(const el of form.elements) if(el.name && el.name in values) {if(el.type==='checkbox')el.checked=values[el.name];else el.value=values[el.name];}}
@@ -39,6 +40,7 @@ async function saveRecipe() {
 }
 recipe.addEventListener('input',()=>{
   $('word-output').value=recipe.elements.words.value;recipeDirty=true;recipeRevision++;
+  renderTrainingPlan();
   $('recipe-status').textContent='Neuložené nastavení…';
   clearTimeout(recipeTimer);recipeTimer=setTimeout(()=>action(saveRecipe),600);
 });
@@ -66,7 +68,7 @@ function renderGrid() {
   $('select-all').checked=rows.length>0&&rows.every(r=>selected.has(r.id));
   $('select-all').indeterminate=rows.some(r=>selected.has(r.id))&&!$('select-all').checked;
 }
-function updateWords() {const text=$('caption-editor').value.trim();$('caption-words').textContent=(text?text.split(/\s+/).length:0)+' slov';}
+function updateWords() {const text=$('caption-editor').value.trim();const row=state.rows.find(r=>r.id===active);if(row?.caption_format==='bria_json'){try{JSON.parse(text);$('caption-words').textContent='JSON objekt';}catch{$('caption-words').textContent='Neplatný JSON';}}else $('caption-words').textContent=(text?text.split(/\s+/).length:0)+' slov';}
 function renderInspector() {
   const row=state.rows.find(r=>r.id===active);
   $('inspector-empty').hidden=!!row;$('inspector-content').hidden=!row;
@@ -77,6 +79,11 @@ function renderInspector() {
   if(!dirty && $('caption-editor').value!==row.caption) $('caption-editor').value=row.caption;
   $('image-error').hidden=!row.error;$('image-error').textContent=row.error;
   $('caption-state').textContent=dirty?'● Neuložené ruční úpravy':(row.status==='draft'?'● Vygenerováno, zatím neuloženo':labels[row.status]);
+  const json=row.caption_format==='bria_json';
+  $('caption-output-path').textContent='Soubor: '+row.name.replace(/\.[^.]+$/,json?'.json':'.txt');
+  $('caption-notice').hidden=!row.notice;$('caption-notice').textContent=row.notice||'';
+  $('format-json').hidden=!json;$('format-json').disabled=hasBusy();
+  $('caption-editor').classList.toggle('json-editor',json);
   $('caption-editor').disabled=hasBusy()||row.status==='invalid';
   $('save-caption').disabled=hasBusy()||row.status==='invalid'||!$('caption-editor').value.trim();
   $('regenerate').disabled=hasBusy()||row.status==='invalid';updateWords();
@@ -114,11 +121,12 @@ function render() {
   $('job-progress').style.width=j.total?100*j.completed/j.total+'%':'0%';
   $('stop-job').hidden=!j.running;
   $('generate').disabled=hasBusy()||!selected.size;
-  $('generate').innerHTML=`Vytvořit popisky${selected.size?' ('+selected.size+')':''} <span>→</span>`;
+  $('generate').innerHTML=`${liveSettings().output_format==='bria_json'?'Vytvořit BRIA JSON':'Vytvořit popisky'}${selected.size?' ('+selected.size+')':''} <span>→</span>`;
   $('model-chip').querySelector('span').textContent=state.settings.mode==='local'?(state.settings.local_source==='external'?'Lokální · '+(state.settings.local_model||'externí server'):`Lokální · ${state.runtime.running?'Qwen běží':'Qwen / server'}`):'Cloud · '+(state.settings.cloud_model.split('/').pop()||'vyberte model');
   $('mode-note').textContent=state.settings.mode==='local'?'Lokální režim · obrázky zůstávají na tomto počítači':`Cloudový režim · vybrané obrázky se odešlou na ${new URL(state.settings.cloud_url).hostname}`;
   for(const id of ['pick-folder','pick-files','open-path','open-settings','model-chip'])$(id).disabled=hasBusy();
   for(const el of recipe.elements)el.disabled=hasBusy()||state.runtime.installing||state.runtime.status==='loading';
+  renderTrainingPlan();
   renderGrid();renderInspector();renderRuntime();
 }
 async function refresh() {
@@ -145,6 +153,7 @@ $('prev-page').onclick=()=>{page--;renderGrid();};$('next-page').onclick=()=>{pa
 $('caption-editor').oninput=()=>{dirty=true;renderInspector();};
 async function saveCaption(){if(!active||hasBusy())return;await api('/caption/'+active,{text:$('caption-editor').value},'PUT');dirty=false;await refresh();toast('Popisek uložen vedle obrázku.');}
 $('save-caption').onclick=()=>action(saveCaption);
+$('format-json').onclick=()=>action(async()=>{const data=JSON.parse($('caption-editor').value);if(!data||Array.isArray(data)||typeof data!=='object')throw Error('BRIA vyžaduje JSON objekt.');$('caption-editor').value=JSON.stringify(data,null,2);dirty=true;renderInspector();});
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();action(saveCaption);}});
 
 async function doImport(paths=[],folder='') {
@@ -277,9 +286,30 @@ $('load-local-models').onclick=async()=>{
 };
 window.addEventListener('beforeunload',e=>{if(dirty||recipeDirty){e.preventDefault();e.returnValue='';}});
 
+function fillTrainingControls(settings){
+  const learned=new Set(settings.learn_attributes||[]);
+  $('training-controls').innerHTML=state.training_attributes.map(a=>`<fieldset class="attribute-control"><legend title="${esc(a.detail)}">${esc(a.label)}</legend><div class="attribute-choices"><label><input type="radio" name="policy_${a.id}" data-attribute="${a.id}" value="learn" ${learned.has(a.id)?'checked':''}><span>Učit s LoRA</span></label><label><input type="radio" name="policy_${a.id}" data-attribute="${a.id}" value="describe" ${learned.has(a.id)?'':'checked'}><span>Měnit promptem</span></label></div><small>${esc(a.detail)}</small></fieldset>`).join('');
+}
+function renderTrainingPlan(){
+  const s=liveSettings(), learned=new Set(s.learn_attributes), attrs=state.training_attributes;
+  const learn=attrs.filter(a=>learned.has(a.id)).map(a=>a.label), describe=attrs.filter(a=>!learned.has(a.id)).map(a=>a.label);
+  const html=`<p><b>Učit s LoRA · vynechat:</b> ${esc(learn.join(', ')||'nic')}</p><p><b>Měnit promptem · popsat:</b> ${esc(describe.join(', ')||'nic')}</p>${learn.length&&!s.trigger.trim()&&!s.subject.trim()?'<p class="training-hint">Bez triggeru nebo označení subjektu budou vynechané rysy ovlivňovat LoRA obecně.</p>':''}`;
+  if($('training-plan').innerHTML!==html)$('training-plan').innerHTML=html;
+  const json=s.output_format==='bria_json', blocked=hasBusy()||state.runtime.installing||state.runtime.status==='loading';
+  recipe.elements.format.disabled=json||blocked;recipe.elements.words.disabled=json||blocked;
+  $('json-format-note').hidden=!json;
+  $('trigger-note').textContent=json?'Vloží se dovnitř pole short_description, aby JSON zůstal platný.':'Přidá se přesně na začátek každého popisku.';
+  $('output-note').innerHTML=`<b>obrázek.jpg → obrázek.${json?'json':'txt'}</b><br>Stejná složka, UTF‑8. Přeskočení platí pro oba formáty. Při nahrazení se starý popisek zazálohuje; druhý formát se přesune do zálohy, aby jej trenér nepoužil omylem.`;
+}
+$('apply-training-preset').onclick=()=>{
+  const preset=recipe.elements.preset.value, learned=preset==='character'||preset==='object'?['identity']:preset==='style'?['style']:[];
+  fillTrainingControls({...liveSettings(),learn_attributes:learned});
+  recipe.dispatchEvent(new Event('input',{bubbles:true}));
+};
+
 (async()=>{
   try{
-    state=await api('/state');fillForm(recipe,state.settings);$('word-output').value=state.settings.words;
+    state=await api('/state');fillTrainingControls(state.settings);fillForm(recipe,state.settings);$('word-output').value=state.settings.words;
     selected=new Set(state.rows.map(r=>r.id));active=state.rows[0]?.id||null;render();
     if(!state.settings.setup_complete)openSettings();
     setInterval(()=>refresh().catch(()=>{$('job-title').textContent='Spojení s aplikací přerušeno';}),1200);
