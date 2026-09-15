@@ -21,5 +21,11 @@
 .caption-notice { font-size: 11px; color: #e0cba8; border: 1px solid #62543a; border-radius: 5px; padding: 9px; margin-top: 9px; }
 .json-editor { font-family: Consolas, monospace; tab-size: 2; white-space: pre; }
 #json-format-note { margin: 8px 0; }
+.review-dot { background: #e3bf79; }
+.status-label.review { color: #e3bf79; }
+.image-card.review { border-color: #776035; }
+#caption-history pre { max-height: 210px; font-size: 11px; }
+#length-policy-note { margin: 10px 0; line-height: 1.6; }
+.stats { flex-wrap: wrap; gap: 12px; }
 @media(max-width:1150px){.workspace{grid-template-columns:295px minmax(310px,1fr) 285px}}
 @media(max-width:900px){.workspace{grid-template-columns:285px minmax(310px,1fr)}}

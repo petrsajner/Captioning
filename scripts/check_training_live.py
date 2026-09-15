@@ -35,7 +35,7 @@ async def main():
         studio = Studio(output / (name + "-profile"))
         studio.settings = Settings(mode="cloud", cloud_url=config["cloud_url"], cloud_model=config["cloud_model"],
                                    output_format=output_format, learn_attributes=learned,
-                                   preset="general", words=70, trigger="testdog", subject="dog", skip_existing=False, max_tokens=4096)
+                                   preset="general", words=70, trigger="testdog", subject="dog", skip_existing=False)
         studio.keys.data = KeyStore(original / "keys.json").data.copy()  # encrypted values, in memory only
         await studio.import_images([str(image)], "", False, False)
         await studio.start_job([studio.rows[0]["id"]], regenerate=True)

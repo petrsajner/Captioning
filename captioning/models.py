@@ -35,7 +35,6 @@ class Settings(BaseModel):
     skip_existing: bool = True
     auto_save: bool = True
     image_size: int = Field(1536, ge=512, le=2048)
-    max_tokens: int = Field(700, ge=128, le=4096)
     timeout: int = Field(240, ge=30, le=900)
     setup_complete: bool = False
 
@@ -86,7 +85,7 @@ def make_prompt(s: Settings) -> str:
         "Do not mention the filename, pixel resolution or the captioning process.",
     ]
     if s.output_format == "normal":
-        parts += [f"Target about {s.words} words. Return only the caption, without a heading, explanation or markdown.",
+        parts += [f"Target about {s.words} words. This is an approximate range, not a hard limit. Finish the whole caption naturally; never stop mid-sentence to meet a count. Return only the caption, without a heading, explanation or markdown.",
                   "Use comma-separated visual tags; no full sentences." if s.format == "tags" else "Use clear natural-language sentences in one paragraph."]
     else:
         from .bria import schema_prompt

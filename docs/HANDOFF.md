@@ -1,5 +1,66 @@
 # Caption Studio — handoff 2026-09-06
 
+## Aktualizace 0.1.6 — žádné tokenové stropy, měkká délka a opravy (2026-09-15)
+
+Uživatel hlásil chyby „limit tokenů“, useknuté popisky označené jako hotové a
+mnoho chyb na lokálním Q5. Výslovně požaduje žádný aplikační tokenový strop:
+přijmout celou odpověď, spočítat slova, do 120 % cíle ponechat, nad něj požádat
+o zkrácení stejného textu. Bez mechanického ořezávání nebo falešných chyb délky.
+
+Zjištění:
+- Starý provider vždy odesílal max_tokens=700 (BRIA nejméně 3072). Nastavení 700
+  bylo skutečně uložené. Každý finish_reason kromě stop/eos znamenal chybu,
+  i při použitelném textu; neexistoval následný počet slov ani kontrola věty.
+- Dodaná sada má 43 PNG a v okamžiku auditu 17 TXT. Byly nalezeny skutečné
+  nedokončené konce „her mouth“, „Warm,“, „with a“, „illuminates“, „captured“.
+  Původní provider statusy těchto souborů nejsou uložené, nelze je zpětně prokázat.
+  Výchozí relace v LocalAppData obsahovala starší 42 dokončených captionů ze září 8.
+- Uživatel spustil externí Q5 přes QwenHarness na 8080. Bez vypnutí uvažování
+  první krátký caption spotřeboval 944 completion tokenů. Další čistě textové
+  zkracování dlouze uvažovalo nad počtem slov. Rozpoznané llama.cpp má
+  enable_thinking; caption požadavky teď tento režim vypínají per-request,
+  bez změny globální konfigurace cizího serveru.
+- Po úspěšné pětici testů server přestal odpovídat. Poslední log QwenHarness:
+  `[MEMORY GUARD] vram_pressure; requesting a safer profile.` Celá sada tedy
+  nemohla být následně ověřena živým modelem. Cizí ochrana ani proces nebyly měněny.
+
+Změny:
+- max_tokens odstraněn ze Settings, UI i všech generovacích požadavků; staré pole
+  se při načtení ignoruje. Nenahrazuje se jiným output token capem. Vlastní
+  llama-server výslovně používá -n -1. Odstraněn i znakový limit ručního captionu.
+- Když je dokončený Normal caption delší než 120 %, proběhne textová úprava stejné
+  odpovědi bez dalšího zasílání obrázku. Slova počítá aplikace včetně triggeru.
+  Dva opravné pokusy omezují opakované volání, nikoli přijatý text; při neúspěchu
+  se uloží nejkratší celá dokončená verze i nad cílem s poznámkou. Žádné řezání textu.
+- Dokončený text s finish_reason=length se přijme. Podezřelé konce se doplňují,
+  nedokončené BRIA JSON se opravují. Neúspěšný neúplný výstup zůstane jako
+  návrh Ke kontrole; neoznačí se jako hotový a nepřepíše existující caption.
+  Kontrola vět je heuristika, nemá představovat záruku jazykové bezchybnosti.
+- Odpovědi modelu se uchovávají u obrázku v generation_history a lze je vložit
+  zpět do editoru. Zastavení během opravy zachová přijatý návrh.
+- Výpadek spojení/modelu nebo globální problém API pozastaví dávku místo laviny
+  Failed. Pokračovat používá remaining_ids a neopakuje již hotové položky.
+- Fáze Popisuji / Zkracuji / Dokončuji jsou viditelné. Metadata odpovědí a chyb
+  jsou v logs/generation.jsonl, bez obrázků, textů captionů, promptů a klíčů.
+
+Ověření: 59 automatických testů. Skutečný externí Q5 na kopiích pěti dodaných
+snímků: 5 uložených, 0 chyb, 37/49/46/44/36 slov při cíli40; jeden 49slovný
+caption zůstal celý po neúspěšném dalším zkrácení. Zakončení byla celá, historie
+obsahuje původní i přepracované odpovědi. SHA-256 původních obrázků a TXT
+byly ověřeny beze změny. Veřejný dog.jpg přes nakonfigurované Gemini: 36 slov,
+1 požadavek, žádný náš tokenový limit, úspěch. Soukromé obrázky nebyly do Gemini poslány.
+Kontrola při již nedostupném Q5 ponechala 43 kopií ve stavu pending, 0 Failed.
+UI ověřilo historii 56slovné původní a 37slovné finální verze a nepřítomnost
+ovladače max_tokens. Nové resumování a ochrana před přepisem jsou testovány.
+
+Artefakty (ignorované v Gitu): output/length-live-local/report.json,
+output/length-live-cloud/report.json, output/length-local-offline-report.txt,
+output/playwright/length-history.png. Plný datasetový test vyžaduje opětovné
+zpřístupnění externího serveru; nebyl vydáván za úspěšný. Build 0.1.6 je v dist/.
+Instalátor byl ověřen a nainstalován (output/install-0.1.6.log), nový EXE prošel
+čistým profilem i testem BRIA ukládání. Nastavení a šifrované klíče zůstaly při
+instalaci bitově beze změny. Staré max_tokens v souboru je novou verzí ignorované.
+
 ## Aktualizace 0.1.5 — záměr captioningu a BRIA FIBO JSON (2026-09-11)
 
 Uživatel požádal nahradit nejasné vynechání identity přímými volbami toho, co má

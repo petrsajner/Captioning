@@ -81,7 +81,7 @@ def test_job_freezes_caption_policy_and_output_format(tmp_path, monkeypatch):
         studio = Studio(tmp_path / "app"); await studio.import_images([str(image)], "", False, False)
         studio.settings.output_format = "bria_json"; studio.settings.learn_attributes = ["identity"]
         entered, release = asyncio.Event(), asyncio.Event()
-        async def fake(path, settings, key):
+        async def fake(path, settings, key, **kwargs):
             entered.set(); await release.wait()
             assert settings.output_format == "bria_json" and settings.learn_attributes == ["identity"]
             return normalize_json(json.dumps(example()), settings)
@@ -104,7 +104,7 @@ def test_conversion_archives_old_format_and_round_trips(tmp_path, monkeypatch):
         await studio.import_images([str(path)], "", False, False)
         row = studio.rows[0]
         studio.settings.output_format = "bria_json"
-        async def bria(*_): return normalize_json(json.dumps(example()))
+        async def bria(*_, **kwargs): return normalize_json(json.dumps(example()))
         monkeypatch.setattr("captioning.provider.generate", bria)
         await studio.start_job([row["id"]]); await studio.task
         assert row["status"] == "skipped" and not path.with_suffix(".json").exists()
@@ -119,7 +119,7 @@ def test_conversion_archives_old_format_and_round_trips(tmp_path, monkeypatch):
         with pytest.raises(CaptionValidationError): studio.save_row(row["id"], '{"not":"FIBO"}')
         assert path.with_suffix(".json").read_bytes() == previous
         studio.settings.output_format = "normal"
-        async def normal(*_): return "New text caption"
+        async def normal(*_, **kwargs): return "New text caption"
         monkeypatch.setattr("captioning.provider.generate", normal)
         await studio.start_job([row["id"]], regenerate=True); await studio.task
         assert row["status"] == "saved" and not path.with_suffix(".json").exists()
@@ -135,7 +135,7 @@ def test_bria_draft_preserves_txt_until_manual_save_and_detects_external_edit(tm
         studio = Studio(tmp_path / "app")
         await studio.import_images([str(path)], "", False, False)
         studio.settings.output_format = "bria_json"; studio.settings.auto_save = False
-        async def fake(*_): return json.dumps(example())
+        async def fake(*_, **kwargs): return json.dumps(example())
         monkeypatch.setattr("captioning.provider.generate", fake)
         row = studio.rows[0]
         await studio.start_job([row["id"]], regenerate=True); await studio.task
@@ -152,7 +152,7 @@ def test_bria_provider_has_sufficient_budget_and_keeps_cloud_protocol(tmp_path, 
     real = httpx.AsyncClient
     def handler(request):
         payload = json.loads(request.content)
-        assert payload["max_tokens"] == 3072
+        assert "max_tokens" not in payload and "max_completion_tokens" not in payload
         assert "response_format" not in payload and "chat_template_kwargs" not in payload
         return httpx.Response(200, json={"choices":[{"finish_reason":"stop", "message":{"content":json.dumps(example())}}]})
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs))
@@ -167,7 +167,7 @@ def test_bad_generated_json_keeps_original_and_exposes_repairable_draft(tmp_path
         path.with_suffix(".txt").write_text("keep this", encoding="utf-8")
         studio = Studio(tmp_path / "app"); await studio.import_images([str(path)], "", False, False)
         studio.settings.output_format = "bria_json"
-        async def bad(*_): return '{"subject":"wrong shape"}'
+        async def bad(*_, **kwargs): return '{"subject":"wrong shape"}'
         monkeypatch.setattr("captioning.provider.generate", bad)
         row = studio.rows[0]; await studio.start_job([row["id"]], regenerate=True); await studio.task
         assert row["status"] == "error" and "wrong shape" in row["caption"]

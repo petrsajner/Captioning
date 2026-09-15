@@ -3,9 +3,10 @@ const $ = id => document.getElementById(id);
 const recipe = $('recipe-form'), settingsForm = $('settings-form');
 let state, selected = new Set(), active = null, dirty = false, page = 0, settingsMode = 'local';
 let busy = false, pollBusy = false, recipeTimer, recipeDirty = false, toastTimer, lastGrid = '';
-let recipeRevision=0, recipeSaving=null;
+let recipeRevision=0, recipeSaving=null, lastCaptionHistory='';
 let localScanBusy=false, localModelsBusy=false, localServers=[];
-const labels = {pending:'Čeká',queued:'Ve frontě',processing:'Analyzuje…',saved:'Uloženo',existing:'Existující',skipped:'Přeskočeno',draft:'K uložení',error:'Chyba',invalid:'Konflikt / chyba'};
+const labels = {pending:'Čeká',queued:'Ve frontě',processing:'Analyzuje…',saved:'Uloženo',existing:'Existující',skipped:'Přeskočeno',draft:'K uložení',review:'Ke kontrole',error:'Chyba',invalid:'Konflikt / chyba'};
+const phaseLabels={caption:'Popisuji…',shorten:'Zkracuji…',complete:'Dokončuji…',repair_json:'Opravuji JSON…',retry_caption:'Doplňuji odpověď…'};
 const esc = text => String(text ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(text, error=false) { $('toast').textContent=text; $('toast').className='toast'+(error?' error':''); $('toast').hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>$('toast').hidden=true, error?11000:4500); }
 async function api(path, body, method='POST') {
@@ -26,6 +27,7 @@ function formValues(form, base) {
 function fillForm(form, values) {for(const el of form.elements) if(el.name && el.name in values) {if(el.type==='checkbox')el.checked=values[el.name];else el.value=values[el.name];}}
 function liveSettings() {return formValues(recipe,state.settings);}
 function hasBusy() {return busy||state?.job.running||state?.importing;}
+function resumeIds(){return state?.job.paused?(state.job.remaining_ids||[]).filter(id=>state.rows.some(r=>r.id===id)):[];}
 function allowDiscard() {return !dirty || window.confirm('Popisek obsahuje neuložené úpravy. Zahodit tyto úpravy?');}
 async function saveRecipe() {
   clearTimeout(recipeTimer);
@@ -50,14 +52,14 @@ settingsForm.addEventListener('submit',e=>e.preventDefault());
 function filteredRows() {
   if(!state)return [];
   const query=$('search').value.toLowerCase(), filter=$('filter').value;
-  return state.rows.filter(r=>r.name.toLowerCase().includes(query)&&(filter==='all'||(filter==='saved'&&r.exists)||(filter==='pending'&&!r.exists)||(filter==='error'&&['error','invalid'].includes(r.status))));
+  return state.rows.filter(r=>r.name.toLowerCase().includes(query)&&(filter==='all'||(filter==='saved'&&r.exists)||(filter==='pending'&&!r.exists)||(filter==='review'&&r.status==='review')||(filter==='error'&&['error','invalid'].includes(r.status))));
 }
 function renderGrid() {
   const rows=filteredRows();page=Math.min(page,Math.max(0,Math.ceil(rows.length/60)-1));
   const visible=rows.slice(page*60,(page+1)*60);
-  const signature=JSON.stringify([visible.map(r=>[r.id,r.status,r.exists,selected.has(r.id)]),active]);
+  const signature=JSON.stringify([visible.map(r=>[r.id,r.status,r.phase,r.exists,selected.has(r.id)]),active]);
   if(signature!==lastGrid) {
-    $('grid').innerHTML=visible.map(r=>`<article class="image-card ${r.status} ${r.id===active?'active':''}" data-id="${r.id}" tabindex="0" aria-label="${esc(r.name)}"><input class="card-select" type="checkbox" ${selected.has(r.id)?'checked':''} aria-label="Vybrat ${esc(r.name)}"><img class="thumb" loading="lazy" src="/api/image/${r.id}" alt="${esc(r.name)}"><div class="card-info"><div class="card-name" title="${esc(r.path)}">${esc(r.name)}</div><div class="card-bottom"><span>${r.width} × ${r.height}</span><span class="status-label ${r.status}">${labels[r.status]||r.status}</span></div></div></article>`).join('');
+    $('grid').innerHTML=visible.map(r=>`<article class="image-card ${r.status} ${r.id===active?'active':''}" data-id="${r.id}" tabindex="0" aria-label="${esc(r.name)}"><input class="card-select" type="checkbox" ${selected.has(r.id)?'checked':''} aria-label="Vybrat ${esc(r.name)}"><img class="thumb" loading="lazy" src="/api/image/${r.id}" alt="${esc(r.name)}"><div class="card-info"><div class="card-name" title="${esc(r.path)}">${esc(r.name)}</div><div class="card-bottom"><span>${r.width} × ${r.height}</span><span class="status-label ${r.status}">${r.status==='processing'?(phaseLabels[r.phase]||labels.processing):(labels[r.status]||r.status)}</span></div></div></article>`).join('');
     lastGrid=signature;
   }
   $('empty').hidden=state.rows.length>0;$('grid').hidden=!rows.length;
@@ -87,7 +89,20 @@ function renderInspector() {
   $('caption-editor').disabled=hasBusy()||row.status==='invalid';
   $('save-caption').disabled=hasBusy()||row.status==='invalid'||!$('caption-editor').value.trim();
   $('regenerate').disabled=hasBusy()||row.status==='invalid';updateWords();
+  const history=row.generation_history||[];
+  $('caption-history').hidden=!history.length;
+  const historyKey=row.id+':'+JSON.stringify(history);
+  if(lastCaptionHistory!==historyKey){
+    lastCaptionHistory=historyKey;
+    $('caption-history-title').textContent='Odpovědi modelu ('+history.length+')';
+    $('caption-history-select').innerHTML=history.map((h,i)=>`<option value="${i}">${i+1}. ${esc(phaseLabels[h.stage]||h.stage)}${h.word_count!=null?' · '+h.word_count+' slov':''}</option>`).join('');
+    showCaptionHistory();
+  }
+  $('use-caption-history').disabled=hasBusy()||!$('caption-history-text').textContent.trim();
 }
+function showCaptionHistory(){const row=state.rows.find(r=>r.id===active);$('caption-history-text').textContent=row?.generation_history?.[Number($('caption-history-select').value)]?.text||'';$('use-caption-history').disabled=hasBusy()||!$('caption-history-text').textContent.trim();}
+$('caption-history-select').onchange=showCaptionHistory;
+$('use-caption-history').onclick=()=>{if(hasBusy())return;$('caption-editor').value=$('caption-history-text').textContent;dirty=true;renderInspector();};
 function renderRuntime() {
   const r=state.runtime;
   for(const el of settingsForm.elements)el.disabled=r.installing||r.status==='loading';
@@ -112,16 +127,18 @@ function render() {
   const version='v'+state.version;
   if($('app-version').textContent!==version){$('app-version').textContent=version;document.title='Caption Studio '+version;}
   $('total-badge').textContent=state.rows.length;
-  $('pending-count').textContent=state.rows.filter(r=>!r.exists&&!['invalid','error'].includes(r.status)).length;
+  $('pending-count').textContent=state.rows.filter(r=>!r.exists&&!['invalid','error','review'].includes(r.status)).length;
   $('saved-count').textContent=state.rows.filter(r=>r.exists).length;
   $('error-count').textContent=state.rows.filter(r=>['invalid','error'].includes(r.status)).length;
+  $('review-count').textContent=state.rows.filter(r=>r.status==='review').length;
   const j=state.job;
   $('job-title').textContent=busy?'Pracuji…':j.message;
-  $('job-count').textContent=j.total?`${j.completed} / ${j.total} · ${j.saved} uloženo${j.skipped?' · '+j.skipped+' přeskočeno':''}`:'';
+  $('job-count').textContent=j.total?`${j.completed} / ${j.total} · ${j.saved} uloženo${j.review?' · '+j.review+' ke kontrole':''}${j.skipped?' · '+j.skipped+' přeskočeno':''}`:'';
   $('job-progress').style.width=j.total?100*j.completed/j.total+'%':'0%';
   $('stop-job').hidden=!j.running;
-  $('generate').disabled=hasBusy()||!selected.size;
-  $('generate').innerHTML=`${liveSettings().output_format==='bria_json'?'Vytvořit BRIA JSON':'Vytvořit popisky'}${selected.size?' ('+selected.size+')':''} <span>→</span>`;
+  const pending=resumeIds(), runCount=pending.length||selected.size;
+  $('generate').disabled=hasBusy()||!runCount;
+  $('generate').innerHTML=`${pending.length?'Pokračovat':liveSettings().output_format==='bria_json'?'Vytvořit BRIA JSON':'Vytvořit popisky'}${runCount?' ('+runCount+')':''} <span>→</span>`;
   $('model-chip').querySelector('span').textContent=state.settings.mode==='local'?(state.settings.local_source==='external'?'Lokální · '+(state.settings.local_model||'externí server'):`Lokální · ${state.runtime.running?'Qwen běží':'Qwen / server'}`):'Cloud · '+(state.settings.cloud_model.split('/').pop()||'vyberte model');
   $('mode-note').textContent=state.settings.mode==='local'?'Lokální režim · obrázky zůstávají na tomto počítači':`Cloudový režim · vybrané obrázky se odešlou na ${new URL(state.settings.cloud_url).hostname}`;
   for(const id of ['pick-folder','pick-files','open-path','open-settings','model-chip'])$(id).disabled=hasBusy();
@@ -186,7 +203,7 @@ async function generate(ids,regenerate=false) {
   }
   await api('/jobs',{ids,regenerate});await refresh();
 }
-$('generate').onclick=()=>action(()=>generate([...selected]));
+$('generate').onclick=()=>action(()=>{const pending=resumeIds();return generate(pending.length?pending:[...selected],pending.length?!!state.job.resume_regenerate:false);});
 $('regenerate').onclick=()=>action(()=>generate([active],true));
 $('stop-job').onclick=()=>action(async()=>{await api('/jobs/stop',{});await refresh();});
 
@@ -298,6 +315,7 @@ function renderTrainingPlan(){
   const json=s.output_format==='bria_json', blocked=hasBusy()||state.runtime.installing||state.runtime.status==='loading';
   recipe.elements.format.disabled=json||blocked;recipe.elements.words.disabled=json||blocked;
   $('json-format-note').hidden=!json;
+  $('length-policy-note').hidden=json;
   $('trigger-note').textContent=json?'Vloží se dovnitř pole short_description, aby JSON zůstal platný.':'Přidá se přesně na začátek každého popisku.';
   $('output-note').innerHTML=`<b>obrázek.jpg → obrázek.${json?'json':'txt'}</b><br>Stejná složka, UTF‑8. Přeskočení platí pro oba formáty. Při nahrazení se starý popisek zazálohuje; druhý formát se přesune do zálohy, aby jej trenér nepoužil omylem.`;
 }

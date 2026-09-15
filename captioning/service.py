@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import json
+from datetime import datetime, timezone
 from collections import Counter
 import hashlib
 import os
@@ -15,6 +17,7 @@ from .runtime import Runtime
 from .storage import KeyStore, fingerprint, read_json, save_json, write_caption, archive_sidecar
 from .bria import normalize_json, CaptionValidationError
 from .training import ATTRIBUTES, training_plan
+from .quality import ProviderUnavailableError
 
 
 def data_directory() -> Path:
@@ -39,7 +42,7 @@ class Studio:
                     row["fingerprints"] = {".txt":row.get("fingerprint"), ".json":None}
             if row["status"] in ("processing", "queued"):
                 row.update(status="pending", error="Předchozí běh byl přerušen. Můžete pokračovat.")
-        self.job = {"running": False, "total": 0, "completed": 0, "saved": 0, "errors": 0, "skipped": 0, "message": "Připraveno"}
+        self.job = {"running": False, "total": 0, "completed": 0, "saved": 0, "errors": 0, "review": 0, "skipped": 0, "message": "Připraveno"}
         self.task: asyncio.Task | None = None
         self.importing = False
 
@@ -169,8 +172,6 @@ class Studio:
         row = self.row(image_id)
         if row["status"] == "invalid":
             raise ValueError(row["error"])
-        if len(text) > 50000:
-            raise ValueError("Popisek je příliš dlouhý.")
         image = Path(row["path"])
         if not image.is_file():
             raise ValueError("Původní obrázek už neexistuje.")
@@ -221,7 +222,7 @@ class Studio:
         else:
             key = self.local_key(settings)
         self.job = {"running": True, "total": len(selected), "completed": 0, "saved": 0,
-                    "errors": 0, "skipped": 0, "message": "Spouštím dávku…",
+                    "errors": 0, "review": 0, "skipped": 0, "message": "Spouštím dávku…", "id":uuid.uuid4().hex,
                     "output_format": settings.output_format, "training_plan": training_plan(settings)}
         for row in selected:
             if row["status"] != "invalid":
@@ -244,22 +245,59 @@ class Studio:
                     self.job["skipped"] += 1
                     self.job["completed"] += 1
                     continue
-                row.update(status="processing", error="")
+                row.update(status="processing", error="", phase="caption", generation_history=[])
                 self.job["message"] = row["name"]
                 started = time.monotonic()
                 try:
                     self.collision(image)
                     # Check for external edits before spending time or cloud credits.
                     self._check_sidecars(row)
-                    caption = await provider.generate(image, settings, key)
+                    def progress(event):
+                        stage = event.get("stage", "caption")
+                        row["phase"] = stage
+                        labels = {"caption":"Popisuji", "shorten":"Zkracuji popisek", "complete":"Dokončuji popisek", "repair_json":"Opravuji JSON", "retry_caption":"Doplňuji odpověď"}
+                        self.job["message"] = labels.get(stage, "Zpracovávám") + " · " + row["name"]
+                        if event.get("kind") == "response":
+                            row["generation_history"].append({k:v for k,v in event.items() if k != "kind"})
+                            self.persist()
+                        if event.get("kind") in ("response", "request_error"):
+                            # Operational evidence without images, captions, prompts or credentials.
+                            log = self.root / "logs" / "generation.jsonl"
+                            diagnostic = {"time":datetime.now(timezone.utc).isoformat(), "job":self.job.get("id"), "image":row["id"],
+                                          "mode":settings.mode, "model":settings.cloud_model if settings.mode=="cloud" else settings.local_model_id,
+                                          "target_words":settings.words,
+                                          **{k:v for k,v in event.items() if k not in ("kind", "text")}}
+                            try:
+                                log.parent.mkdir(exist_ok=True)
+                                with log.open("a", encoding="utf-8") as f: f.write(json.dumps(diagnostic, ensure_ascii=False) + "\n")
+                            except OSError:
+                                pass  # Diagnostic logging must not turn a valid caption into a failure.
+                    caption = await provider.generate(image, settings, key, on_progress=progress)
                     row.update(caption=caption, caption_format=settings.output_format, status="draft", notice="", seconds=round(time.monotonic() - started, 1))
-                    if settings.auto_save:
+                    if getattr(caption, "needs_review", False):
+                        row["status"] = "review"
+                        self.job["review"] += 1
+                    elif settings.auto_save:
                         self.collision(image)
                         self._write_row(row, caption, settings.output_format, overwrite=regenerate or not settings.skip_existing)
                         self.job["saved"] += 1
+                    row["notice"] = getattr(caption, "notice", "")
+                    row["phase"] = ""
                 except asyncio.CancelledError:
-                    row.update(status="pending", error="Zpracování bylo zastaveno.")
+                    received = [h for h in row.get("generation_history", []) if h.get("text")]
+                    if received:
+                        best = next((h for h in reversed(received) if h.get("complete")), received[0])
+                        row.update(caption=best["text"], caption_format=settings.output_format, status="draft" if best.get("complete") else "review",
+                                   error="", notice="Dávka zastavena. Přijatá odpověď je zachovaná jako návrh.", phase="")
+                    else:
+                        row.update(status="pending", error="Zpracování bylo zastaveno.", phase="")
                     raise
+                except ProviderUnavailableError as e:
+                    row.update(status="pending", error="", phase="", notice="Čeká na obnovení připojení k modelu.")
+                    self.job.update(paused=True, message="Dávka pozastavena: " + str(e),
+                                    remaining_ids=[r["id"] for r in selected if r["status"] in ("queued", "pending")],
+                                    resume_regenerate=regenerate)
+                    return
                 except Exception as e:
                     row.update(status="error", error=str(e))
                     if isinstance(e, CaptionValidationError):
@@ -268,6 +306,7 @@ class Studio:
                 self.job["completed"] += 1
                 self.persist()
             self.job["message"] = "Dávka dokončena" if not self.job["errors"] else "Dokončeno s chybami — zkontrolujte označené obrázky"
+            if self.job["review"]: self.job["message"] += f" · {self.job['review']} návrhů ke kontrole"
         except asyncio.CancelledError:
             self.job["message"] = "Dávka zastavena; uložené popisky zůstávají zachované"
         finally:

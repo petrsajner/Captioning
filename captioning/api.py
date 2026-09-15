@@ -46,7 +46,7 @@ class JobRequest(BaseModel):
 
 
 class CaptionRequest(BaseModel):
-    text: str = Field(max_length=50000)
+    text: str
 
 
 class FolderRequest(BaseModel):

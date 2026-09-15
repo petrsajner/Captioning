@@ -80,7 +80,7 @@ def test_batch_failure_skip_draft_and_resume(tmp_path, monkeypatch):
         studio = Studio(tmp_path / "app")
         await studio.import_images([], str(folder), False, False)
         calls = []
-        async def fake(path, settings, key):
+        async def fake(path, settings, key, **kwargs):
             calls.append(path.name)
             if path.name == "b.png":
                 raise ValueError("Test model failure")
@@ -107,7 +107,7 @@ def test_cancel_does_not_save(tmp_path, monkeypatch, before_first_tick):
         studio = Studio(tmp_path / "app")
         await studio.import_images([str(image)], "", False, False)
         started = asyncio.Event()
-        async def slow(*_):
+        async def slow(*_, **kwargs):
             started.set()
             await asyncio.sleep(60)
             return "Should not be written"
@@ -151,8 +151,12 @@ def test_incomplete_response_rejected(tmp_path, monkeypatch, finish, content):
     def handler(_):
         return httpx.Response(200, json={"choices": [{"finish_reason": finish, "message": {"content": content}}]})
     monkeypatch.setattr("captioning.provider.httpx.AsyncClient", lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw))
-    with pytest.raises(ValueError):
-        asyncio.run(generate(image, Settings()))
+    if finish == "length":
+        result = asyncio.run(generate(image, Settings()))
+        assert result == "unfinished" and result.needs_review
+    else:
+        with pytest.raises(ValueError):
+            asyncio.run(generate(image, Settings()))
 
 
 def test_prompt_trigger_and_network_boundaries():
@@ -250,7 +254,7 @@ def test_external_change_during_inference_keeps_user_caption(tmp_path, monkeypat
         image = picture(tmp_path / "images" / "a.png")
         studio = Studio(tmp_path / "app")
         await studio.import_images([str(image)], "", False, False)
-        async def fake(*_):
+        async def fake(*_, **kwargs):
             image.with_suffix(".txt").write_text("External caption", encoding="utf-8")
             return "New generated draft"
         monkeypatch.setattr("captioning.provider.generate", fake)

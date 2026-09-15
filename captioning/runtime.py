@@ -214,7 +214,7 @@ class Runtime:
                     "--mmproj", str(self.root / "models" / FILES["vision"][0]),
                     "--host", "127.0.0.1", "--port", "8091", "--alias", "caption-qwen",
                     "--api-key", self.api_key, "--image-min-tokens", "1024",
-                    "-c", "8192", "-np", "1", "-ngl", "0" if backend == "cpu" else "999",
+                    "-c", "8192", "-n", "-1", "-np", "1", "-ngl", "0" if backend == "cpu" else "999",
                     "--jinja", "-fa", "on", "-ctk", "q8_0", "-ctv", "q8_0"]
             if backend == "cpu":
                 args.append("--no-mmproj-offload")

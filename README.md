@@ -1,4 +1,4 @@
-# Caption Studio 0.1.5
+# Caption Studio 0.1.6
 
 Samostatný lokální Windows nástroj pro přípravu obrazových datasetů pro LoRA.
 Nastavení popisku zadáte jednou pro celou dávku. Výsledky se ukládají jako
@@ -6,7 +6,7 @@ Nastavení popisku zadáte jednou pro celou dávku. Výsledky se ukládají jako
 
 ## Instalace a první spuštění
 
-1. Spusťte `Caption-Studio-Setup-0.1.5-Windows-x64.exe`. Instalace je pro aktuálního
+1. Spusťte `Caption-Studio-Setup-0.1.6-Windows-x64.exe`. Instalace je pro aktuálního
    uživatele, bez správce. Aplikace obsahuje vlastní Python a knihovny; nepotřebuje
    předinstalovaný Python, Node.js, Marvin, CUDA Toolkit ani jiné AI aplikace.
 2. Spusťte **Caption Studio** ze Start menu. Průvodce nabídne lokální nebo cloudový režim.
@@ -40,8 +40,8 @@ nejprve zpřístupnit model v jeho původní aplikaci. Seznam modelů sám neov�
 Pro vlastní port zvolte **Existující lokální server** a zadejte jeho základní API
 adresu (např. `http://127.0.0.1:1234/v1`). Původní aplikace musí server udržovat
 spuštěný; Caption Studio externí proces neukončuje. Používá jeho standardní obrazové
-Chat Completions API a respektuje serverové nastavení uvažování. Pokud model vyčerpá
-výstupní limit uvažováním, upravte jeho nastavení v původní aplikaci nebo limit tokenů.
+Chat Completions API a respektuje serverové nastavení uvažování. U rozpoznaného llama.cpp s podporou enable_thinking aplikace vypne uvažování pouze
+v captionovacím požadavku. Nastavení původního serveru se nepřepisuje.
 
 Volba **Vlastní prostředí Caption Studio** nadále používá vlastní stažení, spuštění
 a správu Qwenu. Mezi těmito dvěma způsoby připojení lze přepínat. Přímé připojení
@@ -112,12 +112,12 @@ Klíče jsou anglické, jazyk popisných hodnot určuje zvolený jazyk. Trigger 
 do `short_description`, nikoli před otevírací složenou závorku.
 
 JSON prochází parsováním a kontrolou povolených polí i jejich typů. Neplatný
-výstup se neuloží; je-li dostupný, zůstane jako opravitelný návrh. Při ručním
+výstup se automaticky opravuje. Pokud oprava nepomůže, zůstane jako opravitelný návrh. Při ručním
 uložení se struktura kontroluje znovu. Povinné řetězce pro vynechané atributy
 mohou být prázdné; upstream FIBO normalizátor prázdné hodnoty odstraňuje.
-BRIA nevyužívá tagový formát ani celkový cílový počet slov a dostává nejméně
-3072 výstupních tokenů. U přemýšlejícího cloudového modelu může být potřeba vyšší
-limit i pro Normal; živý test Gemini byl dokončen při limitu 4096 tokenů.
+BRIA nevyužívá tagový formát ani celkový cílový počet slov. Aplikace neposílá
+žádný max_tokens ani jiný strop délky generované odpovědi. Neúplný JSON se pokusí
+automaticky doplnit; při neúspěchu zůstane celý přijatý návrh ke kontrole.
 
 JSON se ukládá jako `.json`, což rozpoznává skener projektu **LORA Train** jako
 FIBO. Jeho vlastní FIBO trénovací backend zatím není dokončený; vytvořený sidecar
@@ -127,6 +127,36 @@ neznamená, že už lze FIBO trénink spustit. Oficiální BRIA trainer navíc p
 Zdroje formátu: [BRIA ImageAnalysis](https://github.com/Bria-AI/FIBO/blob/main/src/fibo_inference/vlm/gemini_api.py),
 [FIBO fine-tuning](https://github.com/Bria-AI/FIBO/blob/main/src/fine_tuning/README.md),
 [normalizace caption](https://github.com/Bria-AI/FIBO/blob/main/src/fibo_inference/parse_caption.py).
+
+### Měkký cíl délky a zachování odpovědí
+
+V Normal režimu je počet slov pouze orientační. Aplikace nepředává modelu žádný
+limit výstupních tokenů; staré uložené max_tokens ignoruje a při uložení nastavení
+je odstraní. Ani přijaté či ručně ukládané popisky neořezává podle počtu znaků.
+
+Hotový popisek do **120 % požadovaného počtu slov** (včetně triggeru) ponechá.
+Při překročení požádá stejný model o zkrácení stejného textu, bez další analýzy
+obrázku. Slova počítá aplikace. Pokud model ani po dvou pokusech nepřipraví kratší
+použitelnou verzi, zachová celou nejkratší dokončenou odpověď s informační poznámkou.
+Delší text není chyba a nikdy se mechanicky neustřihne.
+
+Podezřelé nedokončené věty se automaticky doplňují i tehdy, když API hlásí stop.
+Samotný finish_reason=length už nezpůsobí selhání: je-li text dokončený, použije se.
+Pokud nedokončený text nejde opravit, dostane stav **Ke kontrole**, zůstane jako
+návrh a nepřepíše existující popisek. Skutečně prázdná odpověď, odmítnutí služby,
+chyba spojení nebo chyba souboru se stále zobrazí pravdivě. Detekce dokončení je
+heuristika, nikoli záruka jazykové bezchybnosti.
+
+U obrázku je **Odpovědi modelu** s původním textem i dalšími verzemi. Vybranou verzi
+lze vrátit do editoru. Při zastavení během zkracování se již přijatá odpověď zachová
+jako návrh. Při práci vidíte, zda aplikace popisuje, zkracuje nebo dokončuje text.
+Diagnostika v `%LOCALAPPDATA%\CaptionStudio\logs\generation.jsonl` zaznamenává fázi,
+ukončení poskytovatele a počty slov/tokenů. Nezapisuje obrázky, texty popisků,
+prompty ani API klíče; vlastní odpovědi jsou v lokální pracovní relaci.
+
+Při výpadku modelového serveru, připojení nebo problému s přístupem se dávka
+pozastaví. Neoznačí všechny zbývající obrázky jako vadné. Po obnovení připojení
+tlačítko **Pokračovat** zpracuje jen dosud nezpracované položky; hotové neopakuje.
 
 ### Zpracování
 
