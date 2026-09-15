@@ -2,9 +2,17 @@
 .training-explanation { font-size: 11px; color: var(--muted); }
 .training-explanation p { margin-bottom: 8px; }
 .training-explanation b { color: var(--text); font-weight: 550; }
+.brand .copyright { font-size: 10px; letter-spacing: .15px; margin-top: 3px; }
+.training-legend { border-left: 2px solid var(--accent); padding: 7px 10px; margin: 12px 0; font-size: 11px; color: var(--text); background: #1c261d; border-radius: 0 5px 5px 0; }
+.training-legend p + p { margin-top: 4px; }
 .training-plan { color: var(--muted); font-size: 11px; margin: 10px 0 5px; }
 .caption-detail { margin: 12px 0; cursor: pointer; }
 .caption-detail > span { display: flex; align-items: center; gap: 8px; color: var(--text); }
+.detail-name { flex: 1; }
+.detail-state { font-size: 9px; letter-spacing: .4px; color: var(--muted); }
+.detail-state .state-on { display: none; }
+.caption-detail input:checked ~ .detail-state .state-on { display: inline; color: var(--accent); }
+.caption-detail input:checked ~ .detail-state .state-off { display: none; }
 .caption-detail input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); flex-shrink: 0; }
 .caption-detail small { display: block; color: var(--muted); font-size: 10px; line-height: 1.5; margin: 4px 0 0 23px; }
 .caption-notice { font-size: 11px; color: #e0cba8; border: 1px solid #62543a; border-radius: 5px; padding: 9px; margin-top: 9px; }

@@ -323,7 +323,7 @@ window.addEventListener('beforeunload',e=>{if(dirty||recipeDirty){e.preventDefau
 
 function fillTrainingControls(settings){
   const learned=new Set(settings.learn_attributes||[]);
-  $('training-controls').innerHTML=state.training_attributes.map(a=>`<label class="caption-detail"><span><input type="checkbox" name="include_${a.id}" data-attribute="${a.id}" ${learned.has(a.id)?'':'checked'}>${esc(t(a.label))}</span><small>${esc(t(a.detail))}</small></label>`).join('');
+  $('training-controls').innerHTML=state.training_attributes.map(a=>`<label class="caption-detail"><span><input type="checkbox" name="include_${a.id}" data-attribute="${a.id}" ${learned.has(a.id)?'':'checked'}><span class="detail-name">${esc(t(a.label))}</span><span class="detail-state" aria-hidden="true"><span class="state-on">ON</span><span class="state-off">OFF</span></span></span><small>${esc(t(a.detail))}</small></label>`).join('');
 }
 function renderTrainingPlan(){
   const s=liveSettings(), learned=new Set(s.learn_attributes), attrs=state.training_attributes;

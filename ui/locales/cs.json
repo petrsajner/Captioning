@@ -479,7 +479,9 @@
     "Invalid JSON constant {value}": "Neplatná JSON konstanta {value}",
     "Field required": "Povinné pole",
     "Unable to load interface translations.": "Nepodařilo se načíst překlady rozhraní.",
-    "The model or API address does not exist.": "Model nebo API adresa neexistuje."
+    "The model or API address does not exist.": "Model nebo API adresa neexistuje.",
+    "ON = free future change": "ON = volně měnitelné promptem",
+    "OFF = fixed in LoRA": "OFF = fixováno v LoRA"
   },
   "grammar": {
     "dangling_words": [

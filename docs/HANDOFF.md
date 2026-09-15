@@ -1,6 +1,18 @@
 # Caption Studio development handoff
 
-## Current release: 0.1.7 (2026-09-15)
+## Current release: 0.1.8 (2026-09-15)
+
+Added an explicit ON/OFF legend beside caption detail choices, with live ON/OFF
+labels on each checkbox. ON means free future change; OFF means fixed in LoRA.
+The Czech locale includes the same legend. The persistent application header now
+displays copyright Petr Sajner 2026. Caption policy and saved recipes are unchanged.
+
+Verified the live ON/OFF labels and legend in both languages, plus the header
+copyright. All 63 Python tests and the installed clean-profile package check passed.
+Installer exit code 0; settings, keys and session hashes were preserved. Build and
+installation logs are in `output/*0.1.8*`; UI captures are `output/playwright/legend-*.png`.
+
+## Previous release: 0.1.7 (2026-09-15)
 
 The interface now asks users to choose which details to include in captions.
 Checked means describe; unchecked means omit. The previous two-way learning controls

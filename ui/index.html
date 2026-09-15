@@ -3,7 +3,7 @@
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Caption Studio</title><link rel="icon" type="image/png" href="/assets/brand-icon.png"><link rel="stylesheet" href="/assets/style.css"><link rel="stylesheet" href="/assets/folders.css"><link rel="stylesheet" href="/assets/connections.css"><link rel="stylesheet" href="/assets/training.css"></head>
 <body>
 <header class="topbar">
-  <div class="brand"><span class="brand-icon">C<span>·</span></span><div>Caption Studio <span id="app-version" class="app-version" aria-label="Application version" data-i18n-aria-label="Application version">…</span><small>DATASET WORKSPACE</small></div></div>
+  <div class="brand"><span class="brand-icon">C<span>·</span></span><div>Caption Studio <span id="app-version" class="app-version" aria-label="Application version" data-i18n-aria-label="Application version">…</span><small>DATASET WORKSPACE</small><small class="copyright">© Petr Sajner 2026</small></div></div>
   <div class="top-right"><span class="private-label"><span data-i18n="Your images, your control">Your images, your control</span></span><button id="model-chip" class="chip"><i></i><span><span data-i18n="Local model">Local model</span></span></button><button id="open-settings" class="icon-button" title="Model and API settings" data-i18n-title="Model and API settings">⚙</button></div>
 </header>
 <main class="workspace">
@@ -19,6 +19,7 @@
       <p id="json-format-note" class="tiny muted" hidden><span data-i18n="FIBO JSON uses a fixed structure instead of tags or a word target. Responses are not capped; incomplete JSON is repaired automatically when possible.">FIBO JSON uses a fixed structure instead of tags or a word target. Responses are not capped; incomplete JSON is repaired automatically when possible.</span></p>
       <p id="length-policy-note" class="tiny muted"><span data-i18n="The word count is a soft target. Captions up to 120% are kept; longer text is shortened by the model. Text is never mechanically truncated.">The word count is a soft target. Captions up to 120% are kept; longer text is shortened by the model. Text is never mechanically truncated.</span></p><div class="rule"></div><div class="label-heading"><span data-i18n="Choose what to include in the caption">Choose what to include in the caption</span></div>
       <div class="training-explanation"><p><span data-i18n="Include details you want to change with prompts. Leave out details you want the LoRA to capture.">Include details you want to change with prompts. Leave out details you want the LoRA to capture.</span></p></div>
+      <div class="training-legend"><p data-i18n="ON = free future change">ON = free future change</p><p data-i18n="OFF = fixed in LoRA">OFF = fixed in LoRA</p></div>
       <div id="training-plan" class="training-plan" aria-live="polite"></div>
       <button type="button" id="apply-training-preset" class="text-button"><span data-i18n="Apply defaults for this LoRA type">Apply defaults for this LoRA type</span></button>
       <div id="training-controls"></div>
