@@ -10,6 +10,7 @@ MANAGED_MODEL = "caption-qwen"
 
 
 class Settings(BaseModel):
+    ui_language: Literal["en", "cs"] = "en"
     mode: Literal["local", "cloud"] = "local"
     local_source: Literal["managed", "external"] = "managed"
     local_url: str = "http://127.0.0.1:8091/v1"
@@ -66,12 +67,12 @@ class Settings(BaseModel):
         value = value.strip().rstrip("/")
         u = urlsplit(value)
         if u.username or u.password or u.query or u.fragment or not u.hostname:
-            raise ValueError("Zadejte základní adresu API bez klíče a parametrů.")
+            raise ValueError("Enter the API base address without credentials or query parameters.")
         if info.field_name == "local_url":
             if u.scheme != "http" or u.hostname not in {"localhost", "127.0.0.1", "::1"}:
-                raise ValueError("Lokální režim vyžaduje adresu localhost.")
+                raise ValueError("Local mode requires a localhost address.")
         elif u.scheme != "https":
-            raise ValueError("Cloudové API vyžaduje HTTPS.")
+            raise ValueError("Cloud APIs require HTTPS.")
         return value
 
 

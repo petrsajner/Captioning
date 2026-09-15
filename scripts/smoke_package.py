@@ -47,6 +47,15 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
             path.parent.mkdir()
             Image.new("RGB", (60, 40), "green").save(path)
             headers = {"X-Caption-Client": "1"}
+            assert s["settings"]["ui_language"] == "en"
+            for language in ("en", "cs"):
+                response = client.get(base + "/assets/locales/" + language + ".json")
+                assert response.status_code == 200 and "messages" in response.json()
+            assert client.get(base + "/assets/i18n.js").status_code == 200
+            before_language = s["settings"]
+            client.post(base + "/api/ui-language", json={"language":"cs"}, headers=headers).raise_for_status()
+            assert client.get(base + "/api/state").json()["settings"] == {**before_language, "ui_language":"cs"}
+            assert json.loads((root / "profile" / "settings.json").read_text())["ui_language"] == "cs"
             listing_response = client.post(base + "/api/folders", json={"path": str(path.parent)}, headers=headers)
             assert listing_response.status_code == 200, listing_response.text
             listing = listing_response.json()
@@ -63,9 +72,9 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
             s = client.get(base + "/api/state").json()
             row = s["rows"][0]
             assert client.get(base + "/api/image/" + row["id"]).headers["content-type"] == "image/jpeg"
-            response = client.put(base + "/api/caption/" + row["id"], json={"text": "Zeleny obrazek."}, headers=headers)
+            response = client.put(base + "/api/caption/" + row["id"], json={"text": "Green image."}, headers=headers)
             assert response.status_code == 200, response.text
-            assert path.with_suffix(".txt").read_bytes() == b"Zeleny obrazek.\n"
+            assert path.with_suffix(".txt").read_bytes() == b"Green image.\n"
             # The packaged JSON writer must validate structure and retire conflicting TXT.
             json_image = root / "dataset" / "bria.png"
             Image.new("RGB", (60, 40), "blue").save(json_image)
@@ -87,7 +96,8 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
             assert any(p.read_bytes()==b"retire this format" for p in (json_image.parent/".caption-backups").glob("*.bak"))
             report = {"exe": str(exe), "version": s["version"], "fresh_profile": True,
                       "isolated_PATH": True, "image_preview": True, "folder_preview_before_import": True,
-                      "sidecar_write": True, "bria_validation_and_format_conversion": True}
+                      "sidecar_write": True, "bria_validation_and_format_conversion": True,
+                      "localization_assets_and_preference": True}
             (output / "package-smoke.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
             print(json.dumps(report, indent=2))
     finally:

@@ -6,6 +6,7 @@ from pathlib import Path
 import secrets
 import sys
 import uuid
+from typing import Literal
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
@@ -34,6 +35,10 @@ class SettingsRequest(BaseModel):
     clear_key: bool = False
     local_api_key: str | None = Field(None, max_length=8192)
     clear_local_key: bool = False
+
+
+class LanguageRequest(BaseModel):
+    language: Literal["en", "cs"]
 
 
 class DiscoveryRequest(BaseModel):
@@ -73,7 +78,7 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
             response.set_cookie("caption_session", token, httponly=True, samesite="strict")
         else:
             if not secrets.compare_digest(request.cookies.get("caption_session", ""), token):
-                return Response("Otevřete aplikaci pomocí jejího zástupce.", status_code=403)
+                return Response("Open the application using its shortcut.", status_code=403)
             if request.method not in ("GET", "HEAD"):
                 if request.headers.get("origin", origin) != origin or request.headers.get("x-caption-client") != "1":
                     return Response(status_code=403)
@@ -88,7 +93,7 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
 
     @app.exception_handler(OSError)
     async def io_error(request, exc):
-        return JSONResponse({"detail": "Soubor není dostupný nebo není povolen zápis: " + str(exc)}, status_code=400)
+        return JSONResponse({"detail": "The file is unavailable or writing is not allowed: " + str(exc)}, status_code=400)
 
     @app.get("/")
     async def index():
@@ -103,6 +108,11 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
         studio.save_settings(body.settings, body.api_key, body.clear_key, body.local_api_key, body.clear_local_key)
         return {"ok": True, "has_key": studio.keys.has(studio.settings.cloud_url),
                 "has_local_key": studio.keys.has("local:" + studio.settings.local_url)}
+
+    @app.post("/api/ui-language")
+    async def ui_language(body: LanguageRequest):
+        studio.save_settings(studio.settings.model_copy(update={"ui_language": body.language}))
+        return {"ok": True}
 
     @app.post("/api/prompt")
     async def prompt(body: Settings):
@@ -137,13 +147,13 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
     async def pick(kind: str):
         studio.idle()
         if kind != "files":
-            raise ValueError("Neznámý druh výběru.")
+            raise ValueError("Unknown selection type.")
         result = studio.root / ("picker-" + uuid.uuid4().hex + ".json")
         if getattr(sys, "frozen", False):
             args = [sys.executable]
         else:
             args = [sys.executable, str(Path(__file__).resolve().parent.parent / "app.py")]
-        process = await asyncio.create_subprocess_exec(*args, "--pick", kind, "--result", str(result))
+        process = await asyncio.create_subprocess_exec(*args, "--pick", kind, "--result", str(result), "--ui-language", studio.settings.ui_language)
         try:
             await process.wait()
             import json

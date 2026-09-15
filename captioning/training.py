@@ -3,17 +3,17 @@ from typing import Literal
 
 Attribute = Literal["identity", "hair", "clothing", "accessories", "pose", "expression", "background", "lighting", "composition", "style"]
 ATTRIBUTES = [
-    {"id":"identity", "label":"Identita / vzhled subjektu", "detail":"Obličej, tělesné rysy; u objektu typický tvar, materiál a barvy.",
+    {"id":"identity", "label":"Identity / subject appearance", "detail":"Facial and physical features; an object’s characteristic shape, material and colors.",
      "instruction":"stable visual identity of the MAIN subject: facial structure and distinctive physical features; for an animal its coat markings; for an object its characteristic shape, material and colors"},
-    {"id":"hair", "label":"Vlasy a účes", "detail":"Účes, délka a barva vlasů hlavní osoby.", "instruction":"hairstyle, hair length and hair color of the main person"},
-    {"id":"clothing", "label":"Oblečení", "detail":"Oděv, jeho střih, barvy a materiál.", "instruction":"clothing of the main subject, garment type, cut, colors and fabric"},
-    {"id":"accessories", "label":"Doplňky", "detail":"Šperky, brýle, pokrývky hlavy a další nošené doplňky.", "instruction":"accessories worn by the main subject, jewelry, glasses, hats and wearable accessories"},
-    {"id":"pose", "label":"Póza a činnost", "detail":"Postoj, pohyb, natočení těla a prováděná činnost.", "instruction":"pose, body orientation and action of the main subject"},
-    {"id":"expression", "label":"Výraz obličeje", "detail":"Viditelný výraz a směr pohledu, bez domýšlení emocí.", "instruction":"visible facial expression and gaze of the main subject, without inferring mental states"},
-    {"id":"background", "label":"Prostředí a pozadí", "detail":"Místo, kulisy, vedlejší objekty a další postavy.", "instruction":"environment, background, scene props and secondary subjects"},
-    {"id":"lighting", "label":"Osvětlení", "detail":"Směr a charakter světla, stíny a barevnost světla.", "instruction":"lighting conditions, light direction, shadows and light color"},
-    {"id":"composition", "label":"Kompozice a kamera", "detail":"Rámování, úhel kamery, umístění subjektu a hloubka ostrosti.", "instruction":"framing, camera viewpoint, subject placement and relative size, depth of field and focus"},
-    {"id":"style", "label":"Vizuální styl", "detail":"Médium, kresba či fotografie, způsob zpracování a celková paleta.", "instruction":"visual style, medium, rendering technique and overall artistic color palette"},
+    {"id":"hair", "label":"Hair and hairstyle", "detail":"The main person’s hairstyle, hair length and color.", "instruction":"hairstyle, hair length and hair color of the main person"},
+    {"id":"clothing", "label":"Clothing", "detail":"Garments, cut, colors and fabric.", "instruction":"clothing of the main subject, garment type, cut, colors and fabric"},
+    {"id":"accessories", "label":"Accessories", "detail":"Jewelry, glasses, hats and other wearable accessories.", "instruction":"accessories worn by the main subject, jewelry, glasses, hats and wearable accessories"},
+    {"id":"pose", "label":"Pose and action", "detail":"Posture, movement, body orientation and action.", "instruction":"pose, body orientation and action of the main subject"},
+    {"id":"expression", "label":"Facial expression", "detail":"Visible expression and gaze, without guessing emotions.", "instruction":"visible facial expression and gaze of the main subject, without inferring mental states"},
+    {"id":"background", "label":"Environment and background", "detail":"Location, scenery, props and secondary subjects.", "instruction":"environment, background, scene props and secondary subjects"},
+    {"id":"lighting", "label":"Lighting", "detail":"Light direction and quality, shadows and light color.", "instruction":"lighting conditions, light direction, shadows and light color"},
+    {"id":"composition", "label":"Composition and camera", "detail":"Framing, camera angle, subject placement and depth of field.", "instruction":"framing, camera viewpoint, subject placement and relative size, depth of field and focus"},
+    {"id":"style", "label":"Visual style", "detail":"Medium, drawing or photography, rendering technique and overall palette.", "instruction":"visual style, medium, rendering technique and overall artistic color palette"},
 ]
 
 

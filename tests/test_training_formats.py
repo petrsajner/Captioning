@@ -29,7 +29,7 @@ def test_migrate_old_checkbox_and_explicit_new_policy_wins():
     assert not {"omit_identity", "lighting", "composition"} & old.model_dump().keys()
     explicit = Settings(omit_identity=True, learn_attributes=["clothing"])
     assert explicit.learn_attributes == ["clothing"]
-    assert training_plan(explicit)["learn"] == ["Oblečení"]
+    assert training_plan(explicit)["learn"] == ["Clothing"]
 
 
 def test_policy_covers_each_attribute_without_preset_conflicts():
@@ -42,10 +42,10 @@ def test_policy_covers_each_attribute_without_preset_conflicts():
 
 
 def test_bria_structure_policy_trigger_and_unicode():
-    s = Settings(output_format="bria_json", trigger="žluťoučký", learn_attributes=["identity","clothing","lighting","style"])
+    s = Settings(output_format="bria_json", trigger="\u65e5\u672c", learn_attributes=["identity","clothing","lighting","style"])
     caption = normalize_json('```json\n'+json.dumps(example())+'\n```', s)
     data = json.loads(caption)
-    assert data["short_description"].startswith("žluťoučký, ")
+    assert data["short_description"].startswith("\u65e5\u672c, ")
     assert "shape_and_color" not in data["objects"][0] and "clothing" not in data["objects"][0]
     assert data["objects"][0]["pose"] == "standing"
     assert data["background_setting"] == "a garden"
@@ -90,13 +90,13 @@ def test_job_freezes_caption_policy_and_output_format(tmp_path, monkeypatch):
         studio.settings.output_format = "normal"; studio.settings.learn_attributes.clear()
         release.set(); await studio.task
         assert image.with_suffix(".json").exists() and not image.with_suffix(".txt").exists()
-        assert studio.job["training_plan"]["learn"] == ["Identita / vzhled subjektu"]
+        assert studio.job["training_plan"]["learn"] == ["Identity / subject appearance"]
     asyncio.run(run())
 
 
 def test_conversion_archives_old_format_and_round_trips(tmp_path, monkeypatch):
     async def run():
-        path = tmp_path / "dataset" / "obrázek.png"; path.parent.mkdir()
+        path = tmp_path / "dataset" / "image.png"; path.parent.mkdir()
         Image.new("RGB", (32, 32), "red").save(path)
         original = b"original plain caption\r\n"
         path.with_suffix(".txt").write_bytes(original)
@@ -108,7 +108,7 @@ def test_conversion_archives_old_format_and_round_trips(tmp_path, monkeypatch):
         monkeypatch.setattr("captioning.provider.generate", bria)
         await studio.start_job([row["id"]]); await studio.task
         assert row["status"] == "skipped" and not path.with_suffix(".json").exists()
-        assert "jiném formátu" in row["notice"]
+        assert "another format" in row["notice"]
         await studio.start_job([row["id"]], regenerate=True); await studio.task
         assert row["status"] == "saved"
         assert not path.with_suffix(".txt").exists()
@@ -142,7 +142,7 @@ def test_bria_draft_preserves_txt_until_manual_save_and_detects_external_edit(tm
         assert row["status"] == "draft" and row["caption_format"] == "bria_json"
         assert path.with_suffix(".txt").read_text() == "old" and not path.with_suffix(".json").exists()
         path.with_suffix(".txt").write_text("user edit", encoding="utf-8")
-        with pytest.raises(ValueError, match="mimo aplikaci"): studio.save_row(row["id"], row["caption"])
+        with pytest.raises(ValueError, match="outside the app"): studio.save_row(row["id"], row["caption"])
         assert not path.with_suffix(".json").exists() and path.with_suffix(".txt").read_text() == "user edit"
     asyncio.run(run())
 

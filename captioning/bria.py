@@ -98,7 +98,7 @@ def _unique_pairs(pairs):
     result = {}
     for key, value in pairs:
         if key in result:
-            raise ValueError("Duplicitní klíč " + key)
+            raise ValueError("Duplicate key " + key)
         result[key] = value
     return result
 
@@ -106,7 +106,7 @@ def _unique_pairs(pairs):
 def validate_json(text: str) -> dict:
     try:
         def invalid_constant(value):
-            raise ValueError("Neplatná JSON konstanta " + value)
+            raise ValueError("Invalid JSON constant " + value)
         parsed = json.loads(text.strip().lstrip("\ufeff"), object_pairs_hook=_unique_pairs, parse_constant=invalid_constant)
         return FiboCaption.model_validate(parsed).model_dump(exclude_none=True)
     except (ValueError, TypeError) as exc:
@@ -114,7 +114,7 @@ def validate_json(text: str) -> dict:
             detail = "; ".join(".".join(map(str, e["loc"])) + ": " + e["msg"] for e in exc.errors(include_input=False)[:4])
         else:
             detail = str(exc)
-        raise CaptionValidationError("Neplatný BRIA/FIBO JSON: " + detail, text) from None
+        raise CaptionValidationError("Invalid BRIA/FIBO JSON: " + detail, text) from None
 
 
 def normalize_json(text: str, settings=None) -> str:

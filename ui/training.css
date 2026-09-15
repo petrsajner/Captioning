@@ -2,22 +2,11 @@
 .training-explanation { font-size: 11px; color: var(--muted); }
 .training-explanation p { margin-bottom: 8px; }
 .training-explanation b { color: var(--text); font-weight: 550; }
-.training-plan { background: #202b1d; border: 1px solid #435239; border-radius: 7px; padding: 10px; font-size: 10px; margin: 12px 0 5px; color: #bbcdb2; }
-.training-plan p + p { margin-top: 7px; }
-.training-plan b { color: var(--accent); font-weight: 500; }
-.training-hint { color: #dfc49b; }
-.attribute-control { border: 0; padding: 0; margin: 17px 0; min-width: 0; }
-.attribute-control legend { padding: 0; font-size: 12px; color: var(--text); margin-bottom: 6px; }
-.attribute-choices { display: flex; gap: 4px; }
-.attribute-choices label { flex: 1; margin: 0; position: relative; cursor: pointer; }
-.attribute-choices input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.attribute-choices span { display: block; text-align: center; font-size: 11px; padding: 6px 3px; border: 1px solid var(--line); border-radius: 5px; background: #131a15; }
-.attribute-choices input:checked + span { color: var(--accent); border-color: #749356; background: #2a3c20; }
-.attribute-choices input[value=describe]:checked + span { color: #bed8e6; border-color: #587d88; background: #20323a; }
-.attribute-choices input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
-.attribute-choices input:disabled + span { opacity: .45; cursor: default; }
-.attribute-control small { color: var(--muted); font-size: 10px; display: block; margin-top: 5px; }
-.training-limit { color: #bdb79f; font-size: 10px; line-height: 1.6; padding: 10px; background: #29291e; border-radius: 5px; margin: 16px 0; }
+.training-plan { color: var(--muted); font-size: 11px; margin: 10px 0 5px; }
+.caption-detail { margin: 12px 0; cursor: pointer; }
+.caption-detail > span { display: flex; align-items: center; gap: 8px; color: var(--text); }
+.caption-detail input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); flex-shrink: 0; }
+.caption-detail small { display: block; color: var(--muted); font-size: 10px; line-height: 1.5; margin: 4px 0 0 23px; }
 .caption-notice { font-size: 11px; color: #e0cba8; border: 1px solid #62543a; border-radius: 5px; padding: 9px; margin-top: 9px; }
 .json-editor { font-family: Consolas, monospace; tab-size: 2; white-space: pre; }
 #json-format-note { margin: 8px 0; }

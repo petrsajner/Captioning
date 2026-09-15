@@ -1,318 +1,127 @@
-# Caption Studio — handoff 2026-09-06
+# Caption Studio development handoff
 
-## Aktualizace 0.1.6 — žádné tokenové stropy, měkká délka a opravy (2026-09-15)
+## Current release: 0.1.7 (2026-09-15)
 
-Uživatel hlásil chyby „limit tokenů“, useknuté popisky označené jako hotové a
-mnoho chyb na lokálním Q5. Výslovně požaduje žádný aplikační tokenový strop:
-přijmout celou odpověď, spočítat slova, do 120 % cíle ponechat, nad něj požádat
-o zkrácení stejného textu. Bez mechanického ořezávání nebo falešných chyb délky.
+The interface now asks users to choose which details to include in captions.
+Checked means describe; unchecked means omit. The previous two-way learning controls
+and dataset-dependence caveat were removed at the user's request. Keep this copy
+direct and task-oriented. Do not reintroduce the caveat in help text.
 
-Zjištění:
-- Starý provider vždy odesílal max_tokens=700 (BRIA nejméně 3072). Nastavení 700
-  bylo skutečně uložené. Každý finish_reason kromě stop/eos znamenal chybu,
-  i při použitelném textu; neexistoval následný počet slov ani kontrola věty.
-- Dodaná sada má 43 PNG a v okamžiku auditu 17 TXT. Byly nalezeny skutečné
-  nedokončené konce „her mouth“, „Warm,“, „with a“, „illuminates“, „captured“.
-  Původní provider statusy těchto souborů nejsou uložené, nelze je zpětně prokázat.
-  Výchozí relace v LocalAppData obsahovala starší 42 dokončených captionů ze září 8.
-- Uživatel spustil externí Q5 přes QwenHarness na 8080. Bez vypnutí uvažování
-  první krátký caption spotřeboval 944 completion tokenů. Další čistě textové
-  zkracování dlouze uvažovalo nad počtem slov. Rozpoznané llama.cpp má
-  enable_thinking; caption požadavky teď tento režim vypínají per-request,
-  bez změny globální konfigurace cizího serveru.
-- Po úspěšné pětici testů server přestal odpovídat. Poslední log QwenHarness:
-  `[MEMORY GUARD] vram_pressure; requesting a safer profile.` Celá sada tedy
-  nemohla být následně ověřena živým modelem. Cizí ochrana ani proces nebyly měněny.
+English is the default interface language. Setup can switch immediately to Czech.
+Caption language remains separate and unchanged. Implementation, diagnostics and
+public documentation are English; Czech translations and lexical data live only
+in locale resources. Historical release notes remain available in Git history.
 
-Změny:
-- max_tokens odstraněn ze Settings, UI i všech generovacích požadavků; staré pole
-  se při načtení ignoruje. Nenahrazuje se jiným output token capem. Vlastní
-  llama-server výslovně používá -n -1. Odstraněn i znakový limit ručního captionu.
-- Když je dokončený Normal caption delší než 120 %, proběhne textová úprava stejné
-  odpovědi bez dalšího zasílání obrázku. Slova počítá aplikace včetně triggeru.
-  Dva opravné pokusy omezují opakované volání, nikoli přijatý text; při neúspěchu
-  se uloží nejkratší celá dokončená verze i nad cílem s poznámkou. Žádné řezání textu.
-- Dokončený text s finish_reason=length se přijme. Podezřelé konce se doplňují,
-  nedokončené BRIA JSON se opravují. Neúspěšný neúplný výstup zůstane jako
-  návrh Ke kontrole; neoznačí se jako hotový a nepřepíše existující caption.
-  Kontrola vět je heuristika, nemá představovat záruku jazykové bezchybnosti.
-- Odpovědi modelu se uchovávají u obrázku v generation_history a lze je vložit
-  zpět do editoru. Zastavení během opravy zachová přijatý návrh.
-- Výpadek spojení/modelu nebo globální problém API pozastaví dávku místo laviny
-  Failed. Pokračovat používá remaining_ids a neopakuje již hotové položky.
-- Fáze Popisuji / Zkracuji / Dokončuji jsou viditelné. Metadata odpovědí a chyb
-  jsou v logs/generation.jsonl, bez obrázků, textů captionů, promptů a klíčů.
+## Architecture and boundaries
 
-Ověření: 59 automatických testů. Skutečný externí Q5 na kopiích pěti dodaných
-snímků: 5 uložených, 0 chyb, 37/49/46/44/36 slov při cíli40; jeden 49slovný
-caption zůstal celý po neúspěšném dalším zkrácení. Zakončení byla celá, historie
-obsahuje původní i přepracované odpovědi. SHA-256 původních obrázků a TXT
-byly ověřeny beze změny. Veřejný dog.jpg přes nakonfigurované Gemini: 36 slov,
-1 požadavek, žádný náš tokenový limit, úspěch. Soukromé obrázky nebyly do Gemini poslány.
-Kontrola při již nedostupném Q5 ponechala 43 kopií ve stavu pending, 0 Failed.
-UI ověřilo historii 56slovné původní a 37slovné finální verze a nepřítomnost
-ovladače max_tokens. Nové resumování a ochrana před přepisem jsou testovány.
+- `app.py`: desktop lifecycle, instance lock, private loopback server, file picker.
+  `--ui-language en|cs` sets an explicit preference; the picker receives the current
+  locale. Installer language is passed only on its optional first launch.
+- `captioning/models.py`: validated settings and English model instructions.
+  `ui_language` is independent of caption `language`. Old omitted-attribute settings
+  migrate without changing behavior. Old output-token settings are ignored.
+- `captioning/training.py`: shared attribute definitions and mandatory per-attribute
+  model policy. **The persisted `learn_attributes` list means omitted details.**
+  The UI stores unchecked attributes in this list. Do not invert legacy recipes.
+- `captioning/bria.py`: FIBO structure, validation and normalization. Uses BRIA's
+  ImageAnalysis field layout, plus optional scores from its fine-tuning example.
+  Main subject is first in `objects`; mapped omitted fields are cleared, and the
+  model is instructed to omit those details from free text too.
+- `captioning/provider.py`: compatible image Chat Completions transport, full response
+  retention, automatic text/JSON revisions and service-availability detection.
+- `captioning/service.py`: import, batch lifecycle, immutable recipe per batch,
+  persistent drafts/history, sidecar conflict and overwrite checks.
+- `captioning/storage.py`: UTF-8 writes, byte-preserving backups, fingerprints and DPAPI.
+- `captioning/runtime.py`: Caption Studio's own pinned llama.cpp/Qwen downloads and
+  process. Never start, stop or reconfigure an external model server.
+- `captioning/api.py`: local session protection and endpoints. `/api/ui-language`
+  persists only the interface preference through the existing settings guards.
+- `ui/i18n.js`: explicit static markers, message IDs and parameterized translations.
+  Localize only UI/diagnostic fields; never captions, history bodies, prompts, model
+  IDs, paths or editable values. Captured filenames remain opaque. Old stored Czech
+  diagnostics have a presentation adapter; persisted data is not rewritten.
+- `captioning/i18n.py`: shared locale resources for native UI and completion lexical data.
 
-Artefakty (ignorované v Gitu): output/length-live-local/report.json,
-output/length-live-cloud/report.json, output/length-local-offline-report.txt,
-output/playwright/length-history.png. Plný datasetový test vyžaduje opětovné
-zpřístupnění externího serveru; nebyl vydáván za úspěšný. Build 0.1.6 je v dist/.
-Instalátor byl ověřen a nainstalován (output/install-0.1.6.log), nový EXE prošel
-čistým profilem i testem BRIA ukládání. Nastavení a šifrované klíče zůstaly při
-instalaci bitově beze změny. Staré max_tokens v souboru je novou verzí ignorované.
+The application is standalone. Another development AI installation is not a runtime
+dependency. Fresh installs download their own runtime only when explicitly requested.
+Do not change external memory guards, trainer code or users' original datasets.
 
-## Aktualizace 0.1.5 — záměr captioningu a BRIA FIBO JSON (2026-09-11)
+## Caption behavior retained from 0.1.6
 
-Uživatel požádal nahradit nejasné vynechání identity přímými volbami toho, co má
-LoRA převzít a co má zůstat měnitelné promptem. Každý z 10 atributů má Učit s LoRA
-(vynechat jeho detaily z captionu) / Měnit promptem (detaily popsat). UI výslovně
-vysvětluje, že jde o caption conditioning, nikoli loss masku nebo záruku fixace či
-nenaučení. Proměnlivé atributy vyžadují variabilitu datasetu. Ze stejného seznamu
-`training.ATTRIBUTES` se skládají ovladače, souhrn a modelové instrukce.
-Volné pokyny a preset nesmějí přebít tento plán. Doporučené rozdělení se aplikuje
-jen tlačítkem; změna typu datasetu uživatelské volby automaticky neresetuje.
-Staré omit_identity/lighting/composition se přečtou při migraci; ukládá se learn_attributes.
+The old provider sent `max_tokens=700` (at least 3072 for JSON) and treated most
+non-stop finish reasons as failures. Those caps and the character limit were removed
+in 0.1.6. Requests still contain no `max_tokens`, `max_completion_tokens`, `n_predict`
+or application stop sequence. The owned llama-server uses `-n -1`.
 
-Přepínač Normal / BRIA JSON (FIBO). Normal zachovává `.txt`, věty/tagy a cílovou
-délku. BRIA používá `.json`, datové typy a názvy podle veřejného BRIA ImageAnalysis
-(`src/fibo_inference/vlm/gemini_api.py`), včetně volitelných skóre z fine-tuning
-example. Vynechané povinné popisné řetězce jsou prázdné; optional fields se mohou
-vynechat. Původní BRIA parser prázdné hodnoty odstraňuje. Trigger jde do
-short_description. JSON se validuje při generování i každém uložení; odmítá
-neznámá pole, špatné typy, duplicitní klíče a NaN. Modelové instrukce zakazují
-únik vynechaných atributů do shrnutí či jiných polí; navíc se odstraní jednoznačně
-mapovaná strukturovaná pole. Volné textové popisy pořád vyžadují vizuální kontrolu.
+Normal captions target approximately the selected word count, including trigger.
+Complete results up to 120% are kept. Longer results get up to two text-only revision
+attempts; the shortest complete response is retained even if still too long. Suspected
+incomplete endings are completed when possible. No mechanical text slicing.
 
-Uživatel jako cílový trainer určil `C:\Users\Petr\Documents\LORA Train`.
-Jeho aktuální read-only skener čte TXT před JSON a JSON s short_description/objects
-označí fibo_json. Proto při explicitním nahrazení/regenerování aplikace nejprve
-uloží validovaný cílový formát a pak druhý sidecar přesune do `.caption-backups`.
-Při skip-existing se přeskočí kterýkoliv existující formát, při draft-only se
-původní soubor nemění. Fingerprint se kontroluje pro oba soubory. Při chybě
-archivace zůstává hlášená chyba; aplikace netvrdí úspěšné dokončení převodu.
-Po chybě JSON lze návrh opravit v editoru. Samotná změna globálního výstupu
-nemění formát již načteného popisku v editoru; UI ukazuje jeho příponu.
+BRIA JSON ignores the normal word target. It is parsed, validated and repaired, with
+up to two repair attempts. Unrepaired output remains `review`, preserves the received
+draft and does not overwrite a valid sidecar. Validation also applies to manual saves.
+Keys stay English; the recipe selects the language of descriptive values. Trigger
+insertion happens in `short_description`.
 
-Do LORA Train nebylo zasahováno. FIBO trénovací backend tam zůstává plánovaný.
-Ověřen byl jeho skutečný scan_dataset nad naším vytvořeným `.json`: 1 obrázek,
-1 fibo_json, 0 chyb. Oficiální BRIA trainer chce metadata.csv; tento export
-nebyl požadován pro zdejší trainer a není implementovaný.
+`generation_history` retains responses. Cancelling a revision retains the latest
+draft. Model/account/network failures pause remaining work instead of turning every
+image into an error. `remaining_ids` lets Continue skip completed work. Diagnostics
+in `logs/generation.jsonl` omit caption text, image data, prompts and keys.
 
-Ověření: 42 automatických testů; 7 browser kontrol (volby → souhrn → skutečné
-zadání, BRIA ovladače, import JSON, viditelná chyba vadného JSON, uložení a reload).
-Živý Gemini test nad veřejným pytorch/hub dog.jpg: learned identity vynechala
-barvu/specializovaný vzhled psa, described identity zahrnula bílou barvu, uši,
-oči; BRIA JSON respektoval vynechání identity a osvětlení a prošel strukturální
-validací. První test s limitem 700 tokenů skončil neúplným výstupem bez zápisu;
-další tři testy s limitem 4096 prošly (6,3 / 6,4 / 7,0 s). BRIA vyžaduje alespoň
-3072 výstupních tokenů; ostatní modelové parametry se nemění. GPU byla obsazená
-jinou prací, která nebyla přerušena. Žádné soukromé datasetové fotografie ani
-uživatelské pokyny nebyly použity v cloudovém testu. API klíč byl pouze v paměti.
+For external llama.cpp with advertised `enable_thinking` support, caption requests
+disable reasoning per request. Global server configuration is untouched.
 
-Pomocné testy: `python -m scripts.check_training_live --live` (placené volání
-uživatelem nakonfigurovaného cloudu, jen opt-in), `scripts/check_training_ui.js`.
-Výsledky v `output/training-live/report.json`, `output/training-ui-result.txt`,
-snímek `output/playwright/training-final.png`. Build `output/build-0.1.5-final.log`.
-Test zabaleného EXE zahrnuje i odmítnutí chybného JSON a archivaci konkurenčního TXT.
-Verze 0.1.5 byla nainstalována a spuštěna. Instalace zachovala kontrolní součty
-uživatelských settings.json a šifrovaného keys.json; samotné staré nastavení se
-mapuje v paměti na nové volby a uloží novou podobu až při změně nastavení.
-Log instalace `output/install-0.1.5.log`. Cizí tréninkové procesy nebyly zastaveny.
+Normal writes `.txt`; BRIA writes `.json`. Skip-existing covers either extension.
+Explicit format conversion saves validated output before archiving the opposite
+sidecar. Both fingerprints are checked. The separately developed LORA Train scanner
+has historically preferred TXT, making this retirement important. This application
+does not implement training or the official trainer's metadata CSV export.
 
-Zdroje: https://github.com/Bria-AI/FIBO/blob/main/src/fibo_inference/vlm/gemini_api.py
-https://github.com/Bria-AI/FIBO/blob/main/src/fibo_inference/parse_caption.py
-https://github.com/Bria-AI/FIBO/blob/main/src/fine_tuning/README.md
+## Verification and release workflow
 
-## Aktualizace 0.1.4 — najít lokální servery a viditelná verze (2026-09-08)
+Run the Python suite, `node --test tests/localization.test.cjs`, and browser checks.
+`scripts/check_localization_ui.js` uses an isolated profile and the sibling directory
+`i18n-fixtures` containing `Waiting.png` and `second.png`. It exercises language
+switching, unsaved caption/key/connection preservation, checkbox-to-prompt behavior,
+folder thumbnails/navigation/errors, BRIA controls and persistence across reload.
 
-Uživatel schválil pouze připojení k existujícím lokálním serverům; nepřidávat import
-souborů GGUF ani hledání modelových souborů na disku. Zachovat vlastní stažení
-modelu pro čisté PC. Uživatel současně potvrdil úspěšné cloudové generování přes
-Gemini i OpenRouter; jejich generovací payload ani cloudová konfigurace se nemění.
+Build with `scripts/build.ps1`; it tests, gathers licenses, packages Python/UI with
+PyInstaller, compiles Inno Setup and writes the portable ZIP plus SHA-256 manifest.
+`scripts/smoke_package.py <exe>` runs a packaged executable in a fresh temporary
+profile, from outside the source tree, with a minimal PATH. It checks localization
+assets, import, thumbnails, sidecar writes and validated JSON format conversion.
 
-V lokálním nastavení je Najít lokální servery: read-only GET `/v1/models` na
-127.0.0.1, porty 11434, 1234, 8080, 8000, 8888, 8091 + případná vlastní lokální URL.
-Nejde o plošný port scan, hledání na LAN ani start/download procesů. Každá kontrola
-má celkový limit 3,5 s, neprovádí redirecty a omezuje velikost odpovědi. Názvy
-aplikací u výsledků jsou výslovně vodítka podle obvyklého portu. HTTP 401/403 je
-kandidát vyžadující klíč, nikoli prokázaná kompatibilita nebo vision podpora.
+Release 0.1.7 verification: 63 Python tests and the JavaScript localization test
+passed. The browser workflow passed in both languages. Both the build output and
+installed executable passed the clean-profile package test. The installer completed
+with exit code 0; settings.json, keys.json and session.json retained their original
+SHA-256 hashes. The installed desktop window was visually checked with the existing
+dataset and simplified controls; no captions were regenerated or edited there.
+Evidence: `output/build-0.1.7.log`, `output/install-0.1.7-report.json`,
+`output/package-smoke.json`, `output/i18n-ui-check.log` and
+`output/playwright/localization-{en,cs}.png`.
 
-Nové `local_source` rozlišuje managed/external. Staré nastavení s vlastní URL
-migruje na external; standardní adresa na managed. Vlastní prostředí vždy používá
-svůj endpoint/alias a původní řízení generování. Externí připojení používá zvolenou
-URL/model a standardní parametry, serveru nenutí llama.cpp chat_template_kwargs.
-Klíče pro lokální servery jsou oddělené přes `local:<přesná URL>` v DPAPI KeyStore.
-Discovery neposílá klíč na jiný endpoint. Žádné API nevrací plaintext klíčů.
+Never test by overwriting private image sidecars. Use `CAPTION_STUDIO_DATA_DIR` and
+copied/public fixtures. Preserve existing installation settings, keys and session
+when updating. Close only Caption Studio processes owned by this test or the user-
+authorized installation workflow; do not terminate external models.
 
-Verze je viditelná v hlavní hlavičce vedle názvu, v titulku webové stránky i
-v titulku nativního okna. Zdroj je společné `captioning.__version__`.
+Build artifacts and logs are ignored in `dist/` and `output/`. Update the version in
+`captioning/__init__.py`, `installer/caption-studio.iss` and `scripts/build.ps1` together.
+Repository: `main`, `https://github.com/petrsajner/Captioning.git` (private).
 
-Ověření: 27 testů včetně migrace starého nastavení, ochrany cloudového klíče,
-scope lokálních klíčů, odmítnutí ne-loopback adres, redirectů a neplatných model
-listů; dále čistý profil zabaleného EXE. Reálný oddělený Qwen server na 8080
-se záměrně zvolenou testovací autentizací: discovery našlo uzamčený server,
-UI přijalo testovací klíč, načetlo `qa-qwen-vision` a po uložení vytvořilo 2 UTF-8
-sidecary (2,8 s / 3,0 s, 0 chyb). Testovací server měl vypnuté uvažování ve své
-vlastní konfiguraci. Ukončení Caption Studio jej ponechalo běžet (health HTTP 200).
-Teprve testovací helper jej následně zastavil. Živé Ollama/LM Studio/Unsloth instance
-nebyly na tomto PC při testu dostupné; jejich endpoint varianty ověřeny simulací.
+## Earlier validation and remaining scope
 
-Helper `python -m scripts.serve_test_model` je jen opt-in lokální test, není součástí
-instalátoru a aplikace ho nevolá. Snímky `output/playwright/local-server-connected.png`
-a `local-server-captions.png`; build `output/build-0.1.4.log`. Distribuce 0.1.4 v dist/.
-Uživatel výslovně povolil restart a instalaci. Verze 0.1.4 byla nainstalována;
-kontrolní součty jeho settings.json a šifrovaného keys.json zůstaly po instalaci
-nezměněné. Čistý profil instalovaného EXE prošel ověřením. Log `output/install-0.1.4.log`.
+Release 0.1.6 passed 59 Python tests. Live external Q5 completed five copied user
+images with 37/49/46/44/36 words at target 40 and no failed captions. The 49-word
+result was preserved after unsuccessful shortening. A public test image through
+Gemini produced a 36-word caption without an application token cap. Originals were
+unchanged. A later full-set run could not proceed because the external QwenHarness
+memory guard stopped its server; an offline check retained remaining images as
+pending. Do not report that full-dataset live test as completed.
 
-## Aktualizace 0.1.3 — jednotná ikona aplikace (2026-09-08)
-
-Uživatel požádal nahradit výchozí Python ikonu zástupce zeleným C z hlavičky.
-Původní `.brand-icon` CSS/HTML bylo vyrenderováno prohlížečem při 12x měřítku
-na průhledné pozadí (`ui/brand-icon.png`). Nejde o ořez uživatelského screenshotu.
-`scripts/icon_from_logo.py` z tohoto assetu balí ICO s velikostmi
-16/20/24/32/40/48/64/128/256 px (`ui/caption-studio.ico`).
-
-Ikona je vložená do PyInstaller EXE, do instalačního EXE a nastavuje se přes
-pywebview `start(icon=...)` pro titulkový pruh včetně spuštění ze zdrojů.
-Desktop a Start menu mají explicitní IconFilename na instalované ICO;
-favicon používá stejný PNG asset. Původní logo v hlavičce se nemění.
-
-Desktop uživatele je přesměrovaný na OneDrive. Existující Caption Studio.lnk
-byl nalezen přes systémovou známou složku plochy a jeho původní IconLocation
-bylo prázdné (výchozí ikona EXE). První uživatelem hlášené nevytvoření zástupce
-nebylo reprodukováno; podle uživatele další instalace zástupce vytvořila.
-Nezaměňovat tuto historii s prokázanou příčinou chybějícího loga v EXE.
-
-Distribuce: verze 0.1.3, build `output/build-0.1.3.log`, instalátor a portable ZIP
-v `dist/`, kontrolní součty `dist/SHA256SUMS.txt`.
-
-## Aktualizace 0.1.2 — plná navigace výběru složky
-
-Uživatel odmítl omezenou náhradu systémového dialogu: vlevo byly pouze kořeny
-disků, nešlo přejít na sousední větev bez nového průchodu celou cestou a malé
-tlačítko ↑ nebylo dostatečně zřejmé. Výběr složky nyní obsahuje:
-
-- Strom složek vlevo, načítaný po úrovních; automaticky rozbalená cesta k aktuální
-  složce, zvýrazněný výběr, zachování rozbalených vedlejších větví.
-- Klikací breadcrumb cestu pro přímý skok na libovolného předka.
-- Viditelně popsané Zpět, Vpřed, O složku výš, Domů, Obnovit. Historie se mění
-  jen po úspěšném přechodu; chyba cesty zachová předchozí složku a historii.
-- Alt+←/→, Alt+↑, Ctrl+L, F5; šipky, Home/End a Enter ve stromu.
-- Ochranu proti přepsání nově psané cesty ještě dobíhajícím načítáním.
-  Klávesové zkratky fungují i po přerenderování kliknuté breadcrumb položky.
-
-Řadič výběru přesunut z `ui/app.js` do `ui/folder-browser.js`. Backend vrací
-breadcrumb segmenty a má samostatné čtení jediné úrovně `/api/folder-tree`.
-To nestahuje obrázky, negeneruje popisky ani neprochází rekurzivně celý disk.
-
-Ověření: 21 backend testů a 12 skutečných UI kontrol ve `scripts/check_navigation.js`.
-Kontroly zahrnují sourozence, rodiče, breadcrumb předka, historii, větvení historie,
-klávesnici ve stromu, disabled rodiče v kořeni, neplatnou cestu bez ztráty kontextu,
-zachování rozbalené vedlejší větve při obnově, viditelný JPEG náhled a konečný import.
-Výsledek `output/navigation-check-result.txt`; snímek `output/playwright/navigation-final.png`.
-Build `output/build-0.1.2-final.log`. Distribuční verze 0.1.2, samostatný instalátor
-a portable ZIP v `dist/`. Runtime a inference se touto úpravou nemění.
-
-## Aktualizace 0.1.1 — obrázky při výběru složky
-
-Uživatel hlásil zdánlivě prázdnou složku při výběru datasetu. Příčinou byl
-`tkinter.filedialog.askdirectory`, který ukazuje pouze adresáře a skrývá soubory.
-Tlačítko Otevřít složku nyní otevírá prohlížeč uvnitř aplikace: náhledy a názvy
-obrázků, celkový počet, podsložky, disky, zadání cesty a návrat do nadřazené složky.
-Potvrzuje se právě prohlížený adresář, včetně volby rekurze. Náhledy jsou stránkované
-po 80; nečitelný obrázek zůstane viditelný s náhradním zobrazením. Samotné prohlížení
-nemění dataset ani soubory. Systémový dialog zůstává jen pro výběr jednotlivých souborů.
-
-Nový modul `captioning/folders.py`, autentizované `/api/folders` a `/api/folder-image`,
-UI v `ui/app.js`, `ui/index.html`, `ui/folders.css`. Starý výběr adresáře odstraněn.
-Ověřeno 19 testy, skutečnými vykreslenými náhledy koček/psa před potvrzením i po
-importu, a čistým profilem zabaleného EXE bez vývojových cest. Náhled opravy:
-`output/playwright/folder-preview.png`. Build `output/build-0.1.1.log`, instalace
-`output/install-0.1.1.log`. Nový instalátor a portable ZIP v `dist/`, SHA v SHA256SUMS.txt.
-
-Níže je původní záznam 0.1.0.
-
-## Zadání a závazná hranice
-
-Samostatná Windows aplikace pro dávkové popisky LoRA datasetů. Společný recept,
-výběr souborů/složky, vlastní lokální vision model a volitelné cloudové API.
-Uživatel výslovně upřesnil, že Marvin (`QWEN local`) je pouze vývojový vzor:
-čistá instalace musí vytvořit vlastní prostředí a stáhnout vlastní modely.
-Žádná produkční cesta na Marvina, import jeho kódu ani sdílení jeho runtime není použito.
-
-## Dodaná verze
-
-0.1.0. Privátní Python 3.11, FastAPI/HTTPX/Pillow, pywebview + WebView2.
-Sestavený Inno Setup instalátor a ZIP s portable adresářem jsou v `dist/`.
-Nainstalováno pro aktuálního uživatele do `%LOCALAPPDATA%\Programs\Caption Studio`.
-Vlastní data/modely v `%LOCALAPPDATA%\CaptionStudio`.
-
-Výchozí model Qwen3.8-27B UD-Q4_K_M byl skutečně stažen z Hugging Face
-(16 464 440 224 bajtů) spolu s mmproj-F16 (927 607 488 bajtů).
-Pin modelu i SHA-256 jsou v `captioning/runtime.py`, ověření v `runtime/verified.json`.
-Vlastní llama.cpp b10821 CUDA 13.3 byl skutečně stažen, rozbalen a spuštěn.
-Váhy z Marvina nebyly použity ani kopírovány.
-
-## Ověření
-
-- 17 automatických testů: sidecary UTF-8, diakritika, zálohy, externí úpravy
-  před i během inference, kolize názvů včetně nevybraného sourozence, rekurzivní import,
-  poškozené obrázky, chyby dávky, skip, návrhy a obnova, okamžité i průběžné zrušení,
-  sestavení obrazového payloadu, neúplné odpovědi, cloudové chyby bez úniku klíče,
-  DPAPI odděleně pro endpointy, izolace lokálního API, navazující stahování,
-  SHA-256 a odmítnutí zip traversal.
-- Skutečný browser workflow: otevření adresáře dvou fotografií, oba viditelné
-  náhledy, dávka, hotové popisky, ruční úprava, záloha a opakovaný skip.
-- Qwen na RTX 5090: dva obrázky v prvním běhu 2,4 s a 3,1 s (model už byl načtený).
-  Instalovaná zabalená aplikace také spustila vlastní model a regenerovala popisek
-  za 2,7 s. Kontext 8192, obrazový projektor, následně minimum 1024 obrazových tokenů.
-- Skutečné desktopové okno instalované aplikace bylo vizuálně zkontrolováno přes
-  computer-use: galerie, detail, editor a nativní výběr složky. Výběr složky se
-  otevřel z bundlovaného procesu; samotný výběr testovacího datasetu byl ověřen
-  polem Cesta. Automatizační nástroj nedokázal zaměřit pomocný systémový dialog.
-- Zavření okna přes Alt+F4 ukončilo vlastní llama-server a vrátilo paměť GPU
-  z přibližně 20,8 GB na přibližně 2,9 GB používaných jinými aplikacemi.
-- Instalátor instalace i aktualizace exit 0, bez restartu/správce.
-- `scripts/smoke_package.py`: skutečný instalovaný EXE v prázdném profilu,
-  pracovním adresáři bez zdrojů, bez PYTHONPATH/PYTHONHOME a s PATH pouze System32.
-  Zobrazení UI, výchozí průvodce, import obrázku, JPEG náhled a zápis `.txt` prošly.
-- Portable ZIP prošel kontrolou CRC; obsahuje 1280 položek.
-- Finální build: `output/final-build.log`; neblokující varování se týká nedostupného
-  Android backendu pywebview při Windows buildu a dvou deprecation hlášení testů.
-- Finální přeinstalovaný balíček po úpravě promptu prošel znovu reálnou dávkou:
-  2 uložené popisky, 0 chyb, 2,5 s a 3,1 s. Ověřeny přesné soubory UTF-8 bez BOM.
-  Výsledky jsou v `output/live-smoke.json`; snímek UI v `output/playwright/final.png`.
-
-Finální distribuční součty SHA-256:
-
-```text
-7affb4a0e3c27a03a130d1299a7cf2614baf1fc2efca5e8f96151f5aa96332f6  Caption-Studio-Setup-0.1.0-Windows-x64.exe
-37b4891641a599dda24b8c00445e4b3cbcec306e20e80c3bfaf489f3b6986e0e  Caption-Studio-0.1.0-Windows-x64-Portable.zip
-```
-
-Testovací fotografie (jen v `output/test-dataset`, nejsou součástí distribuce):
-https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/coco_sample.png
-https://raw.githubusercontent.com/pytorch/hub/master/images/dog.jpg
-Snímky browser UI jsou v `output/playwright/`, průběh instalace v `output/install-final.log`.
-
-## Limity a další práce
-
-- Živé cloudové volání nebylo provedeno: uživatel bude zadávat klíč v nastavení.
-  Cloud používá kompatibilní `/models` a `/chat/completions` s obrazovým vstupem.
-  Seznam může obsahovat textové modely; není to důkaz vision podpory. Parametry
-  konkrétních cloudových modelů se liší. Při doplňování providerů ověřit jejich
-  aktuální primární dokumentaci a reálný obrazový požadavek.
-- Vulkan/CPU ani IQ3/Q5 nebyly ověřeny na jiném hardwaru; VRAM v UI je odhad.
-- Modelové popisky nejsou zaručeně bezchybné: reálné fotografie byly rozpoznány,
-  ale některé formulace polohy/emoce vyžadují kontrolu. Ve finálním promptu je navíc
-  pokyn vynechávat nejisté detaily, estetické soudy a výplň pro dosažení délky.
-- Při opětovném vývoji vycházet ze zdrojů, nepřepisovat ručně zabalené `_internal/ui`.
-- Bez code signing. Modely a uživatelská data přežijí odinstalaci.
-- Síťové stahování je záměrně explicitní akce v setupu; nespouštět souběžně
-  instalační CLI a GUI nad stejným profilem.
-
-## Reprodukce buildu
-
-`scripts/build.ps1` provede testy, sběr licencí, PyInstaller, Inno Setup,
-portable ZIP a SHA-256 součty. Úplné závislosti jsou v `requirements-lock.txt`.
-Žádný vzdálený Git repozitář nebyl nastaven ani nebyl proveden push.
+The 0.1.7 changes do not alter model requests. Localization and caption control
+behavior are verified with deterministic tests and browser checks; these are not
+a new full-dataset/cloud inference benchmark. Vulkan, CPU and other PCs remain
+hardware coverage beyond the current Windows validation. The installer is unsigned.

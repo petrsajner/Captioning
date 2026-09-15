@@ -42,23 +42,23 @@ def read_json(path: Path, default):
 
 def fingerprint(path: Path) -> str | None:
     if path.is_symlink():
-        raise ValueError("Popisek je symbolický odkaz. Zápis je zablokovaný.")
+        raise ValueError("The caption is a symbolic link. Writing is blocked.")
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
 
 
 def write_caption(image: Path, text: str, expected: str | None, overwrite: bool, suffix=".txt") -> str:
     """UTF-8 sidecar; preserve existing bytes and detect external modifications."""
     if suffix not in (".txt", ".json"):
-        raise ValueError("Neplatná přípona popisku.")
+        raise ValueError("Invalid caption extension.")
     text = text.strip()
     if not text:
-        raise ValueError("Prázdný popisek nelze uložit.")
+        raise ValueError("An empty caption cannot be saved.")
     path = image.with_suffix(suffix)
     current = fingerprint(path)
     if current != expected:
-        raise ValueError("Popisek byl mezitím změněn mimo aplikaci. Načtěte sadu znovu.")
+        raise ValueError("The caption was changed outside the app. Reload the dataset.")
     if current is not None and not overwrite:
-        raise FileExistsError("Popisek už existuje.")
+        raise FileExistsError("The caption already exists.")
     data = (text + "\n").encode("utf-8")
     if current is None:
         # Windows rename is no-clobber and also works on exFAT/network volumes.
@@ -78,12 +78,12 @@ def write_caption(image: Path, text: str, expected: str | None, overwrite: bool,
     else:
         old = path.read_bytes()
         if hashlib.sha256(old).hexdigest() != expected:
-            raise ValueError("Popisek byl mezitím změněn mimo aplikaci.")
+            raise ValueError("The caption was changed outside the app.")
         if old != data:
             backup = path.parent / ".caption-backups" / (path.name + "." + uuid.uuid4().hex + ".bak")
             atomic_bytes(backup, old)
             if fingerprint(path) != expected:
-                raise ValueError("Popisek byl mezitím změněn mimo aplikaci.")
+                raise ValueError("The caption was changed outside the app.")
             atomic_bytes(path, data)
     return hashlib.sha256(data).hexdigest()
 
@@ -91,7 +91,7 @@ def write_caption(image: Path, text: str, expected: str | None, overwrite: bool,
 def archive_sidecar(path: Path, expected: str):
     """Retire the other caption format after a successful format conversion."""
     if fingerprint(path) != expected:
-        raise ValueError("Původní popisek se změnil mimo aplikaci. Starý formát nebyl přesunut; načtěte sadu znovu.")
+        raise ValueError("The original caption changed outside the app. The old format was not moved; reload the dataset.")
     backup_dir = path.parent / ".caption-backups"
     backup_dir.mkdir(exist_ok=True)
     target = backup_dir / (path.name + "." + uuid.uuid4().hex + ".bak")
@@ -104,7 +104,7 @@ class Blob(ctypes.Structure):
 
 def protect(data: bytes, decrypt=False) -> bytes:
     if os.name != "nt":
-        raise ValueError("Trvalé uložení API klíče vyžaduje Windows.")
+        raise ValueError("Persistent API key storage requires Windows.")
     buf = ctypes.create_string_buffer(data)
     source = Blob(len(data), ctypes.cast(buf, ctypes.POINTER(ctypes.c_byte)))
     target = Blob()
@@ -123,7 +123,7 @@ def protect(data: bytes, decrypt=False) -> bytes:
                        ctypes.c_void_p, ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(Blob)]
         ok = fn(ctypes.byref(source), "Caption Studio", None, None, None, 1, ctypes.byref(target))
     if not ok:
-        raise ValueError("Windows nemohl zpřístupnit uložený klíč. Zadejte jej znovu.")
+        raise ValueError("Windows could not access the saved key. Enter it again.")
     try:
         return ctypes.string_at(target.pbData, target.cbData)
     finally:

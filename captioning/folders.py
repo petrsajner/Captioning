@@ -21,7 +21,7 @@ class FolderBrowser:
         """One tree level only; never scan descendants or decode images."""
         directory = Path(path).expanduser().resolve(strict=True)
         if not directory.is_dir():
-            raise ValueError("Tato cesta není složka.")
+            raise ValueError("This path is not a folder.")
         folders = []
         with os.scandir(directory) as entries:
             for entry in entries:
@@ -36,7 +36,7 @@ class FolderBrowser:
     def listing(self, path: str, page: int = 0):
         directory = Path(path).expanduser().resolve(strict=True)
         if not directory.is_dir():
-            raise ValueError("Tato cesta není složka.")
+            raise ValueError("This path is not a folder.")
         folders, images = [], []
         with os.scandir(directory) as entries:
             for entry in entries:
@@ -58,7 +58,7 @@ class FolderBrowser:
             previews.append({"id": identifier, "name": name})
         while len(self.previews) > 4096:
             self.previews.popitem(last=False)
-        roots = [{"name": "Domovská složka", "path": str(Path.home())}]
+        roots = [{"name": "Home folder", "path": str(Path.home())}]
         if os.name == "nt":
             import ctypes
             mask = ctypes.windll.kernel32.GetLogicalDrives()
@@ -73,5 +73,5 @@ class FolderBrowser:
 
     def image(self, identifier: str):
         if identifier not in self.previews:
-            raise ValueError("Náhled již není dostupný. Otevřete složku znovu.")
+            raise ValueError("The preview is no longer available. Open the folder again.")
         return self.previews[identifier]

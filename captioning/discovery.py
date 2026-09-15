@@ -5,12 +5,12 @@ import httpx
 from .models import MANAGED_URL, Settings
 
 CANDIDATES = [
-    ("http://127.0.0.1:11434/v1", "Obvyklá adresa Ollamy"),
-    ("http://127.0.0.1:1234/v1", "Obvyklá adresa LM Studia"),
-    ("http://127.0.0.1:8080/v1", "Obvyklá adresa llama.cpp"),
-    ("http://127.0.0.1:8000/v1", "Obvyklá adresa Unsloth / vLLM"),
-    ("http://127.0.0.1:8888/v1", "Obvyklá adresa Unslothu"),
-    (MANAGED_URL, "Adresa prostředí Caption Studio"),
+    ("http://127.0.0.1:11434/v1", "Typical Ollama address"),
+    ("http://127.0.0.1:1234/v1", "Typical LM Studio address"),
+    ("http://127.0.0.1:8080/v1", "Typical llama.cpp address"),
+    ("http://127.0.0.1:8000/v1", "Typical Unsloth / vLLM address"),
+    ("http://127.0.0.1:8888/v1", "Typical Unsloth address"),
+    (MANAGED_URL, "Caption Studio runtime address"),
 ]
 
 
@@ -42,7 +42,7 @@ async def discover(configured_url="", keys=None, managed_running=False):
     if configured_url.strip():
         url = Settings(local_source="external", local_url=configured_url).local_url
         if url not in dict(candidates):
-            candidates.append((url, "Vlastní adresa"))
+            candidates.append((url, "Custom address"))
     async with httpx.AsyncClient(timeout=httpx.Timeout(2.5, connect=1), follow_redirects=False, trust_env=False) as client:
         async def check(url, hint):
             try:

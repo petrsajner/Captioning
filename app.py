@@ -13,15 +13,17 @@ import time
 import webbrowser
 
 
-def pick(kind, result):
+def pick(kind, result, language="en"):
+    from captioning.i18n import translate
+    def t(text): return translate(text, language)
     import tkinter as tk
     from tkinter import filedialog
     root = tk.Tk()
     root.withdraw()
     root.attributes("-topmost", True)
     try:
-        paths = list(filedialog.askopenfilenames(parent=root, title="Vyberte obrázky", filetypes=[
-            ("Obrázky", "*.jpg *.jpeg *.png *.webp *.bmp *.tif *.tiff"), ("Všechny soubory", "*.*")]))
+        paths = list(filedialog.askopenfilenames(parent=root, title=t("Select images"), filetypes=[
+            (t("Images"), "*.jpg *.jpeg *.png *.webp *.bmp *.tif *.tiff"), (t("All files"), "*.*")]))
         Path(result).write_text(json.dumps(paths, ensure_ascii=False), encoding="utf-8")
     finally:
         root.destroy()
@@ -34,9 +36,10 @@ def main():
     parser.add_argument("--port", type=int, default=0)
     parser.add_argument("--pick", choices=["files"])
     parser.add_argument("--result")
+    parser.add_argument("--ui-language", choices=["en", "cs"])
     args = parser.parse_args()
     if args.pick:
-        pick(args.pick, args.result)
+        pick(args.pick, args.result, args.ui_language or "en")
         return
 
     from captioning.service import Studio, data_directory
@@ -59,7 +62,10 @@ def main():
             msvcrt.locking(lock_file.fileno(), msvcrt.LK_NBLCK, 1)
         except OSError:
             import ctypes
-            ctypes.windll.user32.MessageBoxW(0, "Caption Studio už běží. Otevřete existující okno.", "Caption Studio", 0)
+            from captioning.i18n import translate
+            from captioning.storage import read_json
+            language = read_json(root / "settings.json", {}).get("ui_language", "en")
+            ctypes.windll.user32.MessageBoxW(0, translate("Caption Studio is already running. Open the existing window.", language), "Caption Studio", 0)
             return
     if sys.stdout is None:
         sys.stdout = (root / "app.log").open("a", encoding="utf-8")
@@ -72,6 +78,8 @@ def main():
     port = listener.getsockname()[1]
     token = secrets.token_urlsafe(32)
     studio = Studio(root)
+    if args.ui_language:
+        studio.save_settings(studio.settings.model_copy(update={"ui_language": args.ui_language}))
     assets = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)) / "ui"
     api = make_app(studio, token, port, assets)
     server = uvicorn.Server(uvicorn.Config(api, host="127.0.0.1", port=port, log_level="warning", access_log=False))
@@ -81,7 +89,7 @@ def main():
         if server.started:
             break
         if not thread.is_alive():
-            raise RuntimeError("Lokální aplikaci se nepodařilo spustit.")
+            raise RuntimeError("The local application could not start.")
         time.sleep(0.05)
     url = f"http://127.0.0.1:{port}/?token={token}"
     # Test/browser launch details stay local and are replaced on each launch.
@@ -90,7 +98,7 @@ def main():
         if args.browser or args.no_open:
             if not args.no_open:
                 webbrowser.open(url)
-            print(f"Caption Studio běží na portu {port}. Ukončení: Ctrl+C.", flush=True)
+            print(f"Caption Studio is running on port {port}. Press Ctrl+C to exit.", flush=True)
             while thread.is_alive():
                 time.sleep(0.5)
         else:
@@ -99,7 +107,7 @@ def main():
                 webview.create_window(f"Caption Studio {__version__}", url, width=1480, height=940, min_size=(1080, 700), background_color="#101412")
                 webview.start(gui="edgechromium", private_mode=True, icon=str(assets / "caption-studio.ico"))
             except Exception as exc:
-                print("Desktopové okno není dostupné; otevírám prohlížeč.", type(exc).__name__, flush=True)
+                print("The desktop window is unavailable; opening the browser.", type(exc).__name__, flush=True)
                 webbrowser.open(url)
                 while thread.is_alive():
                     time.sleep(0.5)

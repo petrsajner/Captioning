@@ -7,10 +7,11 @@ async (page) => {
     const recipe=page.locator('#recipe-form');
     await recipe.locator('[name=preset]').selectOption('character');
     await page.locator('#apply-training-preset').click();
-    await recipe.locator('[data-attribute=clothing][value=learn]').locator('..').click();
+    await recipe.locator('[data-attribute=clothing]').uncheck();
     await page.waitForFunction(async()=>{const s=await (await fetch('/api/state')).json();return s.settings.learn_attributes.includes('identity')&&s.settings.learn_attributes.includes('clothing');});
     checks.push('attribute toggles saved and summarized');
     await page.locator('#preview-prompt').click();
+    await page.locator('#prompt-dialog').waitFor({state:'visible'});
     const prompt=await page.locator('#prompt-text').textContent();
     if(!prompt.split('\n').some(l=>l.startsWith('LEARN_WITH_LORA')&&l.includes('clothing'))||prompt.split('\n').some(l=>l.startsWith('CONTROL_WITH_PROMPT')&&l.includes('clothing')))throw Error('Contradictory clothing instructions');
     checks.push('same policy reaches model prompt');
@@ -30,11 +31,11 @@ async (page) => {
     await page.waitForFunction(()=>document.querySelector('#toast').textContent.includes('BRIA/FIBO JSON'));
     checks.push('invalid JSON save rejected visibly');
     await editor.fill(original);await page.locator('#save-caption').click();
-    await page.waitForFunction(()=>document.querySelector('#caption-state').textContent==='Ulo\u017eeno');
+    await page.waitForFunction(()=>document.querySelector('#save-caption').disabled === false && !document.querySelector('#caption-state').textContent.startsWith('\u25cf'));
     checks.push('valid JSON manual save');
     await page.reload();
-    await page.waitForFunction(()=>document.querySelector('#app-version').textContent==='v0.1.5');
-    if(!await recipe.locator('[data-attribute=clothing][value=learn]').isChecked())throw Error('Training policy lost on reload');
+    await page.waitForFunction(()=>document.querySelectorAll('[data-attribute]').length===10);
+    if(await recipe.locator('[data-attribute=clothing]').isChecked())throw Error('Training policy lost on reload');
     if(await recipe.locator('[name=output_format]').inputValue()!=='bria_json')throw Error('BRIA format lost on reload');
     checks.push('recipe and JSON format survive restart');
     await page.locator('#training-plan').scrollIntoViewIfNeeded();

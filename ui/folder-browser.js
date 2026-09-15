@@ -30,7 +30,8 @@ class FolderPicker {
     $('folder-grid').addEventListener('error', e => {
       if (e.target.tagName === 'IMG') {
         e.target.parentElement.classList.add('preview-failed');
-        e.target.parentElement.title = 'Náhled není dostupný; soubor se zkontroluje při importu.';
+        e.target.parentElement.title = t('Preview unavailable; the file will be checked on import.');
+        e.target.parentElement.dataset.errorLabel = t('Preview unavailable');
       }
     }, true);
     $('folder-roots').addEventListener('click', e => {
@@ -91,13 +92,13 @@ class FolderPicker {
     $('folder-breadcrumbs').inert = blocked;
     $('browse-path').disabled = blocked;
   }
-  error(message) { $('folder-error').textContent = message; $('folder-error').hidden = !message; }
+  error(message) { $('folder-error').textContent = t(message); $('folder-error').hidden = !message; }
 
   async go(path, {page=0, record=true, historyIndex=null}={}) {
     if (this.importing) return;
     const serial = ++this.serial;
     this.loading = true; this.error(''); this.controls();
-    $('folder-summary').textContent = 'Načítám obsah složky…';
+    $('folder-summary').textContent = t('Loading folder contents…');
     try {
       const listing = await api('/folders', {path, page});
       if (serial !== this.serial) return;
@@ -119,7 +120,7 @@ class FolderPicker {
       if (this.listing) {
         $('browse-path').value = this.listing.path;
         this.renderContents();
-      } else $('folder-summary').textContent = 'Složku se nepodařilo otevřít. Zvolte Domů nebo zadejte jinou cestu.';
+      } else $('folder-summary').textContent = t('The folder could not be opened. Choose Home or enter another path.');
       this.error(e.message);
     } finally {
       if (serial === this.serial) { this.loading = false; this.controls(); }
@@ -140,14 +141,14 @@ class FolderPicker {
   }
   renderContents() {
     const listing = this.listing;
-    $('folder-summary').textContent = `Obrázky: ${listing.image_count} · Podsložky: ${listing.folders.length}` +
-      (listing.image_count ? '' : ' · V této složce nejsou podporované obrázky.');
+    $('folder-summary').textContent = t("Images: {v0} · Subfolders: {v1}", {v0:(listing.image_count),v1:(listing.folders.length)}) +
+      (listing.image_count ? '' : ' · '+t('This folder contains no supported images.'));
     $('folder-grid').innerHTML = listing.folders.map(f =>
-      `<button class="folder-entry" data-path="${esc(f.path)}" title="Otevřít ${esc(f.name)}"><span class="folder-symbol">▰</span><span>${esc(f.name)}</span></button>`).join('') +
+      `<button class="folder-entry" data-path="${esc(f.path)}" title="${esc(t('Open {name}', {name:f.name}))}"><span class="folder-symbol">▰</span><span>${esc(f.name)}</span></button>`).join('') +
       listing.images.map(im => `<figure class="folder-thumbnail"><div><img loading="lazy" src="/api/folder-image/${im.id}" alt="${esc(im.name)}"></div><figcaption title="${esc(im.name)}">${esc(im.name)}</figcaption></figure>`).join('');
     $('folder-pager').hidden = listing.pages <= 1;
     $('folder-page').textContent = `${listing.page+1} / ${listing.pages}`;
-    $('use-folder').textContent = `Použít tuto složku (${listing.image_count})`;
+    $('use-folder').textContent = t("Use this folder ({v0})", {v0:(listing.image_count)});
     document.querySelector('.folder-contents').scrollTop = 0;
   }
   renderBreadcrumbs() {
@@ -208,14 +209,14 @@ class FolderPicker {
       const expandable = node.children === null || childKeys.length > 0;
       return `<div role="treeitem" aria-level="${level}" aria-selected="${!!selected}" ${expandable?`aria-expanded="${node.expanded}"`:''}>
         <div class="tree-row ${selected?'selected':''}" style="--tree-level:${level-1}">
-          <button class="tree-toggle" data-tree-toggle="${esc(node.path)}" tabindex="-1" ${expandable?'':'disabled'} aria-label="${node.expanded?'Sbalit':'Rozbalit'} ${esc(node.name)}">${expandable?(node.pending?'…':node.expanded?'▾':'▸'):''}</button>
+          <button class="tree-toggle" data-tree-toggle="${esc(node.path)}" tabindex="-1" ${expandable?'':'disabled'} aria-label="${node.expanded?t('Collapse'):t('Expand')} ${esc(node.name)}">${expandable?(node.pending?'…':node.expanded?'▾':'▸'):''}</button>
           <button class="tree-label" data-tree-open="${esc(node.path)}" title="${esc(node.path)}" ${selected?'aria-current="location"':''}>${esc(node.name)}</button>
         </div>
-        ${node.expanded&&node.error?`<div class="tree-error" title="${esc(node.error)}">Nelze načíst. Kliknutím na šipku zkuste znovu.</div>`:''}
+        ${node.expanded&&node.error?`<div class="tree-error" title="${esc(t(node.error))}">${esc(t("Unable to load. Click the arrow to retry."))}</div>`:''}
         ${node.expanded&&childKeys.length?`<div role="group">${childKeys.map(k=>this.nodes.get(k)).filter(Boolean).map(n=>renderNode(n,level+1,visited)).join('')}</div>`:''}
       </div>`;
     };
-    $('folder-roots').innerHTML = `<div class="tree-heading">STROM SLOŽEK</div><div role="tree" aria-label="Složky na discích">${this.roots.map(r=>renderNode(r,1)).join('')}</div>`;
+    $('folder-roots').innerHTML = `<div class="tree-heading">${esc(t("FOLDER TREE"))}</div><div role="tree" aria-label="${esc(t('Folders on drives'))}">${this.roots.map(r=>renderNode(r,1)).join('')}</div>`;
     if (focused) this.focusNode(focused, false);
   }
   focusNode(path, scroll=true) {

@@ -61,7 +61,7 @@ class Runtime:
         self.process_backend: str | None = None
         self.api_key = secrets.token_urlsafe(32)
         self.start_lock = asyncio.Lock()
-        self.state = {"status": "idle", "message": "Lokální model zatím není připravený.", "done": 0, "total": 0}
+        self.state = {"status": "idle", "message": "The local model is not ready yet.", "done": 0, "total": 0}
         self.verified = read_json(self.root / "verified.json", {})
 
     @property
@@ -79,7 +79,7 @@ class Runtime:
         return self.verified.get(str(path)) == [sha, size, stat.st_mtime_ns]
 
     def verify(self, path: Path, sha: str, size: int):
-        self.state.update(message="Ověřuji soubor: " + path.name, done=0, total=size)
+        self.state.update(message="Verifying file: " + path.name, done=0, total=size)
         h = hashlib.sha256()
         with path.open("rb") as f:
             while chunk := f.read(8 * 1024 * 1024):
@@ -88,7 +88,7 @@ class Runtime:
                 self.state["done"] += len(chunk)
         if path.stat().st_size != size or h.hexdigest() != sha:
             path.unlink(missing_ok=True)
-            raise ValueError("Kontrolní součet nesouhlasí. Poškozený soubor byl odstraněn; spusťte stažení znovu.")
+            raise ValueError("Checksum mismatch. The damaged file was removed; start the download again.")
 
     def download(self, url: str, destination: Path, size: int, sha: str):
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -102,7 +102,7 @@ class Runtime:
             if offset > size:
                 partial.unlink()
                 offset = 0
-            self.state.update(message="Stahuji " + destination.name, done=offset, total=size)
+            self.state.update(message="Downloading " + destination.name, done=offset, total=size)
             if offset < size:
                 headers = {"Range": f"bytes={offset}-"} if offset else {}
                 with httpx.Client(follow_redirects=True, timeout=60, trust_env=False) as client:
@@ -110,7 +110,7 @@ class Runtime:
                         response.raise_for_status()
                         if offset and response.status_code == 206:
                             if not response.headers.get("Content-Range", "").startswith(f"bytes {offset}-"):
-                                raise ValueError("Server vrátil nesprávný rozsah souboru.")
+                                raise ValueError("The server returned an incorrect file range.")
                         elif offset:
                             offset = 0
                             self.state["done"] = 0
@@ -120,7 +120,7 @@ class Runtime:
                                 f.write(chunk)
                                 self.state["done"] += len(chunk)
                                 if self.state["done"] > size:
-                                    raise ValueError("Stažený soubor překročil očekávanou velikost.")
+                                    raise ValueError("The download exceeded the expected file size.")
             self.verify(partial, sha, size)
             os.replace(partial, destination)
         self.verified[str(destination)] = [sha, size, destination.stat().st_mtime_ns]
@@ -153,7 +153,7 @@ class Runtime:
                 existing = destination if destination.exists() else partial
                 needed += max(0, size - (existing.stat().st_size if existing.exists() else 0))
             if shutil.disk_usage(self.root).free < needed:
-                raise ValueError(f"Nedostatek místa. Potřebuji ještě přibližně {needed / 1024**3:.1f} GB.")
+                raise ValueError(f"Insufficient disk space. Approximately {needed / 1024**3:.1f} GB.")
             self.state.update(status="working")
             runtime = self.runtime_dir(backend)
             if not (runtime / "ready.json").exists():
@@ -163,10 +163,10 @@ class Runtime:
                     self.checkpoint()
                     archive = self.root / "downloads" / filename
                     self.download(f"https://github.com/ggml-org/llama.cpp/releases/download/{RELEASE}/{filename}", archive, size, sha)
-                    self.state.update(message="Rozbaluji lokální prostředí…", done=0, total=0)
+                    self.state.update(message="Extracting the local runtime…", done=0, total=0)
                     safe_extract(archive, staging)
                 if not any(staging.rglob("llama-server.exe")):
-                    raise ValueError("Stažený balík neobsahuje llama-server.exe.")
+                    raise ValueError("The downloaded package does not contain llama-server.exe.")
                 self.checkpoint()
                 if runtime.exists():
                     # Fixed, application-owned staging target only.
@@ -177,38 +177,38 @@ class Runtime:
                 self.checkpoint()
                 filename, size, sha = FILES[k]
                 self.download(f"https://huggingface.co/{REPO}/resolve/{REVISION}/{filename}", self.root / "models" / filename, size, sha)
-            self.state.update(status="done", message="Prostředí i model jsou připravené.", done=1, total=1)
+            self.state.update(status="done", message="The runtime and model are ready.", done=1, total=1)
         except SetupCancelled:
-            self.state.update(status="cancelled", message="Stahování pozastaveno. Další spuštění naváže na stažená data.")
+            self.state.update(status="cancelled", message="Download paused. The next attempt will resume the downloaded data.")
         except httpx.HTTPError:
-            self.state.update(status="error", message="Stahování selhalo. Zkontrolujte internet a zkuste znovu; stažená část zůstává zachovaná.")
+            self.state.update(status="error", message="Download failed. Check your connection and retry; downloaded data is retained.")
         except Exception as e:
             self.state.update(status="error", message=str(e))
 
     def install(self, profile: str, backend: str):
         if self.installing:
-            raise ValueError("Instalace už probíhá.")
+            raise ValueError("Installation is already running.")
         if self.process and self.process.poll() is None:
-            raise ValueError("Před instalací zastavte lokální model.")
+            raise ValueError("Stop the local model before installing.")
         self.cancel.clear()
-        self.state.update(status="working", message="Připravuji stahování…", done=0, total=0)
+        self.state.update(status="working", message="Preparing download…", done=0, total=0)
         self.install_task = asyncio.create_task(asyncio.to_thread(self._install, profile, backend))
 
     async def start(self, profile: str, backend: str):
         async with self.start_lock:
             if self.process and self.process.poll() is None:
                 if self.process_profile != profile or self.process_backend != backend:
-                    raise ValueError("Běží jiný profil. Nejprve jej zastavte.")
+                    raise ValueError("Another profile is running. Stop it first.")
                 return
             if self.installing:
-                raise ValueError("Počkejte na dokončení instalace.")
+                raise ValueError("Wait for installation to finish.")
             if not self.ready(profile, backend):
-                raise ValueError("Nejprve stáhněte vybraný lokální model v nastavení.")
+                raise ValueError("Download the selected local model in Settings first.")
             with socket.socket() as sock:
                 try:
                     sock.bind(("127.0.0.1", 8091))
                 except OSError:
-                    raise ValueError("Port 8091 je obsazený. Cizí proces nebyl ukončen; zkontrolujte další běžící instance.") from None
+                    raise ValueError("Port 8091 is in use. The other process was not stopped; check other running instances.") from None
             exe = next(self.runtime_dir(backend).rglob("llama-server.exe"))
             args = [str(exe), "-m", str(self.root / "models" / FILES[profile][0]),
                     "--mmproj", str(self.root / "models" / FILES["vision"][0]),
@@ -222,24 +222,24 @@ class Runtime:
                 self.process = subprocess.Popen(args, cwd=exe.parent, stdout=log, stderr=subprocess.STDOUT,
                                                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             self.process_profile, self.process_backend = profile, backend
-            self.state.update(status="loading", message="Načítám model do paměti…")
+            self.state.update(status="loading", message="Loading the model into memory…")
             try:
                 async with httpx.AsyncClient(timeout=3, trust_env=False) as client:
                     for _ in range(180):
                         if not self.process or self.process.poll() is not None:
-                            raise ValueError("Model se nespustil. Podrobnosti jsou v runtime/model.log; zkontrolujte ovladač GPU a volnou paměť.")
+                            raise ValueError("The model did not start. Check runtime/model.log, the GPU driver and available memory.")
                         try:
                             r = await client.get("http://127.0.0.1:8091/health")
                             if r.status_code == 200:
-                                self.state.update(status="running", message="Lokální model běží.")
+                                self.state.update(status="running", message="The local model is running.")
                                 return
                         except httpx.HTTPError:
                             pass
                         await asyncio.sleep(1)
-                raise ValueError("Načítání modelu překročilo časový limit.")
+                raise ValueError("Model loading timed out.")
             except BaseException:
                 self.stop()
-                self.state.update(status="error", message="Spuštění modelu selhalo. Zkontrolujte nastavení a model.log.")
+                self.state.update(status="error", message="Model startup failed. Check Settings and model.log.")
                 raise
 
     def stop(self):
@@ -251,4 +251,4 @@ class Runtime:
                 self.process.kill()
                 self.process.wait(timeout=5)
         self.process = None
-        self.state.update(status="idle", message="Lokální model je zastavený.")
+        self.state.update(status="idle", message="The local model is stopped.")

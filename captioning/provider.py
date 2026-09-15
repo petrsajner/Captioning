@@ -44,7 +44,7 @@ def clean_caption(value: str, trigger: str) -> str:
         value = value[1:-1]
     value = re.sub(r"\s+", " ", value).strip()
     if not value:
-        raise ValueError("Model vrátil prázdný popisek.")
+        raise ValueError("The model returned an empty caption.")
     trigger = trigger.strip().strip(",")
     if trigger and not re.match(re.escape(trigger) + r"(?:\s|[,.:;]|$)", value, re.I):
         value = trigger + ", " + value
@@ -58,12 +58,12 @@ async def list_models(s: Settings, key: str = "") -> list[str]:
         async with httpx.AsyncClient(timeout=12, trust_env=False) as client:
             r = await client.get(base + "/models", headers=headers)
             if r.is_error:
-                raise ValueError(f"API vrátilo HTTP {r.status_code}. Zkontrolujte adresu a přístupový klíč.")
+                raise ValueError(f"The API returned HTTP {r.status_code}. Check the address and API key.")
             data = r.json().get("data", [])
             return sorted(str(m["id"]) for m in data if isinstance(m, dict) and m.get("id"))
     except (httpx.HTTPError, ValueError) as exc:
         if isinstance(exc, httpx.HTTPError):
-            raise ValueError("API není dostupné. Spusťte lokální model nebo zkontrolujte připojení.") from None
+            raise ValueError("The API is unavailable. Start the local model or check the connection.") from None
         raise
 
 
@@ -71,9 +71,9 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
     base = s.local_endpoint if s.mode == "local" else s.cloud_url
     model = s.local_model_id if s.mode == "local" else s.cloud_model
     if not model.strip():
-        raise ValueError("V nastavení vyberte nebo zadejte ID modelu s podporou obrázků.")
+        raise ValueError("Select or enter an image-capable model ID in Settings.")
     if s.mode == "cloud" and not key:
-        raise ValueError("V nastavení chybí API klíč pro tuto adresu poskytovatele.")
+        raise ValueError("No API key is configured for this provider address.")
     encoded = base64.b64encode(await asyncio.to_thread(image_bytes, path, s.image_size)).decode()
     payload = {
         "model": model, "stream": False,
@@ -105,24 +105,24 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
                     continue
                 if r.is_error:
                     emit({"kind":"request_error", "stage":stage, "http_status":r.status_code, "app_token_limit":None})
-                    hints = {401: "Neplatný API klíč.", 402: "Nedostatečný kredit.",
-                             403: "Přístup byl zamítnut.", 404: "Model nebo API adresa neexistuje.",
-                             400: "Model nepřijal obrazový požadavek nebo jeho parametry.",
-                             429: "Byl překročen limit požadavků."}
+                    hints = {401: "Invalid API key.", 402: "Insufficient credit.",
+                             403: "Access denied.", 404: "The model or API address does not exist.",
+                             400: "The model rejected the image request or its parameters.",
+                             429: "The request rate limit was reached."}
                     error_type = ProviderUnavailableError if r.status_code in (401,402,403,404,429,500,502,503,504) else ValueError
-                    raise error_type(f"HTTP {r.status_code}: " + hints.get(r.status_code, "Server modelu není připravený. Zkuste to znovu."))
+                    raise error_type(f"HTTP {r.status_code}: " + hints.get(r.status_code, "The model server is not ready. Try again."))
                 body = r.json()
                 if body.get("error"):
-                    raise ValueError("Poskytovatel vrátil chybu generování. Zkontrolujte model a kredit.")
+                    raise ValueError("The provider returned a generation error. Check the model and account credit.")
                 choice = body["choices"][0]
                 msg = choice["message"]
                 if msg.get("refusal"):
-                    raise ValueError("Poskytovatel odmítl popsat tento obrázek.")
+                    raise ValueError("The provider declined to caption this image.")
                 content = msg.get("content") or ""
                 if isinstance(content, list):
                     content = "\n".join(part.get("text", "") for part in content if isinstance(part, dict) and part.get("type") in ("text", "output_text"))
                 if not isinstance(content, str):
-                    raise ValueError("Model nevrátil textový popisek.")
+                    raise ValueError("The model did not return a text caption.")
                 finish = str(choice.get("finish_reason") or "").lower()
                 usage = body.get("usage") or {}
                 if not isinstance(usage, dict): usage = {}
@@ -145,13 +145,13 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
                 return trace
         except httpx.TimeoutException:
             emit({"kind":"request_error", "stage":stage, "error_type":"timeout", "app_token_limit":None})
-            raise ProviderUnavailableError("Spojení s modelem se nedokončilo včas. Zkuste zpracování znovu.") from None
+            raise ProviderUnavailableError("The model connection timed out. Try processing again.") from None
         except httpx.HTTPError:
             emit({"kind":"request_error", "stage":stage, "error_type":"connection", "app_token_limit":None})
-            raise ProviderUnavailableError("Server modelu není dostupný. Zkontrolujte, zda běží.") from None
+            raise ProviderUnavailableError("The model server is unavailable. Check that it is running.") from None
         except (KeyError, IndexError, TypeError):
-            raise ValueError("API vrátilo neplatný formát odpovědi.") from None
-        raise ValueError("Generování selhalo.")
+            raise ValueError("The API returned an invalid response format.") from None
+        raise ValueError("Generation failed.")
 
     async with httpx.AsyncClient(timeout=httpx.Timeout(s.timeout, connect=15), trust_env=False) as client:
         if s.mode == "local" and s.local_source == "external":
@@ -169,9 +169,9 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
         if not current["text"] and not current["blocked"]:
             current = await request(client, payload["messages"] + [{"role":"user", "content":"Return the final image caption only. The previous response contained no usable caption."}], "retry_caption")
         if not current["text"]:
-            raise ValueError("Model nevrátil žádný popisek." if not current["blocked"] else "Poskytovatel zpracování obrázku odmítl.")
+            raise ValueError("The model did not return a caption." if not current["blocked"] else "The provider declined to process the image.")
         if current["blocked"]:
-            return CaptionResult(current["text"], needs_review=True, notice="Poskytovatel omezil odpověď. Přijatý text zůstal zachovaný k ruční kontrole.", history=history)
+            return CaptionResult(current["text"], needs_review=True, notice="The provider restricted the response. The received text is retained for manual review.", history=history)
 
         if s.output_format == "bria_json":
             if current["complete"]:
@@ -185,9 +185,9 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
                     break
                 if fixed["blocked"]: break
                 if fixed["complete"] and fixed["text"]:
-                    return CaptionResult(fixed["text"], notice="JSON byl automaticky doplněn a ověřen.", history=history)
+                    return CaptionResult(fixed["text"], notice="JSON was completed and validated automatically.", history=history)
                 if len(fixed["text"]) > len(best["text"]): best = fixed
-            return CaptionResult(best["text"], needs_review=True, notice="Přijatý JSON zůstal zachovaný. Automatická oprava se nepodařila; návrh můžete upravit nebo zpracovat znovu.", history=history)
+            return CaptionResult(best["text"], needs_review=True, notice="The received JSON has been retained. Automatic repair did not succeed; edit the draft or try again.", history=history)
 
         candidates = [current] if current["complete"] else []
         ceiling = word_ceiling(s.words)
@@ -212,10 +212,10 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
             if edited["complete"] and edited["text"]:
                 candidates.append(edited)
                 if word_count(edited["text"]) <= ceiling:
-                    return CaptionResult(edited["text"], notice="Délka byla automaticky upravena." if stage=="shorten" else "Zakončení bylo automaticky doplněno.", history=history)
+                    return CaptionResult(edited["text"], notice="Length was adjusted automatically." if stage=="shorten" else "The ending was completed automatically.", history=history)
             elif edited["text"] and not candidates:
                 current = edited
         if candidates:
             best = min(candidates, key=lambda c:word_count(c["text"]))
-            return CaptionResult(best["text"], notice=f"Zachována celá odpověď ({word_count(best['text'])} slov; cíl přibližně {s.words}). Model ji dále nezkrátil.", history=history)
-        return CaptionResult(current["text"], needs_review=True, notice="Odpověď nemá jasné dokončení. Text zůstal zachovaný k úpravě; původní soubor jsme nepřepsali.", history=history)
+            return CaptionResult(best["text"], notice=f"Retained the complete response ({word_count(best['text'])} words; target about {s.words}). The model did not shorten it further.", history=history)
+        return CaptionResult(current["text"], needs_review=True, notice="The response has no clear ending. The text is retained for review; the original file was not overwritten.", history=history)

@@ -1,10 +1,10 @@
 @echo off
 cd /d "%~dp0"
 if not exist ".venv\Scripts\python.exe" (
-  echo Pripravuji samostatne prostredi Caption Studio...
+  echo Preparing the Caption Studio environment...
   py -3.11 -m venv .venv
   if errorlevel 1 (
-    echo Pro spusteni ze zdroju nainstalujte Python 3.11. Balicek EXE jej obsahuje.
+    echo Install Python 3.11 to run from source. The EXE package includes Python.
     pause
     exit /b 1
   )

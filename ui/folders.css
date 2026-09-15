@@ -30,7 +30,7 @@
 .folder-thumbnail img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .folder-thumbnail figcaption { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 11px; padding: 7px; }
 .preview-failed img { visibility: hidden; }
-.preview-failed::after { content: 'Náhled není dostupný'; position: absolute; inset: 0; display: grid; place-items: center; padding: 8px; text-align: center; font-size: 10px; color: var(--muted); }
+.preview-failed::after { content: attr(data-error-label); position: absolute; inset: 0; display: grid; place-items: center; padding: 8px; text-align: center; font-size: 10px; color: var(--muted); }
 #folder-dialog .dialog-footer { justify-content: space-between; }
 #folder-dialog .dialog-footer .check { margin-bottom: 0; }
 @media (max-height: 800px) { .folder-browser { height: 320px; } }

@@ -1,0 +1,27 @@
+{
+  "messages": {},
+  "grammar": {
+    "dangling_words": [
+      "a",
+      "an",
+      "the",
+      "and",
+      "or",
+      "with",
+      "in",
+      "on",
+      "of",
+      "to",
+      "for",
+      "is",
+      "are",
+      "wearing",
+      "her",
+      "his",
+      "its",
+      "while",
+      "which",
+      "that"
+    ]
+  }
+}

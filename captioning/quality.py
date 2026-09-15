@@ -1,5 +1,6 @@
 """Soft caption length and conservative completion checks, never text slicing."""
 import re
+from .i18n import dangling_words
 
 
 def word_count(text: str) -> int:
@@ -19,9 +20,8 @@ def unfinished(text: str, caption_format="description", finish_reason="") -> boo
     tail = text.rstrip('"”’»)]}')
     if tail.endswith((".", "!", "?", "。", "！", "？")) and not tail.endswith("..."):
         return False
-    last = re.sub(r"[^\wá-ž]", "", tail.split()[-1].lower())
-    dangling = {"a", "an", "the", "and", "or", "with", "in", "on", "of", "to", "for", "is", "are", "wearing",
-                "her", "his", "its", "while", "which", "that", "s", "se", "v", "ve", "na", "do", "je", "jsou", "má", "její", "jeho", "která", "který"}
+    last = re.sub(r"[^\w]", "", tail.split()[-1].lower())
+    dangling = dangling_words()
     return finish_reason.lower() in {"length", "max_tokens"} or last in dangling or word_count(text) >= 8
 
 

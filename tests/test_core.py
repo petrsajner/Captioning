@@ -28,14 +28,14 @@ def picture(path, color="red"):
 
 
 def test_unicode_sidecar_and_backup(tmp_path):
-    image = picture(tmp_path / "žluťoučký.01.png")
-    digest = write_caption(image, "  Červený obrázek  ", None, False)
+    image = picture(tmp_path / "\u65e5\u672c.01.png")
+    digest = write_caption(image, "  Red \u753b image  ", None, False)
     target = image.with_suffix(".txt")
-    assert target.read_bytes() == "Červený obrázek\n".encode()
-    write_caption(image, "Změněný popis", digest, True)
+    assert target.read_bytes() == "Red \u753b image\n".encode()
+    write_caption(image, "Updated caption", digest, True)
     backups = list((tmp_path / ".caption-backups").glob("*.bak"))
     assert len(backups) == 1
-    assert backups[0].read_bytes() == "Červený obrázek\n".encode()
+    assert backups[0].read_bytes() == "Red \u753b image\n".encode()
     assert not list(tmp_path.glob("*.tmp"))
 
 
@@ -46,9 +46,9 @@ def test_no_clobber_external_edit_and_empty(tmp_path):
     with pytest.raises(FileExistsError):
         write_caption(image, "new", old, False)
     image.with_suffix(".txt").write_text("External edit", encoding="utf-8")
-    with pytest.raises(ValueError, match="mezitím"):
+    with pytest.raises(ValueError, match="changed"):
         write_caption(image, "new", old, True)
-    with pytest.raises(ValueError, match="Prázdný"):
+    with pytest.raises(ValueError, match="empty"):
         write_caption(image, " ", old, True)
     assert image.with_suffix(".txt").read_text() == "External edit"
 
@@ -223,7 +223,7 @@ def test_download_bad_hash_and_zip_traversal(tmp_path, monkeypatch):
     runtime = Runtime(tmp_path)
     dest = tmp_path / "broken.bin"
     dest.write_bytes(b"bad")
-    with pytest.raises(ValueError, match="součet"):
+    with pytest.raises(ValueError, match="Checksum"):
         runtime.verify(dest, "a" * 64, 3)
     assert not dest.exists()
     archive = tmp_path / "bad.zip"
@@ -267,20 +267,20 @@ def test_external_change_during_inference_keeps_user_caption(tmp_path, monkeypat
 
 
 def test_folder_browser_shows_images_subfolders_and_pages(tmp_path):
-    folder = tmp_path / "výběr"
-    (folder / "podsložka").mkdir(parents=True)
+    folder = tmp_path / "selection"
+    (folder / "subfolder").mkdir(parents=True)
     for i in range(PAGE_SIZE + 1):
         picture(folder / f"foto-{i:03d}.PNG")
     (folder / "foto-000.txt").write_text("untouched")
     browser = FolderBrowser()
     first = browser.listing(str(folder))
     assert first["image_count"] == PAGE_SIZE + 1
-    assert first["folders"] == [{"name": "podsložka", "path": str(folder / "podsložka")}]
+    assert first["folders"] == [{"name": "subfolder", "path": str(folder / "subfolder")}]
     assert len(first["images"]) == PAGE_SIZE and first["pages"] == 2
     assert browser.image(first["images"][0]["id"]) == folder / "foto-000.PNG"
     second = browser.listing(str(folder), 1)
     assert [i["name"] for i in second["images"]] == [f"foto-{PAGE_SIZE:03d}.PNG"]
-    empty = browser.listing(str(folder / "podsložka"))
+    empty = browser.listing(str(folder / "subfolder"))
     assert empty["image_count"] == 0 and empty["parent"] == str(folder)
     assert (folder / "foto-000.txt").read_text() == "untouched"
     with pytest.raises(ValueError):
@@ -308,13 +308,13 @@ def test_folder_preview_api_does_not_import_until_confirmed(tmp_path):
 
 def test_folder_tree_is_one_level_and_breadcrumbs_reach_root(tmp_path):
     root = tmp_path / "kolekce"
-    first = root / "Sada A" / "Vybrané"
+    first = root / "Dataset A" / "Selected"
     first.mkdir(parents=True)
-    (root / "Sada B").mkdir()
+    (root / "Dataset B").mkdir()
     (root / "ignored.png").write_bytes(b"not an image; tree must not decode it")
     browser = FolderBrowser()
     tree = browser.children(str(root))
-    assert [f["name"] for f in tree["folders"]] == ["Sada A", "Sada B"]
+    assert [f["name"] for f in tree["folders"]] == ["Dataset A", "Dataset B"]
     assert browser.previews == {}
     listing = browser.listing(str(first))
     crumbs = listing["breadcrumbs"]

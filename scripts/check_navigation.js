@@ -33,7 +33,7 @@ async (page) => {
   await waitPath(fixture); report.push('clickable ancestor breadcrumb');
   await page.keyboard.press('Alt+ArrowLeft'); await waitPath(a);
   await page.keyboard.press('Alt+ArrowUp'); await waitPath(fixture); report.push('history and parent shortcuts');
-  await page.locator('#folder-roots').getByRole('button',{name:'Rozbalit Collection B',exact:true}).click();
+  await page.locator('#folder-roots').getByRole('button',{name:'Expand Collection B',exact:true}).click();
   await page.locator('#folder-roots').getByRole('button',{name:'Other Set',exact:true}).waitFor({state:'visible'});
   await page.locator('#folder-refresh').click(); await waitPath(fixture);
   if (await page.locator('#folder-roots').getByRole('button',{name:'Other Set',exact:true}).count() !== 1)
