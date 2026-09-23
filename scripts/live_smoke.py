@@ -1,15 +1,16 @@
 """Opt-in live model check against the two public test images, using installed app."""
 
 import json
-import os
 import time
 from pathlib import Path
 
 import httpx
 
+from captioning.service import data_directory
+
 workspace = Path(__file__).resolve().parents[1]
 dataset = workspace / "output" / "test-dataset"
-launch = json.loads((Path(os.environ["LOCALAPPDATA"]) / "CaptionStudio" / "launch.json").read_text())
+launch = json.loads((data_directory() / "launch.json").read_text())
 base = launch["url"].split("/?")[0]
 with httpx.Client(follow_redirects=True, trust_env=False, timeout=240) as client:
     client.get(launch["url"]).raise_for_status()

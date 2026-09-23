@@ -19,6 +19,8 @@ npm run --silent format:check
 if ($LASTEXITCODE -ne 0) { throw 'UI formatting check failed.' }
 npm test --silent
 if ($LASTEXITCODE -ne 0) { throw 'UI tests failed.' }
+npm run --silent test:ui
+if ($LASTEXITCODE -ne 0) { throw 'Browser UI suite failed.' }
 & $pythonPath 'scripts\licenses.py'
 if ($LASTEXITCODE -ne 0) { throw 'License collection failed.' }
 & $pythonPath -m PyInstaller --noconfirm --clean --windowed --onedir --name CaptionStudio --icon 'ui\caption-studio.ico' --add-data 'ui;ui' --collect-all webview --hidden-import uvicorn.logging --hidden-import uvicorn.loops.auto --hidden-import uvicorn.protocols.http.auto --hidden-import uvicorn.protocols.websockets.auto --hidden-import uvicorn.lifespan.on --exclude-module pydantic.mypy --exclude-module mypy app.py

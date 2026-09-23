@@ -9,3 +9,4 @@ output/
 tools/
 .playwright-cli/
 node_modules/
+test-results/

@@ -3,12 +3,12 @@
 import argparse
 import asyncio
 import json
-import os
 from pathlib import Path
 
 from captioning.models import Settings
 from captioning.provider import generate
 from captioning.quality import word_count
+from captioning.service import data_directory
 from captioning.storage import KeyStore
 
 
@@ -17,7 +17,7 @@ async def main():
     parser.add_argument("--live", action="store_true", required=True)
     parser.parse_args()
     workspace = Path(__file__).resolve().parents[1]
-    root = Path(os.environ["LOCALAPPDATA"]) / "CaptionStudio"
+    root = data_directory()
     previous = json.loads((root / "settings.json").read_text(encoding="utf-8"))
     s = Settings(
         mode="cloud",

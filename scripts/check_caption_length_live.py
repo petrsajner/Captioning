@@ -8,14 +8,13 @@ import argparse
 import asyncio
 import hashlib
 import json
-import os
 import shutil
 import sys
 from pathlib import Path
 
 from captioning.models import Settings
 from captioning.quality import word_ceiling, word_count
-from captioning.service import Studio
+from captioning.service import Studio, data_directory
 
 
 async def main():
@@ -23,17 +22,15 @@ async def main():
     parser.add_argument("folder", type=Path)
     parser.add_argument("--model", default="q5")
     parser.add_argument("--url", default="http://127.0.0.1:8080/v1")
-    parser.add_argument("--all", action="store_true")
+    parser.add_argument("--all", action="store_true", help="copy every image in the folder")
+    parser.add_argument("--names", nargs="+", help="image file names to copy; default: the first five")
     args = parser.parse_args()
     workspace = Path(__file__).resolve().parents[1]
     output = workspace / "output" / ("length-live-local-all" if args.all else "length-live-local")
     dataset = output / "dataset"
     dataset.mkdir(parents=True, exist_ok=True)
-    names = ["Young_1024_01.png", "Young_1024_07.png", "Young_1024_09.png", "Young_1024_13.png", "Young_1024_17.png"]
-    if args.all:
-        names = [
-            p.name for p in sorted(args.folder.iterdir()) if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
-        ]
+    images = [p.name for p in sorted(args.folder.iterdir()) if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}]
+    names = images if args.all else args.names or images[:5]
     originals = {}
     for name in names:
         image = args.folder / name
@@ -42,9 +39,7 @@ async def main():
         originals[str(txt)] = hashlib.sha256(txt.read_bytes()).hexdigest() if txt.exists() else None
         shutil.copy2(image, dataset / name)
     studio = Studio(output / "profile")
-    config = json.loads(
-        (Path(os.environ["LOCALAPPDATA"]) / "CaptionStudio" / "settings.json").read_text(encoding="utf-8")
-    )
+    config = json.loads((data_directory() / "settings.json").read_text(encoding="utf-8"))
     config.update(
         mode="local",
         local_source="external",

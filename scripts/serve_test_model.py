@@ -5,7 +5,6 @@ The fixed key is test-only and the server is bound to loopback. Ctrl+C shuts it 
 """
 
 import json
-import os
 import subprocess
 import time
 from pathlib import Path
@@ -13,9 +12,10 @@ from pathlib import Path
 import httpx
 
 from captioning.runtime import FILES, RELEASE
+from captioning.service import data_directory
 
 workspace = Path(__file__).resolve().parents[1]
-runtime = Path(os.environ["LOCALAPPDATA"]) / "CaptionStudio" / "runtime"
+runtime = data_directory() / "runtime"
 exe = next((runtime / f"llama-{RELEASE}-cuda").rglob("llama-server.exe"))
 logs = workspace / "output" / "external-server-test"
 logs.mkdir(parents=True, exist_ok=True)

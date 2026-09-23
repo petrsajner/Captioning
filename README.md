@@ -182,6 +182,7 @@ npm ci
 .venv/Scripts/python -m pytest -q
 npm run format:check
 npm test
+npm run test:ui
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1
 ```
 

@@ -126,14 +126,17 @@ does not implement training or the official trainer's metadata CSV export.
 
 ## Verification and release workflow
 
-Run the Python suite, `npm test`, and browser checks.
-`scripts/check_localization_ui.js` uses an isolated profile and the sibling directory
-`i18n-fixtures` containing `Waiting.png` and `second.png`. It exercises language
-switching, unsaved caption/key/connection preservation, checkbox-to-prompt behavior,
-folder thumbnails/navigation/errors, BRIA controls and persistence across reload.
+Run the Python suite, `npm test` and `npm run test:ui`. The UI suite (`tests/ui`, Playwright
+with the system Microsoft Edge) creates fixtures under the ignored `output/ui-tests/`
+(`scripts/prepare_ui_fixtures.py`), starts a stand-in model server and the app with a
+temporary profile on free ports, and removes everything afterwards. It covers language
+switching with drafts, detail choices and the prompt, folder navigation, BRIA JSON
+validation, batches with stop and skip, caption editing and history, and settings.
+Run other helper scripts from the repository root as `python -m scripts.<name>`; the
+live checks read the profile from `data_directory()` and honour `CAPTION_STUDIO_DATA_DIR`.
 
-Build with `scripts/build.ps1`; it runs ruff (lint and format check), mypy and pytest,
-gathers licenses of the bundled runtime packages, packages Python/UI with PyInstaller,
+Build with `scripts/build.ps1`; it runs ruff (lint and format check), mypy, pytest and the
+JavaScript and UI suites, gathers licenses of the bundled runtime packages, packages Python/UI with PyInstaller,
 compiles Inno Setup and writes the portable ZIP plus SHA-256 manifest.
 `scripts/smoke_package.py <exe>` runs a packaged executable in a fresh temporary
 profile, from outside the source tree, with a minimal PATH. It checks localization

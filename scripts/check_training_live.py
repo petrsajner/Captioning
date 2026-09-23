@@ -7,13 +7,12 @@ https://raw.githubusercontent.com/pytorch/hub/master/images/dog.jpg
 import argparse
 import asyncio
 import json
-import os
 import shutil
 from pathlib import Path
 
 from captioning.bria import validate_json
 from captioning.models import Settings
-from captioning.service import Studio
+from captioning.service import Studio, data_directory
 from captioning.storage import KeyStore
 
 
@@ -22,7 +21,7 @@ async def main():
     parser.add_argument("--live", action="store_true", required=True)
     parser.parse_args()
     workspace = Path(__file__).resolve().parents[1]
-    original = Path(os.environ["LOCALAPPDATA"]) / "CaptionStudio"
+    original = data_directory()
     config = json.loads((original / "settings.json").read_text(encoding="utf-8"))
     source = workspace / "output" / "test-dataset" / "dog.jpg"
     output = workspace / "output" / "training-live"
