@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
+import json
 from pathlib import Path
 import secrets
 import sys
 import uuid
 from typing import Literal
-from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
@@ -95,6 +95,11 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
     async def io_error(request, exc):
         return JSONResponse({"detail": "The file is unavailable or writing is not allowed: " + str(exc)}, status_code=400)
 
+    @app.exception_handler(Exception)
+    async def unexpected_error(request, exc):
+        # The server still logs the traceback; the UI must not report a stopped application.
+        return JSONResponse({"detail": "An unexpected error occurred. If it repeats, check app.log in the data folder."}, status_code=500)
+
     @app.get("/")
     async def index():
         return FileResponse(assets / "index.html")
@@ -156,7 +161,6 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
         process = await asyncio.create_subprocess_exec(*args, "--pick", kind, "--result", str(result), "--ui-language", studio.settings.ui_language)
         try:
             await process.wait()
-            import json
             return {"paths": json.loads(result.read_text(encoding="utf-8")) if result.exists() else []}
         finally:
             result.unlink(missing_ok=True)

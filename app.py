@@ -10,10 +10,27 @@ import socket
 import sys
 import threading
 import time
+import traceback
 import webbrowser
 
 
-def pick(kind, result, language="en"):
+def interface_language(root: Path) -> str:
+    """Best-effort language for native dialogs; never modifies saved files."""
+    try:
+        language = json.loads((root / "settings.json").read_text(encoding="utf-8")).get("ui_language")
+    except (OSError, ValueError, AttributeError):
+        return "en"
+    return language if language in ("en", "cs") else "en"
+
+
+def show_message(text: str, language: str, detail: str = "", error=False):
+    import ctypes
+    from captioning.i18n import translate
+    message = translate(text, language) + ("\n\n" + detail if detail else "")
+    ctypes.windll.user32.MessageBoxW(0, message, "Caption Studio", 0x10 if error else 0)
+
+
+def pick(result, language="en"):
     from captioning.i18n import translate
     def t(text): return translate(text, language)
     import tkinter as tk
@@ -39,7 +56,7 @@ def main():
     parser.add_argument("--ui-language", choices=["en", "cs"])
     args = parser.parse_args()
     if args.pick:
-        pick(args.pick, args.result, args.ui_language or "en")
+        pick(args.result, args.ui_language or "en")
         return
 
     from captioning.service import Studio, data_directory
@@ -61,11 +78,7 @@ def main():
             lock_file.seek(0)
             msvcrt.locking(lock_file.fileno(), msvcrt.LK_NBLCK, 1)
         except OSError:
-            import ctypes
-            from captioning.i18n import translate
-            from captioning.storage import read_json
-            language = read_json(root / "settings.json", {}).get("ui_language", "en")
-            ctypes.windll.user32.MessageBoxW(0, translate("Caption Studio is already running. Open the existing window.", language), "Caption Studio", 0)
+            show_message("Caption Studio is already running. Open the existing window.", interface_language(root))
             return
     if sys.stdout is None:
         sys.stdout = (root / "app.log").open("a", encoding="utf-8")
@@ -73,24 +86,36 @@ def main():
         sys.stderr = sys.stdout
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
-    listener = socket.socket()
-    listener.bind(("127.0.0.1", args.port))
-    port = listener.getsockname()[1]
-    token = secrets.token_urlsafe(32)
-    studio = Studio(root)
-    if args.ui_language:
-        studio.save_settings(studio.settings.model_copy(update={"ui_language": args.ui_language}))
-    assets = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)) / "ui"
-    api = make_app(studio, token, port, assets)
-    server = uvicorn.Server(uvicorn.Config(api, host="127.0.0.1", port=port, log_level="warning", access_log=False))
-    thread = threading.Thread(target=lambda: server.run(sockets=[listener]), daemon=True)
-    thread.start()
-    for _ in range(100):
-        if server.started:
-            break
-        if not thread.is_alive():
-            raise RuntimeError("The local application could not start.")
-        time.sleep(0.05)
+    listener = None
+    try:
+        studio = Studio(root)
+        if args.ui_language:
+            studio.save_settings(studio.settings.model_copy(update={"ui_language": args.ui_language}))
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", args.port))
+        port = listener.getsockname()[1]
+        token = secrets.token_urlsafe(32)
+        assets = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)) / "ui"
+        api = make_app(studio, token, port, assets)
+        server = uvicorn.Server(uvicorn.Config(api, host="127.0.0.1", port=port, log_level="warning", access_log=False))
+        thread = threading.Thread(target=lambda: server.run(sockets=[listener]), daemon=True)
+        thread.start()
+        for _ in range(100):
+            if server.started:
+                break
+            if not thread.is_alive():
+                raise RuntimeError("The local application could not start.")
+            time.sleep(0.05)
+    except Exception:
+        # A windowed build has no console; never fail without telling the user.
+        traceback.print_exc()
+        if listener is not None:
+            listener.close()
+        lock_file.close()
+        if not (args.browser or args.no_open):
+            show_message("Caption Studio could not start. Details were written to app.log in the data folder.",
+                         interface_language(root), str(root), error=True)
+        raise SystemExit(1)
     url = f"http://127.0.0.1:{port}/?token={token}"
     # Test/browser launch details stay local and are replaced on each launch.
     (root / "launch.json").write_text(json.dumps({"url": url, "pid": os.getpid()}), encoding="utf-8")

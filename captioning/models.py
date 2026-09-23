@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 from urllib.parse import urlsplit
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 from .training import Attribute, policy_prompt
 
 MANAGED_URL = "http://127.0.0.1:8091/v1"
@@ -49,9 +49,30 @@ class Settings(BaseModel):
             if value.get("composition") is False: learned.append("composition")
             value = {**value, "learn_attributes": learned}
         if isinstance(value, dict) and "local_source" not in value:
-            if value.get("local_url", MANAGED_URL).rstrip("/") != MANAGED_URL:
+            url = value.get("local_url", MANAGED_URL)
+            if isinstance(url, str) and url.rstrip("/") != MANAGED_URL:
                 value = {**value, "local_source": "external"}
         return value
+
+    @classmethod
+    def recover(cls, saved) -> tuple["Settings", bool]:
+        """Load saved settings, dropping only fields this version rejects.
+
+        Returns the settings and whether anything had to be discarded.
+        """
+        if not isinstance(saved, dict):
+            return cls(), True
+        data, damaged = dict(saved), False
+        while True:
+            try:
+                return cls(**data), damaged
+            except ValidationError as exc:
+                fields = {error["loc"][0] for error in exc.errors() if error["loc"]} & data.keys()
+                if not fields:
+                    return cls(), True
+                for field in fields:
+                    del data[field]
+                damaged = True
 
     @property
     def local_endpoint(self):

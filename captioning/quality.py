@@ -18,6 +18,8 @@ def unfinished(text: str, caption_format="description", finish_reason="") -> boo
     if caption_format == "tags":
         return finish_reason.lower() in {"length", "max_tokens"} and text.endswith((",", ";", ":", "-"))
     tail = text.rstrip('"”’»)]}')
+    if not tail:
+        return True  # Only closing quotes or brackets: no caption text.
     if tail.endswith((".", "!", "?", "。", "！", "？")) and not tail.endswith("..."):
         return False
     last = re.sub(r"[^\w]", "", tail.split()[-1].lower())

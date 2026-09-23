@@ -29,14 +29,23 @@ def save_json(path: Path, data) -> None:
     atomic_bytes(path, json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"))
 
 
-def read_json(path: Path, default):
+def preserve_damaged(path: Path) -> Path:
+    """Keep an unusable file for recovery; never silently overwrite it."""
+    target = path.with_name(path.name + ".damaged-" + uuid.uuid4().hex[:8])
+    path.rename(target)
+    return target
+
+
+def read_json(path: Path, default, recovered: list[str] | None = None):
+    """Return parsed JSON; an unreadable file is preserved and its new name reported."""
     if not path.exists():
         return default
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (ValueError, OSError):
-        # Preserve the damaged file for recovery; never silently overwrite it.
-        path.rename(path.with_name(path.name + ".damaged-" + uuid.uuid4().hex[:8]))
+        kept = preserve_damaged(path)
+        if recovered is not None:
+            recovered.append(kept.name)
         return default
 
 
@@ -131,9 +140,9 @@ def protect(data: bytes, decrypt=False) -> bytes:
 
 
 class KeyStore:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, recovered: list[str] | None = None):
         self.path = path
-        self.data = read_json(path, {})
+        self.data = read_json(path, {}, recovered)
 
     def has(self, endpoint: str) -> bool:
         return endpoint in self.data

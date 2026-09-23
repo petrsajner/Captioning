@@ -9,11 +9,23 @@ from pathlib import Path
 import httpx
 from PIL import Image, ImageOps
 from .models import Settings, make_prompt
-from .bria import normalize_json, CaptionValidationError, schema_prompt
+from .bria import normalize_json, schema_prompt
 from .quality import CaptionResult, ProviderUnavailableError, word_count, word_ceiling, unfinished
 from .training import policy_prompt
 
 EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
+INVALID_RESPONSE = "The API returned an invalid response format."
+
+
+def response_json(response: httpx.Response) -> dict:
+    """A compatible API always answers with a JSON object; anything else is a server fault."""
+    try:
+        body = response.json()
+    except ValueError:
+        body = None
+    if not isinstance(body, dict):
+        raise ValueError(INVALID_RESPONSE)
+    return body
 
 
 def image_bytes(path: Path, size: int, quality=92) -> bytes:
@@ -57,14 +69,14 @@ async def list_models(s: Settings, key: str = "") -> list[str]:
     try:
         async with httpx.AsyncClient(timeout=12, trust_env=False) as client:
             r = await client.get(base + "/models", headers=headers)
-            if r.is_error:
-                raise ValueError(f"The API returned HTTP {r.status_code}. Check the address and API key.")
-            data = r.json().get("data", [])
-            return sorted(str(m["id"]) for m in data if isinstance(m, dict) and m.get("id"))
-    except (httpx.HTTPError, ValueError) as exc:
-        if isinstance(exc, httpx.HTTPError):
-            raise ValueError("The API is unavailable. Start the local model or check the connection.") from None
-        raise
+    except httpx.HTTPError:
+        raise ValueError("The API is unavailable. Start the local model or check the connection.") from None
+    if r.is_error:
+        raise ValueError(f"The API returned HTTP {r.status_code}. Check the address and API key.")
+    data = response_json(r).get("data", [])
+    if not isinstance(data, list):
+        raise ValueError(INVALID_RESPONSE)
+    return sorted(str(m["id"]) for m in data if isinstance(m, dict) and m.get("id"))
 
 
 async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> str:
@@ -100,49 +112,51 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
         try:
             for attempt in range(3):
                 r = await client.post(base + "/chat/completions", json={**payload, "messages":messages}, headers=headers)
-                if r.status_code in (429, 502, 503, 504) and attempt < 2:
-                    await asyncio.sleep(2 ** (attempt + 1))
-                    continue
-                if r.is_error:
-                    emit({"kind":"request_error", "stage":stage, "http_status":r.status_code, "app_token_limit":None})
-                    hints = {401: "Invalid API key.", 402: "Insufficient credit.",
-                             403: "Access denied.", 404: "The model or API address does not exist.",
-                             400: "The model rejected the image request or its parameters.",
-                             429: "The request rate limit was reached."}
-                    error_type = ProviderUnavailableError if r.status_code in (401,402,403,404,429,500,502,503,504) else ValueError
-                    raise error_type(f"HTTP {r.status_code}: " + hints.get(r.status_code, "The model server is not ready. Try again."))
-                body = r.json()
-                if body.get("error"):
-                    raise ValueError("The provider returned a generation error. Check the model and account credit.")
-                choice = body["choices"][0]
-                msg = choice["message"]
-                if msg.get("refusal"):
-                    raise ValueError("The provider declined to caption this image.")
-                content = msg.get("content") or ""
-                if isinstance(content, list):
-                    content = "\n".join(part.get("text", "") for part in content if isinstance(part, dict) and part.get("type") in ("text", "output_text"))
-                if not isinstance(content, str):
-                    raise ValueError("The model did not return a text caption.")
-                finish = str(choice.get("finish_reason") or "").lower()
-                usage = body.get("usage") or {}
-                if not isinstance(usage, dict): usage = {}
-                details = usage.get("completion_tokens_details") or {}
-                if not isinstance(details, dict): details = {}
-                trace = {"kind":"response", "stage":stage, "finish_reason":finish,
-                         "completion_tokens":usage.get("completion_tokens"), "reasoning_tokens":details.get("reasoning_tokens"),
-                         "reasoning_present":bool(msg.get("reasoning_content") or msg.get("reasoning")),
-                         "app_token_limit":None, "output_format":s.output_format}
-                try:
-                    text = normalize_json(content, s) if s.output_format == "bria_json" else clean_caption(content, s.trigger)
-                    complete = s.output_format == "bria_json" or not unfinished(text, s.format, finish)
-                except ValueError:
-                    text = re.sub(r"<think>.*?(?:</think>|$)", "", content, flags=re.S).strip()
-                    complete = False
-                trace.update(text=text, word_count=word_count(text) if s.output_format=="normal" else None,
-                             complete=complete, blocked=finish in {"content_filter", "safety", "blocklist", "prohibited_content"})
-                history.append(trace)
-                emit(trace)
-                return trace
+                if r.status_code not in (429, 502, 503, 504) or attempt == 2:
+                    break
+                await asyncio.sleep(2 ** (attempt + 1))
+            if r.is_error:
+                emit({"kind":"request_error", "stage":stage, "http_status":r.status_code, "app_token_limit":None})
+                hints = {401: "Invalid API key.", 402: "Insufficient credit.",
+                         403: "Access denied.", 404: "The model or API address does not exist.",
+                         400: "The model rejected the image request or its parameters.",
+                         429: "The request rate limit was reached."}
+                error_type = ProviderUnavailableError if r.status_code in (401,402,403,404,429,500,502,503,504) else ValueError
+                raise error_type(f"HTTP {r.status_code}: " + hints.get(r.status_code, "The model server is not ready. Try again."))
+            body = response_json(r)
+            if body.get("error"):
+                raise ValueError("The provider returned a generation error. Check the model and account credit.")
+            choice = body["choices"][0]
+            msg = choice["message"]
+            if not isinstance(msg, dict):
+                raise ValueError(INVALID_RESPONSE)
+            if msg.get("refusal"):
+                raise ValueError("The provider declined to caption this image.")
+            content = msg.get("content") or ""
+            if isinstance(content, list):
+                content = "\n".join(part.get("text", "") for part in content if isinstance(part, dict) and part.get("type") in ("text", "output_text"))
+            if not isinstance(content, str):
+                raise ValueError("The model did not return a text caption.")
+            finish = str(choice.get("finish_reason") or "").lower()
+            usage = body.get("usage") or {}
+            if not isinstance(usage, dict): usage = {}
+            details = usage.get("completion_tokens_details") or {}
+            if not isinstance(details, dict): details = {}
+            trace = {"kind":"response", "stage":stage, "finish_reason":finish,
+                     "completion_tokens":usage.get("completion_tokens"), "reasoning_tokens":details.get("reasoning_tokens"),
+                     "reasoning_present":bool(msg.get("reasoning_content") or msg.get("reasoning")),
+                     "app_token_limit":None, "output_format":s.output_format}
+            try:
+                text = normalize_json(content, s) if s.output_format == "bria_json" else clean_caption(content, s.trigger)
+                complete = s.output_format == "bria_json" or not unfinished(text, s.format, finish)
+            except ValueError:
+                text = re.sub(r"<think>.*?(?:</think>|$)", "", content, flags=re.S).strip()
+                complete = False
+            trace.update(text=text, word_count=word_count(text) if s.output_format=="normal" else None,
+                         complete=complete, blocked=finish in {"content_filter", "safety", "blocklist", "prohibited_content"})
+            history.append(trace)
+            emit(trace)
+            return trace
         except httpx.TimeoutException:
             emit({"kind":"request_error", "stage":stage, "error_type":"timeout", "app_token_limit":None})
             raise ProviderUnavailableError("The model connection timed out. Try processing again.") from None
@@ -150,8 +164,7 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
             emit({"kind":"request_error", "stage":stage, "error_type":"connection", "app_token_limit":None})
             raise ProviderUnavailableError("The model server is unavailable. Check that it is running.") from None
         except (KeyError, IndexError, TypeError):
-            raise ValueError("The API returned an invalid response format.") from None
-        raise ValueError("Generation failed.")
+            raise ValueError(INVALID_RESPONSE) from None
 
     async with httpx.AsyncClient(timeout=httpx.Timeout(s.timeout, connect=15), trust_env=False) as client:
         if s.mode == "local" and s.local_source == "external":

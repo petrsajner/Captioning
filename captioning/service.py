@@ -4,7 +4,6 @@ import asyncio
 import json
 from datetime import datetime, timezone
 from collections import Counter
-import hashlib
 import os
 from pathlib import Path
 import time
@@ -12,12 +11,17 @@ import uuid
 
 from PIL import Image
 from . import __version__, provider
-from .models import Settings, MANAGED_URL
+from .models import Settings
 from .runtime import Runtime
-from .storage import KeyStore, fingerprint, read_json, save_json, write_caption, archive_sidecar
+from .storage import KeyStore, fingerprint, preserve_damaged, read_json, save_json, write_caption, archive_sidecar
 from .bria import normalize_json, CaptionValidationError
 from .training import ATTRIBUTES, training_plan
 from .quality import ProviderUnavailableError
+
+
+STATUSES = {"pending", "queued", "processing", "saved", "existing", "skipped", "draft", "review", "error", "invalid"}
+ROW_DEFAULTS = {"error": "", "notice": "", "width": 0, "height": 0, "exists": False, "seconds": None,
+                "fingerprint": None, "caption_format": "normal"}
 
 
 def data_directory() -> Path:
@@ -25,26 +29,52 @@ def data_directory() -> Path:
                 str(Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "CaptionStudio"))
 
 
+def valid_row(row) -> bool:
+    return (isinstance(row, dict) and row.get("status") in STATUSES
+            and all(isinstance(row.get(key), str) for key in ("id", "path", "name", "caption")))
+
+
 class Studio:
     def __init__(self, root: Path):
         self.root = root
         root.mkdir(parents=True, exist_ok=True)
-        self.settings = Settings(**read_json(root / "settings.json", {}))
-        self.keys = KeyStore(root / "keys.json")
+        # Unusable saved files are kept beside the originals under these names.
+        self.recovered: list[str] = []
+        self.settings = self._load_settings()
+        self.keys = KeyStore(root / "keys.json", self.recovered)
         self.runtime = Runtime(root)
-        self.rows: list[dict] = read_json(root / "session.json", [])
-        for row in self.rows:
-            row.setdefault("caption_format", "normal")
-            if "fingerprints" not in row:
-                try:
-                    row["fingerprints"] = {".txt":row.get("fingerprint"), ".json":fingerprint(Path(row["path"]).with_suffix(".json"))}
-                except (ValueError, OSError):
-                    row["fingerprints"] = {".txt":row.get("fingerprint"), ".json":None}
-            if row["status"] in ("processing", "queued"):
-                row.update(status="pending", error="The previous run was interrupted. You can continue.")
+        self.rows: list[dict] = self._load_rows()
         self.job = {"running": False, "total": 0, "completed": 0, "saved": 0, "errors": 0, "review": 0, "skipped": 0, "message": "Ready"}
         self.task: asyncio.Task | None = None
         self.importing = False
+
+    def _load_settings(self) -> Settings:
+        path = self.root / "settings.json"
+        settings, damaged = Settings.recover(read_json(path, {}, self.recovered))
+        if damaged:
+            # Keep the original and continue with every value this version still accepts.
+            self.recovered.append(preserve_damaged(path).name)
+            save_json(path, settings.model_dump())
+        return settings
+
+    def _load_rows(self) -> list[dict]:
+        path = self.root / "session.json"
+        saved = read_json(path, [], self.recovered)
+        rows = [row for row in saved if valid_row(row)] if isinstance(saved, list) else []
+        for row in rows:
+            for key, value in ROW_DEFAULTS.items():
+                row.setdefault(key, value)
+            if not isinstance(row.get("fingerprints"), dict):
+                try:
+                    row["fingerprints"] = {".txt":row["fingerprint"], ".json":fingerprint(Path(row["path"]).with_suffix(".json"))}
+                except (ValueError, OSError):
+                    row["fingerprints"] = {".txt":row["fingerprint"], ".json":None}
+            if row["status"] in ("processing", "queued"):
+                row.update(status="pending", error="The previous run was interrupted. You can continue.")
+        if path.exists() and (not isinstance(saved, list) or len(rows) != len(saved)):
+            self.recovered.append(preserve_damaged(path).name)
+            save_json(path, rows)
+        return rows
 
     def idle(self):
         if self.job["running"] or self.importing:
@@ -78,7 +108,7 @@ class Studio:
                 "has_local_key": self.keys.has("local:" + self.settings.local_url),
                 "rows": self.rows, "job": self.job, "importing": self.importing,
                 "runtime": self.runtime.snapshot(self.settings.model_profile, self.settings.backend),
-                "data_dir": str(self.root)}
+                "data_dir": str(self.root), "recovered": self.recovered}
 
     def local_key(self, settings: Settings):
         if settings.local_source == "managed":

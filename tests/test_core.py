@@ -229,7 +229,7 @@ def test_download_bad_hash_and_zip_traversal(tmp_path, monkeypatch):
     archive = tmp_path / "bad.zip"
     with zipfile.ZipFile(archive, "w") as z:
         z.writestr("../escaped.txt", "no")
-    with pytest.raises(ValueError, match="cestu"):
+    with pytest.raises(ValueError, match="invalid path"):
         safe_extract(archive, tmp_path / "target")
     assert not (tmp_path / "escaped.txt").exists()
 

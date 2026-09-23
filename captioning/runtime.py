@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import json
 import os
 import secrets
 from pathlib import Path
@@ -11,7 +10,6 @@ import shutil
 import socket
 import subprocess
 import threading
-import time
 import zipfile
 
 import httpx
@@ -46,7 +44,7 @@ def safe_extract(archive: Path, destination: Path):
         for info in z.infolist():
             path = (destination / info.filename).resolve()
             if not path.is_relative_to(root) or (info.external_attr >> 16) & 0o170000 == 0o120000:
-                raise ValueError("Archiv obsahuje neplatnou cestu.")
+                raise ValueError("The archive contains an invalid path.")
         z.extractall(destination)
 
 
@@ -139,6 +137,11 @@ class Runtime:
                         for k in (profile, "vision")))
 
     def snapshot(self, profile: str, backend: str):
+        code = self.process.poll() if self.process else None
+        if code is not None and self.state["status"] == "running":
+            # The owned server exited by itself, for example after running out of GPU memory.
+            self.state.update(status="error", message=f"The local model stopped unexpectedly (exit code {code}). "
+                                                      "Check runtime/model.log, the GPU driver and available memory.")
         return {**self.state, "installing": self.installing, "ready": self.ready(profile, backend),
                 "running": self.process is not None and self.process.poll() is None,
                 "root": str(self.root), "profile": self.process_profile}

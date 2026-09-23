@@ -186,9 +186,9 @@ async function doImport(paths=[],folder='') {
     page=0;toast(t("Loaded {v0} images.", {v0:(state.rows.length)}));return true;
   }finally{busy=false;render();}
 }
-async function pickImages(kind){if(hasBusy())return;const result=await api('/pick/'+kind,{});if(result.paths.length)await doImport(kind==='files'?result.paths:[],kind==='folder'?result.paths[0]:'');}
+async function pickFiles(){if(hasBusy())return;const result=await api('/pick/files',{});if(result.paths.length)await doImport(result.paths);}
 $('pick-folder').onclick=()=>{if(!hasBusy())folderPicker.open();};
-$('pick-files').onclick=()=>action(()=>pickImages('files'));
+$('pick-files').onclick=()=>action(pickFiles);
 $('open-path').onclick=()=>$('path-dialog').showModal();
 $('import-path').onclick=()=>action(async()=>{await doImport([],$('folder-path').value.trim());$('path-dialog').close();});
 $('folder-path').addEventListener('keydown',e=>{if(e.key==='Enter')$('import-path').click();});
@@ -306,7 +306,7 @@ $('local-server-results').onclick=e=>{
   if(!server.managed){settingsForm.elements.local_url.value=server.url;settingsForm.elements.local_model.value=server.models[0]||'';}
   clearLocalKeyInput();fillLocalModels(server.models);showLocalSource();
   $('local-model-status').textContent=server.status==='requires_key'?t('The server requires a key. Enter it and click Load models. Compatibility has not been verified yet.'):server.models.length?t('Select an image-capable model. Its presence in this list does not guarantee image support.'):t('The server responds but offers no models. Load a model in its original application and refresh the list.');
-  $('local-discovery-message').textContent=t('Selected ')+server.url+t('. Confirm with Save and continue.');
+  $('local-discovery-message').textContent=t('Selected {url}. Confirm with Save and continue.',{url:server.url});
   if(server.status==='requires_key')$('local-api-key').focus();
 };
 $('load-local-models').onclick=async()=>{
@@ -346,6 +346,7 @@ $('apply-training-preset').onclick=()=>{
     await i18n.ready;state=await api('/state');i18n.setLanguage(state.settings.ui_language);fillTrainingControls(state.settings);fillForm(recipe,state.settings);$('word-output').value=state.settings.words;
     selected=new Set(state.rows.map(r=>r.id));active=state.rows[0]?.id||null;render();
     if(!state.settings.setup_complete)openSettings();
+    if(state.recovered.length){const note=t('Some saved data could not be used and was reset. The original file was kept as: {names}',{names:state.recovered.join(', ')});toast(note,true);if($('settings-dialog').open)$('settings-message').textContent=note;}
     setInterval(()=>refresh().catch(()=>{$('job-title').textContent=t('Connection to the application was lost');}),1200);
   }catch(e){toast(e.message,true);}
 })();
