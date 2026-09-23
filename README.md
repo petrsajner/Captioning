@@ -1,4 +1,4 @@
-# Caption Studio 0.1.9
+# Caption Studio
 
 A standalone Windows application for preparing image captions for LoRA training.
 Set a shared recipe, select images or a folder, and save matching UTF-8 captions
@@ -6,7 +6,7 @@ beside the originals: `image.txt` or `image.json`.
 
 ## Install
 
-1. Run `Caption-Studio-Setup-0.1.9-Windows-x64.exe`. Installation is per user and
+1. Run `Caption-Studio-Setup-<version>-Windows-x64.exe`. Installation is per user and
    does not require administrator access, Python, Node.js or another AI application.
 2. Launch **Caption Studio** from the Start menu or desktop shortcut.
 3. Choose **Local** or **Cloud API** in Setup and save your settings.

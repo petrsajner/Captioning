@@ -20,6 +20,8 @@ from .runtime import Runtime
 from .storage import KeyStore, archive_sidecar, fingerprint, preserve_damaged, read_json, save_json, write_caption
 from .training import ATTRIBUTES, training_plan
 
+MAX_IMAGES = 20000
+MAX_KEY_LENGTH = 8192
 STATUSES = {"pending", "queued", "processing", "saved", "existing", "skipped", "draft", "review", "error", "invalid"}
 ROW_DEFAULTS = {
     "error": "",
@@ -127,7 +129,7 @@ class Studio:
         self.idle()
         if self.runtime.installing or self.runtime.state["status"] == "loading":
             raise ValueError("Wait for model setup to finish.")
-        if (api_key and len(api_key) > 8192) or (local_api_key and len(local_api_key) > 8192):
+        if len(api_key or "") > MAX_KEY_LENGTH or len(local_api_key or "") > MAX_KEY_LENGTH:
             raise ValueError("The API key is too long.")
         if clear_key:
             self.keys.set(settings.cloud_url, "")
@@ -195,8 +197,8 @@ class Studio:
         }
         if not unique:
             raise ValueError("The selection contains no supported images.")
-        if len(unique) > 20000:
-            raise ValueError("Open no more than 20,000 images in one dataset.")
+        if len(unique) > MAX_IMAGES:
+            raise ValueError(f"Open no more than {MAX_IMAGES} images in one dataset.")
         rows = list(self.rows) if append else []
         known = {r["path"].casefold() for r in rows}
         # Index each directory once; thousands of images must not trigger an O(n²) scan.

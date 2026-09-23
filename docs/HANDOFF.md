@@ -141,8 +141,8 @@ copied/public fixtures. Preserve existing installation settings, keys and sessio
 when updating. Close only Caption Studio processes owned by this test or the user-
 authorized installation workflow; do not terminate external models.
 
-Build artifacts and logs are ignored in `dist/` and `output/`. Update the version in
-`captioning/__init__.py`, `installer/caption-studio.iss` and `scripts/build.ps1` together.
+Build artifacts and logs are ignored in `dist/` and `output/`. The version is defined only in
+`captioning/__init__.py`; `scripts/build.ps1` passes it to Inno Setup and names the artifacts.
 Repository: `main`, `https://github.com/petrsajner/Captioning.git` (private).
 
 ## Earlier validation and remaining scope

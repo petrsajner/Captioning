@@ -1,4 +1,6 @@
-#define AppVersion "0.1.9"
+#ifndef AppVersion
+  #error Build with scripts\build.ps1; it passes /DAppVersion from captioning/__init__.py.
+#endif
 [Setup]
 AppId={{3893EE78-D939-4A0B-97C2-131E58B3B430}
 AppName=Caption Studio

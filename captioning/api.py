@@ -18,12 +18,12 @@ from .discovery import CANDIDATES, discover
 from .folders import FolderBrowser
 from .models import MANAGED_URL, Settings, make_prompt
 from .provider import image_bytes, list_models
-from .service import Studio
+from .service import MAX_IMAGES, MAX_KEY_LENGTH, Studio
 from .training import training_plan
 
 
 class ImportRequest(BaseModel):
-    paths: list[str] = Field(default_factory=list, max_length=20000)
+    paths: list[str] = Field(default_factory=list, max_length=MAX_IMAGES)
     folder: str = ""
     recursive: bool = False
     append: bool = False
@@ -31,9 +31,9 @@ class ImportRequest(BaseModel):
 
 class SettingsRequest(BaseModel):
     settings: Settings
-    api_key: str | None = None
+    api_key: str | None = Field(None, max_length=MAX_KEY_LENGTH)
     clear_key: bool = False
-    local_api_key: str | None = Field(None, max_length=8192)
+    local_api_key: str | None = Field(None, max_length=MAX_KEY_LENGTH)
     clear_local_key: bool = False
 
 
@@ -46,7 +46,7 @@ class DiscoveryRequest(BaseModel):
 
 
 class JobRequest(BaseModel):
-    ids: list[str] = Field(max_length=20000)
+    ids: list[str] = Field(max_length=MAX_IMAGES)
     regenerate: bool = False
 
 

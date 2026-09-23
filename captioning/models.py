@@ -7,7 +7,8 @@ from pydantic import BaseModel, Field, ValidationError, field_validator, model_v
 
 from .training import Attribute, policy_prompt
 
-MANAGED_URL = "http://127.0.0.1:8091/v1"
+MANAGED_PORT = 8091
+MANAGED_URL = f"http://127.0.0.1:{MANAGED_PORT}/v1"
 MANAGED_MODEL = "caption-qwen"
 
 
@@ -15,8 +16,8 @@ class Settings(BaseModel):
     ui_language: Literal["en", "cs"] = "en"
     mode: Literal["local", "cloud"] = "local"
     local_source: Literal["managed", "external"] = "managed"
-    local_url: str = "http://127.0.0.1:8091/v1"
-    local_model: str = "caption-qwen"
+    local_url: str = MANAGED_URL
+    local_model: str = MANAGED_MODEL
     cloud_url: str = "https://openrouter.ai/api/v1"
     cloud_model: str = ""
     model_profile: Literal["q3", "q4", "q5"] = "q4"

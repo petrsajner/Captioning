@@ -15,6 +15,7 @@ from pathlib import Path
 
 import httpx
 
+from .models import MANAGED_MODEL, MANAGED_PORT
 from .storage import read_json, save_json
 
 REPO = "unsloth/Qwen3.8-27B-GGUF"
@@ -269,10 +270,10 @@ class Runtime:
                 raise ValueError("Download the selected local model in Settings first.")
             with socket.socket() as sock:
                 try:
-                    sock.bind(("127.0.0.1", 8091))
+                    sock.bind(("127.0.0.1", MANAGED_PORT))
                 except OSError:
                     raise ValueError(
-                        "Port 8091 is in use. The other process was not stopped; check other running instances."
+                        f"Port {MANAGED_PORT} is in use. The other process was not stopped; check other running instances."
                     ) from None
             exe = next(self.runtime_dir(backend).rglob("llama-server.exe"))
             args = [
@@ -284,9 +285,9 @@ class Runtime:
                 "--host",
                 "127.0.0.1",
                 "--port",
-                "8091",
+                str(MANAGED_PORT),
                 "--alias",
-                "caption-qwen",
+                MANAGED_MODEL,
                 "--api-key",
                 self.api_key,
                 "--image-min-tokens",
@@ -327,7 +328,7 @@ class Runtime:
                                 "The model did not start. Check runtime/model.log, the GPU driver and available memory."
                             )
                         try:
-                            r = await client.get("http://127.0.0.1:8091/health")
+                            r = await client.get(f"http://127.0.0.1:{MANAGED_PORT}/health")
                             if r.status_code == 200:
                                 self.state.update(status="running", message="The local model is running.")
                                 return
