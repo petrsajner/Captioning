@@ -1,4 +1,4 @@
-#define AppVersion "0.1.8"
+#define AppVersion "0.1.9"
 [Setup]
 AppId={{3893EE78-D939-4A0B-97C2-131E58B3B430}
 AppName=Caption Studio

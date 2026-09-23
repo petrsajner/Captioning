@@ -1,28 +1,50 @@
 # Caption Studio development handoff
 
-## Current release: 0.1.8 (2026-09-15)
+## Current release: 0.1.9 (2026-09-23)
+
+Maintenance release from the 0.1.8 code review. Model requests, caption policy,
+prompts and saved recipes are unchanged.
+
+- Startup recovery: `Settings.recover` drops only the fields this version rejects;
+  session rows with an unknown status or missing id/path/name/caption are dropped.
+  The original file is kept as `<name>.damaged-<id>` and reported once in the UI
+  (`recovered` in `/api/state`). A remaining startup failure shows a native message
+  pointing to `app.log` instead of exiting silently.
+- Provider responses that are not JSON objects report an invalid response format.
+  Unexpected API errors return JSON 500, so the UI no longer claims the app stopped.
+- A managed llama-server that exits on its own is reported with its exit code.
+- `unfinished()` no longer crashes on text made only of closing quotes or brackets.
+- Localization: added the missing processing labels and removed 43 obsolete
+  fragment keys. Tests now require a Czech entry for every UI message ID and every
+  backend diagnostic. Keep `Generation failed.` and ` · {v0} drafts to review`:
+  older sessions may still contain their Czech text.
+
+Verified with 80 Python tests, the JavaScript localization test and a browser check
+on an isolated profile: recovered-settings notice in Czech, local-server selection
+message in both languages and processing labels.
+
+## Previous release: 0.1.8 (2026-09-15)
 
 Added an explicit ON/OFF legend beside caption detail choices, with live ON/OFF
 labels on each checkbox. ON means free future change; OFF means fixed in LoRA.
-The Czech locale includes the same legend. The persistent application header now
-displays copyright Petr Sajner 2026. Caption policy and saved recipes are unchanged.
+The persistent application header displays copyright Petr Sajner 2026.
+Build and installation logs are in `output/*0.1.8*`.
 
-Verified the live ON/OFF labels and legend in both languages, plus the header
-copyright. All 63 Python tests and the installed clean-profile package check passed.
-Installer exit code 0; settings, keys and session hashes were preserved. Build and
-installation logs are in `output/*0.1.8*`; UI captures are `output/playwright/legend-*.png`.
+## Standing interface decisions
 
-## Previous release: 0.1.7 (2026-09-15)
-
-The interface now asks users to choose which details to include in captions.
-Checked means describe; unchecked means omit. The previous two-way learning controls
-and dataset-dependence caveat were removed at the user's request. Keep this copy
-direct and task-oriented. Do not reintroduce the caveat in help text.
+Users choose which details to include in captions: checked means describe,
+unchecked means omit. The earlier two-way learning controls and dataset-dependence
+caveat were removed at the user's request (0.1.7). Keep this copy direct and
+task-oriented. Do not reintroduce the caveat in help text.
 
 English is the default interface language. Setup can switch immediately to Czech.
 Caption language remains separate and unchanged. Implementation, diagnostics and
 public documentation are English; Czech translations and lexical data live only
 in locale resources. Historical release notes remain available in Git history.
+
+Real datasets are typically up to about 100 images. The 20,000-image import limit
+is a guard, not a performance target; full-state polling and whole-file session
+writes are deliberate simplifications at that scale.
 
 ## Architecture and boundaries
 

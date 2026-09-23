@@ -16,5 +16,5 @@ if (-not $isccPath) { throw 'Building the installer requires Inno Setup 6.' }
 & $isccPath 'installer\caption-studio.iss'
 if ($LASTEXITCODE -ne 0) { throw 'Installer build failed.' }
 Copy-Item -LiteralPath 'README.md','THIRD_PARTY.md' -Destination 'dist\CaptionStudio'
-Compress-Archive -LiteralPath 'dist\CaptionStudio' -DestinationPath 'dist\Caption-Studio-0.1.8-Windows-x64-Portable.zip' -Force
-Get-FileHash -Algorithm SHA256 -LiteralPath 'dist\Caption-Studio-Setup-0.1.8-Windows-x64.exe','dist\Caption-Studio-0.1.8-Windows-x64-Portable.zip' | ForEach-Object { '{0}  {1}' -f $_.Hash.ToLowerInvariant(), (Split-Path -Leaf $_.Path) } | Set-Content -Encoding utf8 'dist\SHA256SUMS.txt'
+Compress-Archive -LiteralPath 'dist\CaptionStudio' -DestinationPath 'dist\Caption-Studio-0.1.9-Windows-x64-Portable.zip' -Force
+Get-FileHash -Algorithm SHA256 -LiteralPath 'dist\Caption-Studio-Setup-0.1.9-Windows-x64.exe','dist\Caption-Studio-0.1.9-Windows-x64-Portable.zip' | ForEach-Object { '{0}  {1}' -f $_.Hash.ToLowerInvariant(), (Split-Path -Leaf $_.Path) } | Set-Content -Encoding utf8 'dist\SHA256SUMS.txt'
