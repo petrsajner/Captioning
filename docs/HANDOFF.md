@@ -1,36 +1,31 @@
 # Caption Studio development handoff
 
-## Current release: 0.1.11 (2026-09-23)
+## Current release: 0.1.12 (2026-09-23)
 
-Frontend cleanup from the 0.1.8 code review (phase 4). The interface looks and behaves
-as in 0.1.10; the backend only registers JavaScript/CSS MIME types.
+Tests and QA from the 0.1.8 code review (phase 5).
 
-- Prettier 3.9.9 formats the UI (`package.json`, dev only); `npm run format:check` and
-  `npm test` run in `build.ps1`. `style.css` was committed minified and is now readable.
-- One stylesheet replaces four. Rules that `training.css` re-declared are folded into
-  their base rules; a `.workspace` column rule for 1600 px+ that it silently overrode is
-  removed. `index.html` no longer closes SVG shapes twice.
-- `app.js` is split into ES modules without globals (see Architecture). Modules need a
-  JavaScript MIME type, so the server no longer relies on the Windows registry for it.
-- Diagnostics still use English text as message IDs with template matching in the UI.
-  Replacing them with message codes was considered and not done: it would change the
-  session.json format and every message site, and the locale tests already require a
-  Czech entry for each UI and backend message.
+- `tests/test_runtime.py` covers the managed runtime: install (download, verification,
+  extraction, resume after cancel, disk/HTTP/archive/checksum failures), start (arguments,
+  one owned process, profile conflicts, exit or timeout while loading, busy port), stop,
+  and the runtime endpoints' guards. A stand-in process is used; llama-server never runs.
+- `npm run test:ui` is an automated Playwright suite replacing the hand-run snippets that
+  hardcoded developer paths (see Verification). `build.ps1` runs it.
+- A caption file that is not UTF-8 (for example cp1250 from older tools) now shows a
+  clear message; it is still never overwritten.
+- Live helper scripts use `data_directory()` and accept `--names` instead of fixed files.
 
-Verified: computed style, geometry and text of every element are identical to 0.1.10
-in five UI states at 880, 1100, 1480 and 1700 px; browser flows with a stand-in model
-cover selection, filters, batches, stop, caption editing and history, recipe autosave,
-prompt preview, presets, settings discovery, language switching and imports.
+Application files are located relative to the program (`_MEIPASS`/`__file__`); user data
+lives in `%LOCALAPPDATA%\CaptionStudio` unless `CAPTION_STUDIO_DATA_DIR` is set. The build
+was checked from its output folder and from a copy in a folder with spaces and diacritics.
 
-## Previous release: 0.1.10 (2026-09-23)
+## Previous release: 0.1.11 (2026-09-23)
 
-Backend cleanup (phase 3): ruff/mypy tooling and split runtime/dev pins; the version
-lives only in `captioning/__init__.py`; `learn_attributes` became `omitted_attributes`
-(migrated on load); `UserError`/`ProviderUnavailableError` replaced `ValueError`, and an
-outage while completing a caption or repairing JSON pauses the batch; `generate()` was
-split into `CaptionSession`; rows, jobs and runtime state are typed. Model requests are
-byte-identical to 0.1.9. Keep `Generation failed.` and ` · {v0} drafts to review` in the
-locale: sessions from 0.1.8 and earlier may contain their Czech text.
+Frontend cleanup (phase 4): Prettier-formatted UI, one stylesheet with folded override
+rules, ES modules without globals and explicit JavaScript/CSS MIME types. Computed style,
+geometry and text were identical to 0.1.10 in five UI states at four widths. English text
+stays the message ID for diagnostics; message codes were considered and not adopted
+because they would change session.json and every message site. Keep `Generation failed.`
+and ` · {v0} drafts to review` in the locale for sessions from 0.1.8 and earlier.
 
 ## Standing interface decisions
 
