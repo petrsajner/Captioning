@@ -170,15 +170,18 @@ Use Python 3.11 x64 and `run.bat` to create the project environment and run from
 source. `run.bat` installs the validated runtime pins from `requirements-lock.txt`
 and reinstalls them when that file changes; `requirements.txt` lists only the direct
 dependencies. Tests, linting, type checking and packaging tools are pinned in
-`requirements-dev.txt`. Tool settings live in `pyproject.toml`.
+`requirements-dev.txt`. Tool settings live in `pyproject.toml`. UI formatting uses Prettier,
+pinned in `package.json`; Node.js is needed only for development, not by the application.
 
 ```powershell
 .venv/Scripts/python -m pip install -r requirements-dev.txt
+npm ci
 .venv/Scripts/python -m ruff check .
 .venv/Scripts/python -m ruff format --check .
 .venv/Scripts/python -m mypy
 .venv/Scripts/python -m pytest -q
-node --test tests/localization.test.cjs
+npm run format:check
+npm test
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1
 ```
 

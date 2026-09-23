@@ -1,0 +1,11 @@
+.venv/
+build/
+dist/
+output/
+node_modules/
+package-lock.json
+# Written by Python tooling with json.dumps(indent=2).
+ui/locales/
+# Playwright run-code snippets are a bare function expression, not a module.
+scripts/*.js
+*.md

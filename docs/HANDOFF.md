@@ -123,7 +123,7 @@ does not implement training or the official trainer's metadata CSV export.
 
 ## Verification and release workflow
 
-Run the Python suite, `node --test tests/localization.test.cjs`, and browser checks.
+Run the Python suite, `npm test`, and browser checks.
 `scripts/check_localization_ui.js` uses an isolated profile and the sibling directory
 `i18n-fixtures` containing `Waiting.png` and `second.png`. It exercises language
 switching, unsaved caption/key/connection preservation, checkbox-to-prompt behavior,

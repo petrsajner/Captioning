@@ -1,82 +1,700 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Caption Studio</title><link rel="icon" type="image/png" href="/assets/brand-icon.png"><link rel="stylesheet" href="/assets/style.css"><link rel="stylesheet" href="/assets/folders.css"><link rel="stylesheet" href="/assets/connections.css"><link rel="stylesheet" href="/assets/training.css"></head>
-<body>
-<header class="topbar">
-  <div class="brand"><span class="brand-icon">C<span>·</span></span><div>Caption Studio <span id="app-version" class="app-version" aria-label="Application version" data-i18n-aria-label="Application version">…</span><small>DATASET WORKSPACE</small><small class="copyright">© Petr Sajner 2026</small></div></div>
-  <div class="top-right"><span class="private-label"><span data-i18n="Your images, your control">Your images, your control</span></span><button id="model-chip" class="chip"><i></i><span><span data-i18n="Local model">Local model</span></span></button><button id="open-settings" class="icon-button" title="Model and API settings" data-i18n-title="Model and API settings">⚙</button></div>
-</header>
-<main class="workspace">
-  <aside class="recipe panel">
-    <div class="eyebrow"><span data-i18n="01 / DATASET RECIPE">01 / DATASET RECIPE</span></div><h2><span data-i18n="One recipe.">One recipe.</span><br><span data-i18n="The whole dataset.">The whole dataset.</span></h2><p class="muted intro"><span data-i18n="Shared instructions for all selected images.">Shared instructions for all selected images.</span></p>
-    <form id="recipe-form">
-      <label><span data-i18n="What are you training?">What are you training?</span><select name="preset"><option value="general" data-i18n="General dataset">General dataset</option><option value="character" data-i18n="Character / person">Character / person</option><option value="object" data-i18n="Object / product">Object / product</option><option value="style" data-i18n="Visual style">Visual style</option></select></label>
-      <label><span data-i18n="Caption output">Caption output</span><select name="output_format"><option value="normal" data-i18n="Normal · .txt">Normal · .txt</option><option value="bria_json" data-i18n="BRIA JSON (FIBO) · .json">BRIA JSON (FIBO) · .json</option></select></label>
-      <label><span data-i18n="Trigger word">Trigger word</span><input name="trigger" placeholder="e.g. ohwx person" maxlength="100" data-i18n-placeholder="e.g. ohwx person"><small id="trigger-note"><span data-i18n="Added exactly at the start of each caption.">Added exactly at the start of each caption.</span></small></label>
-      <label><span data-i18n="Main subject name">Main subject name</span><input name="subject" placeholder="Optional name or identifier" maxlength="100" data-i18n-placeholder="Optional name or identifier"></label>
-      <div class="form-row"><label><span data-i18n="Format">Format</span><select name="format"><option value="description" data-i18n="Description">Description</option><option value="tags" data-i18n="Tags">Tags</option></select></label><label><span data-i18n="Caption language">Caption language</span><select name="language"><option value="English" data-i18n="English">English</option><option value="Czech" data-i18n="Czech">Czech</option></select></label></div>
-      <label class="range-label"><span data-i18n="Target length">Target length</span> <span><output id="word-output">100</output> <span data-i18n="words">words</span></span><input name="words" type="range" min="20" max="300" step="10"></label>
-      <p id="json-format-note" class="tiny muted" hidden><span data-i18n="FIBO JSON uses a fixed structure instead of tags or a word target. Responses are not capped; incomplete JSON is repaired automatically when possible.">FIBO JSON uses a fixed structure instead of tags or a word target. Responses are not capped; incomplete JSON is repaired automatically when possible.</span></p>
-      <p id="length-policy-note" class="tiny muted"><span data-i18n="The word count is a soft target. Captions up to 120% are kept; longer text is shortened by the model. Text is never mechanically truncated.">The word count is a soft target. Captions up to 120% are kept; longer text is shortened by the model. Text is never mechanically truncated.</span></p><div class="rule"></div><div class="label-heading"><span data-i18n="Choose what to include in the caption">Choose what to include in the caption</span></div>
-      <div class="training-explanation"><p><span data-i18n="Include details you want to change with prompts. Leave out details you want the LoRA to capture.">Include details you want to change with prompts. Leave out details you want the LoRA to capture.</span></p></div>
-      <div class="training-legend"><p data-i18n="ON = free future change">ON = free future change</p><p data-i18n="OFF = fixed in LoRA">OFF = fixed in LoRA</p></div>
-      <div id="training-plan" class="training-plan" aria-live="polite"></div>
-      <button type="button" id="apply-training-preset" class="text-button"><span data-i18n="Apply defaults for this LoRA type">Apply defaults for this LoRA type</span></button>
-      <div id="training-controls"></div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Caption Studio</title>
+    <link rel="icon" type="image/png" href="/assets/brand-icon.png" />
+    <link rel="stylesheet" href="/assets/style.css" />
+    <link rel="stylesheet" href="/assets/folders.css" />
+    <link rel="stylesheet" href="/assets/connections.css" />
+    <link rel="stylesheet" href="/assets/training.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-icon">C<span>·</span></span>
+        <div>
+          Caption Studio
+          <span
+            id="app-version"
+            class="app-version"
+            aria-label="Application version"
+            data-i18n-aria-label="Application version"
+            >…</span
+          ><small>DATASET WORKSPACE</small><small class="copyright">© Petr Sajner 2026</small>
+        </div>
+      </div>
+      <div class="top-right">
+        <span class="private-label"><span data-i18n="Your images, your control">Your images, your control</span></span
+        ><button id="model-chip" class="chip">
+          <i></i><span><span data-i18n="Local model">Local model</span></span></button
+        ><button
+          id="open-settings"
+          class="icon-button"
+          title="Model and API settings"
+          data-i18n-title="Model and API settings"
+        >
+          ⚙
+        </button>
+      </div>
+    </header>
+    <main class="workspace">
+      <aside class="recipe panel">
+        <div class="eyebrow"><span data-i18n="01 / DATASET RECIPE">01 / DATASET RECIPE</span></div>
+        <h2>
+          <span data-i18n="One recipe.">One recipe.</span><br /><span data-i18n="The whole dataset."
+            >The whole dataset.</span
+          >
+        </h2>
+        <p class="muted intro">
+          <span data-i18n="Shared instructions for all selected images."
+            >Shared instructions for all selected images.</span
+          >
+        </p>
+        <form id="recipe-form">
+          <label
+            ><span data-i18n="What are you training?">What are you training?</span
+            ><select name="preset">
+              <option value="general" data-i18n="General dataset">General dataset</option>
+              <option value="character" data-i18n="Character / person">Character / person</option>
+              <option value="object" data-i18n="Object / product">Object / product</option>
+              <option value="style" data-i18n="Visual style">Visual style</option>
+            </select></label
+          >
+          <label
+            ><span data-i18n="Caption output">Caption output</span
+            ><select name="output_format">
+              <option value="normal" data-i18n="Normal · .txt">Normal · .txt</option>
+              <option value="bria_json" data-i18n="BRIA JSON (FIBO) · .json">BRIA JSON (FIBO) · .json</option>
+            </select></label
+          >
+          <label
+            ><span data-i18n="Trigger word">Trigger word</span
+            ><input
+              name="trigger"
+              placeholder="e.g. ohwx person"
+              maxlength="100"
+              data-i18n-placeholder="e.g. ohwx person"
+            /><small id="trigger-note"
+              ><span data-i18n="Added exactly at the start of each caption."
+                >Added exactly at the start of each caption.</span
+              ></small
+            ></label
+          >
+          <label
+            ><span data-i18n="Main subject name">Main subject name</span
+            ><input
+              name="subject"
+              placeholder="Optional name or identifier"
+              maxlength="100"
+              data-i18n-placeholder="Optional name or identifier"
+          /></label>
+          <div class="form-row">
+            <label
+              ><span data-i18n="Format">Format</span
+              ><select name="format">
+                <option value="description" data-i18n="Description">Description</option>
+                <option value="tags" data-i18n="Tags">Tags</option>
+              </select></label
+            ><label
+              ><span data-i18n="Caption language">Caption language</span
+              ><select name="language">
+                <option value="English" data-i18n="English">English</option>
+                <option value="Czech" data-i18n="Czech">Czech</option>
+              </select></label
+            >
+          </div>
+          <label class="range-label"
+            ><span data-i18n="Target length">Target length</span>
+            <span><output id="word-output">100</output> <span data-i18n="words">words</span></span
+            ><input name="words" type="range" min="20" max="300" step="10"
+          /></label>
+          <p id="json-format-note" class="tiny muted" hidden>
+            <span
+              data-i18n="FIBO JSON uses a fixed structure instead of tags or a word target. Responses are not capped; incomplete JSON is repaired automatically when possible."
+              >FIBO JSON uses a fixed structure instead of tags or a word target. Responses are not capped; incomplete
+              JSON is repaired automatically when possible.</span
+            >
+          </p>
+          <p id="length-policy-note" class="tiny muted">
+            <span
+              data-i18n="The word count is a soft target. Captions up to 120% are kept; longer text is shortened by the model. Text is never mechanically truncated."
+              >The word count is a soft target. Captions up to 120% are kept; longer text is shortened by the model.
+              Text is never mechanically truncated.</span
+            >
+          </p>
+          <div class="rule"></div>
+          <div class="label-heading">
+            <span data-i18n="Choose what to include in the caption">Choose what to include in the caption</span>
+          </div>
+          <div class="training-explanation">
+            <p>
+              <span
+                data-i18n="Include details you want to change with prompts. Leave out details you want the LoRA to capture."
+                >Include details you want to change with prompts. Leave out details you want the LoRA to capture.</span
+              >
+            </p>
+          </div>
+          <div class="training-legend">
+            <p data-i18n="ON = free future change">ON = free future change</p>
+            <p data-i18n="OFF = fixed in LoRA">OFF = fixed in LoRA</p>
+          </div>
+          <div id="training-plan" class="training-plan" aria-live="polite"></div>
+          <button type="button" id="apply-training-preset" class="text-button">
+            <span data-i18n="Apply defaults for this LoRA type">Apply defaults for this LoRA type</span>
+          </button>
+          <div id="training-controls"></div>
 
-      <label class="check"><input type="checkbox" name="text_in_image"> <span data-i18n="Include readable image text">Include readable image text</span></label>
-      <label class="instructions-label"><span data-i18n="Additional instructions">Additional instructions</span><textarea name="instructions" rows="4" placeholder="For example: describe clothing and surroundings precisely. Do not judge aesthetic quality." maxlength="6000" data-i18n-placeholder="For example: describe clothing and surroundings precisely. Do not judge aesthetic quality."></textarea></label>
-      <button type="button" id="preview-prompt" class="text-button"><span data-i18n="Preview model instructions ↗">Preview model instructions ↗</span></button>
-      <div class="rule"></div>
-      <label class="check"><input type="checkbox" name="skip_existing"> <span data-i18n="Skip existing captions">Skip existing captions</span></label>
-      <label class="check"><input type="checkbox" name="auto_save"> <span data-i18n="Save captions automatically">Save captions automatically</span></label>
-      <div class="note"><span>↳</span><p id="output-note"><b>image.jpg → image.txt</b><br><span data-i18n="Same folder, UTF-8. Replaced captions are backed up.">Same folder, UTF-8. Replaced captions are backed up.</span></p></div>
-    </form>
-    <div id="recipe-status" class="tiny muted" aria-live="polite"><span data-i18n="Settings are saved automatically">Settings are saved automatically</span></div>
-  </aside>
-  <section class="dataset panel">
-    <div class="dataset-header"><div><div class="eyebrow"><span data-i18n="02 / IMAGES">02 / IMAGES</span></div><h1><span data-i18n="Your training dataset">Your training dataset</span></h1></div><span id="total-badge" class="count-badge">0</span></div>
-    <div class="import-toolbar"><button id="pick-folder" class="secondary"><span data-i18n="＋ Open folder">＋ Open folder</span></button><button id="pick-files" class="secondary"><span data-i18n="＋ Select images">＋ Select images</span></button><button id="open-path" class="text-button" title="Enter a folder path" data-i18n-title="Enter a folder path"><span data-i18n="Path…">Path…</span></button></div>
-    <div class="import-options"><label class="check"><input id="recursive" type="checkbox"> <span data-i18n="Include subfolders">Include subfolders</span></label><label class="check"><input id="append" type="checkbox"> <span data-i18n="Add to the open dataset">Add to the open dataset</span></label></div>
-    <div class="stats"><span><i class="dot muted-dot"></i><b id="pending-count">0</b> <span data-i18n="waiting">waiting</span></span><span><i class="dot green-dot"></i><b id="saved-count">0</b> <span data-i18n="captioned">captioned</span></span><span><i class="dot red-dot"></i><b id="error-count">0</b> <span data-i18n="errors">errors</span></span><span><i class="dot review-dot"></i><b id="review-count">0</b> <span data-i18n="to review">to review</span></span></div>
-    <div class="selection-toolbar"><label class="check select-all"><input id="select-all" type="checkbox"> <span id="selection-count"><span data-i18n="Select all">Select all</span></span></label><div class="filters"><input id="search" placeholder="Search images…" aria-label="Search images" data-i18n-placeholder="Search images…" data-i18n-aria-label="Search images"><select id="filter" aria-label="Filter images" data-i18n-aria-label="Filter images"><option value="all" data-i18n="All">All</option><option value="pending" data-i18n="Without captions">Without captions</option><option value="saved" data-i18n="With captions">With captions</option><option value="error" data-i18n="Errors">Errors</option><option value="review" data-i18n="To review">To review</option></select></div></div>
-    <div id="empty" class="empty"><div class="empty-art"><div class="paper back"></div><div class="paper front"><svg viewBox="0 0 90 70" fill="none"><circle cx="63" cy="19" r="7" fill="currentColor"/></circle><path d="M8 59L29 30L49 49L61 36L83 59H8Z" fill="currentColor"/></path></svg></div><span class="txt-badge">.txt</span></div><h3><span data-i18n="From images to a ready dataset">From images to a ready dataset</span></h3><p><span data-i18n="Open a folder or select images.">Open a folder or select images.</span><br><span data-i18n="Set the recipe once and process the whole dataset.">Set the recipe once and process the whole dataset.</span></p><span class="file-types">JPG · PNG · WEBP · BMP · TIFF</span></div>
-    <div id="grid" class="image-grid" aria-label="Dataset images" data-i18n-aria-label="Dataset images"></div>
-    <div id="pagebar" class="pagebar" hidden><button id="prev-page" class="text-button"><span data-i18n="← Previous">← Previous</span></button><span id="page-label"></span><button id="next-page" class="text-button"><span data-i18n="Next →">Next →</span></button></div>
-  </section>
-  <aside class="inspector panel"><div class="eyebrow"><span data-i18n="03 / CAPTION REVIEW">03 / CAPTION REVIEW</span></div>
-    <div id="inspector-empty" class="inspector-empty"><span>⌑</span><h3><span data-i18n="Review your captions">Review your captions</span></h3><p><span data-i18n="Select an image to preview it">Select an image to preview it</span><br><span data-i18n="and edit its caption.">and edit its caption.</span></p></div>
-    <div id="inspector-content" hidden><div class="preview-wrap"><img id="preview-image" alt="Selected image preview" data-i18n-alt="Selected image preview"></div><h3 id="image-name"></h3><div id="image-meta" class="tiny muted"></div><div id="image-path" class="path tiny" title=""></div><div class="editor-heading"><label for="caption-editor"><span data-i18n="Caption">Caption</span></label><span id="caption-words" class="tiny muted"><span data-i18n="0 words">0 words</span></span></div><textarea id="caption-editor" rows="10" placeholder="The caption will appear after processing. You can also write it manually." data-i18n-placeholder="The caption will appear after processing. You can also write it manually."></textarea><div id="image-error" class="error-message" hidden></div><div id="caption-state" class="tiny muted"></div><div id="caption-output-path" class="tiny muted"></div><div id="caption-notice" class="caption-notice" hidden></div><button id="format-json" class="text-button" hidden><span data-i18n="Format JSON">Format JSON</span></button><details id="caption-history" hidden><summary id="caption-history-title"><span data-i18n="Model responses">Model responses</span></summary><select id="caption-history-select" aria-label="Received model response" data-i18n-aria-label="Received model response"></select><pre id="caption-history-text"></pre><button id="use-caption-history" class="text-button"><span data-i18n="Use in editor">Use in editor</span></button></details><div class="editor-buttons"><button id="save-caption" class="primary"><span data-i18n="Save caption">Save caption</span></button><button id="regenerate" class="secondary" title="Regenerate this image only" data-i18n-title="Regenerate this image only"><span data-i18n="↻ Regenerate">↻ Regenerate</span></button></div><p class="tiny muted"><span data-i18n="Save edits using the button or Ctrl+S. The previous version stays in .caption-backups.">Save edits using the button or Ctrl+S. The previous version stays in .caption-backups.</span></p></div>
-  </aside>
-</main>
-<footer class="runbar"><div class="run-status"><div><span id="job-indicator" class="dot green-dot"></span><strong id="job-title"><span data-i18n="Ready to work">Ready to work</span></strong><span id="job-count" class="tiny muted"></span></div><div class="progress-track"><div id="job-progress"></div></div><span id="mode-note" class="tiny muted"><span data-i18n="Local mode · images stay on this computer">Local mode · images stay on this computer</span></span></div><button id="stop-job" class="danger" hidden><span data-i18n="Stop batch">Stop batch</span></button><button id="generate" class="primary run-button"><span data-i18n="Create captions">Create captions</span> <span>→</span></button></footer>
-<div id="toast" class="toast" role="status" hidden></div>
+          <label class="check"
+            ><input type="checkbox" name="text_in_image" />
+            <span data-i18n="Include readable image text">Include readable image text</span></label
+          >
+          <label class="instructions-label"
+            ><span data-i18n="Additional instructions">Additional instructions</span
+            ><textarea
+              name="instructions"
+              rows="4"
+              placeholder="For example: describe clothing and surroundings precisely. Do not judge aesthetic quality."
+              maxlength="6000"
+              data-i18n-placeholder="For example: describe clothing and surroundings precisely. Do not judge aesthetic quality."
+            ></textarea>
+          </label>
+          <button type="button" id="preview-prompt" class="text-button">
+            <span data-i18n="Preview model instructions ↗">Preview model instructions ↗</span>
+          </button>
+          <div class="rule"></div>
+          <label class="check"
+            ><input type="checkbox" name="skip_existing" />
+            <span data-i18n="Skip existing captions">Skip existing captions</span></label
+          >
+          <label class="check"
+            ><input type="checkbox" name="auto_save" />
+            <span data-i18n="Save captions automatically">Save captions automatically</span></label
+          >
+          <div class="note">
+            <span>↳</span>
+            <p id="output-note">
+              <b>image.jpg → image.txt</b><br /><span data-i18n="Same folder, UTF-8. Replaced captions are backed up."
+                >Same folder, UTF-8. Replaced captions are backed up.</span
+              >
+            </p>
+          </div>
+        </form>
+        <div id="recipe-status" class="tiny muted" aria-live="polite">
+          <span data-i18n="Settings are saved automatically">Settings are saved automatically</span>
+        </div>
+      </aside>
+      <section class="dataset panel">
+        <div class="dataset-header">
+          <div>
+            <div class="eyebrow"><span data-i18n="02 / IMAGES">02 / IMAGES</span></div>
+            <h1><span data-i18n="Your training dataset">Your training dataset</span></h1>
+          </div>
+          <span id="total-badge" class="count-badge">0</span>
+        </div>
+        <div class="import-toolbar">
+          <button id="pick-folder" class="secondary"><span data-i18n="＋ Open folder">＋ Open folder</span></button
+          ><button id="pick-files" class="secondary"><span data-i18n="＋ Select images">＋ Select images</span></button
+          ><button id="open-path" class="text-button" title="Enter a folder path" data-i18n-title="Enter a folder path">
+            <span data-i18n="Path…">Path…</span>
+          </button>
+        </div>
+        <div class="import-options">
+          <label class="check"
+            ><input id="recursive" type="checkbox" />
+            <span data-i18n="Include subfolders">Include subfolders</span></label
+          ><label class="check"
+            ><input id="append" type="checkbox" />
+            <span data-i18n="Add to the open dataset">Add to the open dataset</span></label
+          >
+        </div>
+        <div class="stats">
+          <span><i class="dot muted-dot"></i><b id="pending-count">0</b> <span data-i18n="waiting">waiting</span></span
+          ><span
+            ><i class="dot green-dot"></i><b id="saved-count">0</b> <span data-i18n="captioned">captioned</span></span
+          ><span><i class="dot red-dot"></i><b id="error-count">0</b> <span data-i18n="errors">errors</span></span
+          ><span
+            ><i class="dot review-dot"></i><b id="review-count">0</b> <span data-i18n="to review">to review</span></span
+          >
+        </div>
+        <div class="selection-toolbar">
+          <label class="check select-all"
+            ><input id="select-all" type="checkbox" />
+            <span id="selection-count"><span data-i18n="Select all">Select all</span></span></label
+          >
+          <div class="filters">
+            <input
+              id="search"
+              placeholder="Search images…"
+              aria-label="Search images"
+              data-i18n-placeholder="Search images…"
+              data-i18n-aria-label="Search images"
+            /><select id="filter" aria-label="Filter images" data-i18n-aria-label="Filter images">
+              <option value="all" data-i18n="All">All</option>
+              <option value="pending" data-i18n="Without captions">Without captions</option>
+              <option value="saved" data-i18n="With captions">With captions</option>
+              <option value="error" data-i18n="Errors">Errors</option>
+              <option value="review" data-i18n="To review">To review</option>
+            </select>
+          </div>
+        </div>
+        <div id="empty" class="empty">
+          <div class="empty-art">
+            <div class="paper back"></div>
+            <div class="paper front">
+              <svg viewBox="0 0 90 70" fill="none">
+                <circle cx="63" cy="19" r="7" fill="currentColor" />
+                <path d="M8 59L29 30L49 49L61 36L83 59H8Z" fill="currentColor" />
+              </svg>
+            </div>
+            <span class="txt-badge">.txt</span>
+          </div>
+          <h3><span data-i18n="From images to a ready dataset">From images to a ready dataset</span></h3>
+          <p>
+            <span data-i18n="Open a folder or select images.">Open a folder or select images.</span><br /><span
+              data-i18n="Set the recipe once and process the whole dataset."
+              >Set the recipe once and process the whole dataset.</span
+            >
+          </p>
+          <span class="file-types">JPG · PNG · WEBP · BMP · TIFF</span>
+        </div>
+        <div id="grid" class="image-grid" aria-label="Dataset images" data-i18n-aria-label="Dataset images"></div>
+        <div id="pagebar" class="pagebar" hidden>
+          <button id="prev-page" class="text-button"><span data-i18n="← Previous">← Previous</span></button
+          ><span id="page-label"></span
+          ><button id="next-page" class="text-button"><span data-i18n="Next →">Next →</span></button>
+        </div>
+      </section>
+      <aside class="inspector panel">
+        <div class="eyebrow"><span data-i18n="03 / CAPTION REVIEW">03 / CAPTION REVIEW</span></div>
+        <div id="inspector-empty" class="inspector-empty">
+          <span>⌑</span>
+          <h3><span data-i18n="Review your captions">Review your captions</span></h3>
+          <p>
+            <span data-i18n="Select an image to preview it">Select an image to preview it</span><br /><span
+              data-i18n="and edit its caption."
+              >and edit its caption.</span
+            >
+          </p>
+        </div>
+        <div id="inspector-content" hidden>
+          <div class="preview-wrap">
+            <img id="preview-image" alt="Selected image preview" data-i18n-alt="Selected image preview" />
+          </div>
+          <h3 id="image-name"></h3>
+          <div id="image-meta" class="tiny muted"></div>
+          <div id="image-path" class="path tiny" title=""></div>
+          <div class="editor-heading">
+            <label for="caption-editor"><span data-i18n="Caption">Caption</span></label
+            ><span id="caption-words" class="tiny muted"><span data-i18n="0 words">0 words</span></span>
+          </div>
+          <textarea
+            id="caption-editor"
+            rows="10"
+            placeholder="The caption will appear after processing. You can also write it manually."
+            data-i18n-placeholder="The caption will appear after processing. You can also write it manually."
+          ></textarea>
+          <div id="image-error" class="error-message" hidden></div>
+          <div id="caption-state" class="tiny muted"></div>
+          <div id="caption-output-path" class="tiny muted"></div>
+          <div id="caption-notice" class="caption-notice" hidden></div>
+          <button id="format-json" class="text-button" hidden><span data-i18n="Format JSON">Format JSON</span></button>
+          <details id="caption-history" hidden>
+            <summary id="caption-history-title"><span data-i18n="Model responses">Model responses</span></summary>
+            <select
+              id="caption-history-select"
+              aria-label="Received model response"
+              data-i18n-aria-label="Received model response"
+            ></select>
+            <pre id="caption-history-text"></pre>
+            <button id="use-caption-history" class="text-button">
+              <span data-i18n="Use in editor">Use in editor</span>
+            </button>
+          </details>
+          <div class="editor-buttons">
+            <button id="save-caption" class="primary"><span data-i18n="Save caption">Save caption</span></button
+            ><button
+              id="regenerate"
+              class="secondary"
+              title="Regenerate this image only"
+              data-i18n-title="Regenerate this image only"
+            >
+              <span data-i18n="↻ Regenerate">↻ Regenerate</span>
+            </button>
+          </div>
+          <p class="tiny muted">
+            <span data-i18n="Save edits using the button or Ctrl+S. The previous version stays in .caption-backups."
+              >Save edits using the button or Ctrl+S. The previous version stays in .caption-backups.</span
+            >
+          </p>
+        </div>
+      </aside>
+    </main>
+    <footer class="runbar">
+      <div class="run-status">
+        <div>
+          <span id="job-indicator" class="dot green-dot"></span
+          ><strong id="job-title"><span data-i18n="Ready to work">Ready to work</span></strong
+          ><span id="job-count" class="tiny muted"></span>
+        </div>
+        <div class="progress-track"><div id="job-progress"></div></div>
+        <span id="mode-note" class="tiny muted"
+          ><span data-i18n="Local mode · images stay on this computer"
+            >Local mode · images stay on this computer</span
+          ></span
+        >
+      </div>
+      <button id="stop-job" class="danger" hidden><span data-i18n="Stop batch">Stop batch</span></button
+      ><button id="generate" class="primary run-button">
+        <span data-i18n="Create captions">Create captions</span> <span>→</span>
+      </button>
+    </footer>
+    <div id="toast" class="toast" role="status" hidden></div>
 
-<dialog id="settings-dialog"><div class="dialog-header"><div><div class="eyebrow"><span data-i18n="CAPTION STUDIO / SETUP">CAPTION STUDIO / SETUP</span></div><h2 id="setup-title"><span data-i18n="Model and runtime">Model and runtime</span></h2></div><button class="close-dialog icon-button" aria-label="Close" data-i18n-aria-label="Close">×</button></div><p id="setup-intro" class="muted"><span data-i18n="Choose where to analyze your images. You can change this at any time.">Choose where to analyze your images. You can change this at any time.</span></p>
-  <div class="mode-tabs"><button data-mode="local" class="active"><b><span data-i18n="◎ Local">◎ Local</span></b><small><span data-i18n="Your own model · no API fees">Your own model · no API fees</span></small></button><button data-mode="cloud"><b><span data-i18n="☁ Cloud API">☁ Cloud API</span></b><small><span data-i18n="No high-end GPU required">No high-end GPU required</span></small></button></div>
-  <form id="settings-form">
-    <label><span data-i18n="Interface language">Interface language</span><select name="ui_language" id="ui-language"><option value="en" data-i18n="English">English</option><option value="cs" data-i18n="Czech">Czech</option></select></label>
-    <div id="local-settings"><div class="local-connection-toolbar"><label><span data-i18n="Connection type">Connection type</span><select name="local_source" id="local-source"><option value="managed" data-i18n="Caption Studio managed runtime">Caption Studio managed runtime</option><option value="external" data-i18n="Existing local server">Existing local server</option></select></label><button type="button" id="find-local-servers" class="secondary"><span data-i18n="Find local servers">Find local servers</span></button></div><p id="local-discovery-message" class="tiny muted" aria-live="polite"><span data-i18n="Check common local addresses for Ollama, LM Studio, Unsloth and llama.cpp.">Check common local addresses for Ollama, LM Studio, Unsloth and llama.cpp.</span></p><div id="local-server-results" hidden></div>
-    <div id="managed-settings"><div class="form-row"><label><span data-i18n="Model">Model</span><select name="model_profile"><option value="q3" data-i18n="Qwen3.8 27B · IQ3 · 12 GB · from 16 GB VRAM*">Qwen3.8 27B · IQ3 · 12 GB · from 16 GB VRAM*</option><option value="q4" data-i18n="Qwen3.8 27B · Q4 · 16.5 GB · 24 GB VRAM*">Qwen3.8 27B · Q4 · 16.5 GB · 24 GB VRAM*</option><option value="q5" data-i18n="Qwen3.8 27B · Q5 · 19.8 GB · 32 GB VRAM*">Qwen3.8 27B · Q5 · 19.8 GB · 32 GB VRAM*</option></select></label><label><span data-i18n="Compute backend">Compute backend</span><select name="backend"><option value="cuda" data-i18n="NVIDIA · CUDA 13.3">NVIDIA · CUDA 13.3</option><option value="vulkan" data-i18n="AMD / Intel / NVIDIA · Vulkan">AMD / Intel / NVIDIA · Vulkan</option><option value="cpu" data-i18n="CPU · slow">CPU · slow</option></select></label></div>
-      <p class="tiny muted"><span data-i18n="* Approximate memory for a short context. The vision projector (0.93 GB) and runtime are downloaded separately. Q4 is the default balance; IQ3 has lower precision. CUDA requires a compatible, up-to-date NVIDIA driver.">* Approximate memory for a short context. The vision projector (0.93 GB) and runtime are downloaded separately. Q4 is the default balance; IQ3 has lower precision. CUDA requires a compatible, up-to-date NVIDIA driver.</span></p>
-      <div class="runtime-box"><div class="runtime-heading"><b><span data-i18n="Standalone local runtime">Standalone local runtime</span></b><span id="runtime-badge" class="pill"><span data-i18n="Not ready">Not ready</span></span></div><p id="runtime-message"><span data-i18n="Download the runtime and selected model before first use.">Download the runtime and selected model before first use.</span></p><div class="progress-track"><div id="download-progress"></div></div><div id="download-details" class="tiny muted"></div><div class="runtime-buttons"><button type="button" id="install-runtime" class="primary"><span data-i18n="Download runtime and model">Download runtime and model</span></button><button type="button" id="cancel-install" class="secondary" hidden><span data-i18n="Pause">Pause</span></button><button type="button" id="start-model" class="secondary"><span data-i18n="Start model">Start model</span></button><button type="button" id="stop-model" class="secondary" hidden><span data-i18n="Release GPU">Release GPU</span></button></div><small id="runtime-path" class="tiny path"></small></div>
-    </div>
-    <div id="external-settings" hidden><p class="tiny muted"><span data-i18n="The model runs in its original application. Caption Studio connects without starting or stopping it.">The model runs in its original application. Caption Studio connects without starting or stopping it.</span></p><label><span data-i18n="Local API address">Local API address</span><input name="local_url" type="url" placeholder="http://127.0.0.1:1234/v1"></label><label><span data-i18n="Local API key (if required)">Local API key (if required)</span><input id="local-api-key" type="password" autocomplete="new-password" placeholder="Optional — for example, an Unsloth key" data-i18n-placeholder="Optional — for example, an Unsloth key"><small id="local-key-status"><span data-i18n="Stored encrypted for this server address only.">Stored encrypted for this server address only.</span></small></label><label class="check"><input id="clear-local-key" type="checkbox"> <span data-i18n="Remove saved local key">Remove saved local key</span></label><div class="form-row"><label><span data-i18n="Image-capable model">Image-capable model</span><input name="local_model" list="local-models" placeholder="Select or enter a model ID" data-i18n-placeholder="Select or enter a model ID"><datalist id="local-models"></datalist></label><button type="button" id="load-local-models" class="secondary"><span data-i18n="Load models">Load models</span></button></div><p id="local-model-status" class="tiny muted" aria-live="polite"><span data-i18n="A model appearing in the list does not confirm image support.">A model appearing in the list does not confirm image support.</span></p></div>
-    </div>
-    <div id="cloud-settings" hidden><label><span data-i18n="Provider">Provider</span><select id="cloud-provider"><option value="https://openrouter.ai/api/v1" data-i18n="OpenRouter">OpenRouter</option><option value="https://api.openai.com/v1" data-i18n="OpenAI">OpenAI</option><option value="https://generativelanguage.googleapis.com/v1beta/openai" data-i18n="Google Gemini">Google Gemini</option><option value="custom" data-i18n="Other compatible API">Other compatible API</option></select></label><label><span data-i18n="API address">API address</span><input name="cloud_url" type="url" placeholder="https://…/v1"></label><label><span data-i18n="API key">API key</span><input id="api-key" type="password" autocomplete="new-password" placeholder="Enter the provider key" data-i18n-placeholder="Enter the provider key"><small id="key-status"><span data-i18n="The key is stored encrypted for your Windows account.">The key is stored encrypted for your Windows account.</span></small></label><label class="check"><input id="clear-key" type="checkbox"> <span data-i18n="Remove this provider’s saved key">Remove this provider’s saved key</span></label><label><span data-i18n="Image-capable model">Image-capable model</span><input name="cloud_model" list="cloud-models" placeholder="Exact model ID from the provider" data-i18n-placeholder="Exact model ID from the provider"><datalist id="cloud-models"></datalist></label><button type="button" id="load-models" class="secondary"><span data-i18n="Load available models">Load available models</span></button><p class="cloud-note"><span data-i18n="Selected images are sent to this provider for processing and billed at its rates. The model list may also include text-only models.">Selected images are sent to this provider for processing and billed at its rates. The model list may also include text-only models.</span></p></div>
-    <details class="advanced"><summary><span data-i18n="Analysis settings">Analysis settings</span></summary><div class="form-row"><label><span data-i18n="Longest side for analysis">Longest side for analysis</span><select name="image_size"><option value="768" data-i18n="768 px">768 px</option><option value="1024" data-i18n="1 024 px">1 024 px</option><option value="1536" data-i18n="1 536 px">1 536 px</option><option value="2048" data-i18n="2 048 px">2 048 px</option></select></label><label><span data-i18n="Request timeout (s)">Request timeout (s)</span><input name="timeout" type="number" min="30" max="900"></label></div><small class="muted"><span data-i18n="Originals are unchanged. The model receives a resized copy without EXIF metadata.">Originals are unchanged. The model receives a resized copy without EXIF metadata.</span></small></details>
-  </form><div class="dialog-footer"><span id="settings-message" class="tiny muted" aria-live="polite"></span><button id="save-settings" class="primary"><span data-i18n="Save and continue →">Save and continue →</span></button></div>
-</dialog>
-<dialog id="path-dialog"><div class="dialog-header"><h2><span data-i18n="Open folder">Open folder</span></h2><button class="close-dialog icon-button" aria-label="Close" data-i18n-aria-label="Close">×</button></div><label><span data-i18n="Folder path">Folder path</span><input id="folder-path" placeholder="C:\Datasets\My dataset"></label><p class="tiny muted"><span data-i18n="Subfolder and append options are taken from the main window.">Subfolder and append options are taken from the main window.</span></p><div class="dialog-footer"><button id="import-path" class="primary"><span data-i18n="Load images">Load images</span></button></div></dialog>
-<dialog id="prompt-dialog"><div class="dialog-header"><h2><span data-i18n="Instructions for the dataset">Instructions for the dataset</span></h2><button class="close-dialog icon-button" aria-label="Close" data-i18n-aria-label="Close">×</button></div><pre id="prompt-text"></pre><p class="tiny muted"><span data-i18n="The trigger word is inserted into the finished caption automatically.">The trigger word is inserted into the finished caption automatically.</span></p></dialog>
-<dialog id="folder-dialog"><div class="dialog-header"><div><div class="eyebrow"><span data-i18n="SELECT FOLDER">SELECT FOLDER</span></div><h2><span data-i18n="Preview your dataset folder">Preview your dataset folder</span></h2></div><button class="close-dialog icon-button" aria-label="Close" data-i18n-aria-label="Close">×</button></div>
-  <div class="folder-navigation"><button id="folder-back" class="secondary" title="Back (Alt+←)" disabled data-i18n-title="Back (Alt+←)"><span data-i18n="← Back">← Back</span></button><button id="folder-forward" class="secondary" title="Forward (Alt+→)" disabled data-i18n-title="Forward (Alt+→)"><span data-i18n="Forward →">Forward →</span></button><button id="folder-up" class="secondary" title="Up one folder (Alt+↑)" disabled data-i18n-title="Up one folder (Alt+↑)"><span data-i18n="↑ Up one folder">↑ Up one folder</span></button><button id="folder-home" class="secondary" title="Home folder" data-i18n-title="Home folder"><span data-i18n="⌂ Home">⌂ Home</span></button><button id="folder-refresh" class="secondary" title="Refresh contents (F5)" data-i18n-title="Refresh contents (F5)"><span data-i18n="↻ Refresh">↻ Refresh</span></button></div>
-  <nav id="folder-breadcrumbs" aria-label="Folder breadcrumb path" data-i18n-aria-label="Folder breadcrumb path"></nav>
-  <div class="folder-address"><label for="browse-path"><span data-i18n="Path">Path</span></label><input id="browse-path" aria-label="Current folder path" placeholder="C:\Datasets\My dataset" data-i18n-aria-label="Current folder path"><button id="folder-go" class="secondary"><span data-i18n="Go">Go</span></button></div>
-  <div class="folder-browser"><nav id="folder-roots" aria-label="Folder tree" data-i18n-aria-label="Folder tree"></nav><section class="folder-contents"><p id="folder-summary" class="muted" aria-live="polite"><span data-i18n="Loading folder contents…">Loading folder contents…</span></p><div id="folder-error" class="error-message" role="alert" hidden></div><div id="folder-grid"></div><div id="folder-pager" class="pagebar" hidden><button id="folder-prev" class="text-button"><span data-i18n="← Previous images">← Previous images</span></button><span id="folder-page"></span><button id="folder-next" class="text-button"><span data-i18n="Next images →">Next images →</span></button></div></section></div>
-  <div class="dialog-footer"><label class="check"><input id="folder-recursive" type="checkbox"> <span data-i18n="Include subfolders">Include subfolders</span></label><button id="use-folder" class="primary" disabled><span data-i18n="Use this folder">Use this folder</span></button></div>
-</dialog>
-<script src="/assets/i18n.js"></script>
-<script src="/assets/app.js"></script>
-<script src="/assets/folder-browser.js"></script>
-</body></html>
+    <dialog id="settings-dialog">
+      <div class="dialog-header">
+        <div>
+          <div class="eyebrow"><span data-i18n="CAPTION STUDIO / SETUP">CAPTION STUDIO / SETUP</span></div>
+          <h2 id="setup-title"><span data-i18n="Model and runtime">Model and runtime</span></h2>
+        </div>
+        <button class="close-dialog icon-button" aria-label="Close" data-i18n-aria-label="Close">×</button>
+      </div>
+      <p id="setup-intro" class="muted">
+        <span data-i18n="Choose where to analyze your images. You can change this at any time."
+          >Choose where to analyze your images. You can change this at any time.</span
+        >
+      </p>
+      <div class="mode-tabs">
+        <button data-mode="local" class="active">
+          <b><span data-i18n="◎ Local">◎ Local</span></b
+          ><small><span data-i18n="Your own model · no API fees">Your own model · no API fees</span></small></button
+        ><button data-mode="cloud">
+          <b><span data-i18n="☁ Cloud API">☁ Cloud API</span></b
+          ><small><span data-i18n="No high-end GPU required">No high-end GPU required</span></small>
+        </button>
+      </div>
+      <form id="settings-form">
+        <label
+          ><span data-i18n="Interface language">Interface language</span
+          ><select name="ui_language" id="ui-language">
+            <option value="en" data-i18n="English">English</option>
+            <option value="cs" data-i18n="Czech">Czech</option>
+          </select></label
+        >
+        <div id="local-settings">
+          <div class="local-connection-toolbar">
+            <label
+              ><span data-i18n="Connection type">Connection type</span
+              ><select name="local_source" id="local-source">
+                <option value="managed" data-i18n="Caption Studio managed runtime">
+                  Caption Studio managed runtime
+                </option>
+                <option value="external" data-i18n="Existing local server">Existing local server</option>
+              </select></label
+            ><button type="button" id="find-local-servers" class="secondary">
+              <span data-i18n="Find local servers">Find local servers</span>
+            </button>
+          </div>
+          <p id="local-discovery-message" class="tiny muted" aria-live="polite">
+            <span data-i18n="Check common local addresses for Ollama, LM Studio, Unsloth and llama.cpp."
+              >Check common local addresses for Ollama, LM Studio, Unsloth and llama.cpp.</span
+            >
+          </p>
+          <div id="local-server-results" hidden></div>
+          <div id="managed-settings">
+            <div class="form-row">
+              <label
+                ><span data-i18n="Model">Model</span
+                ><select name="model_profile">
+                  <option value="q3" data-i18n="Qwen3.8 27B · IQ3 · 12 GB · from 16 GB VRAM*">
+                    Qwen3.8 27B · IQ3 · 12 GB · from 16 GB VRAM*
+                  </option>
+                  <option value="q4" data-i18n="Qwen3.8 27B · Q4 · 16.5 GB · 24 GB VRAM*">
+                    Qwen3.8 27B · Q4 · 16.5 GB · 24 GB VRAM*
+                  </option>
+                  <option value="q5" data-i18n="Qwen3.8 27B · Q5 · 19.8 GB · 32 GB VRAM*">
+                    Qwen3.8 27B · Q5 · 19.8 GB · 32 GB VRAM*
+                  </option>
+                </select></label
+              ><label
+                ><span data-i18n="Compute backend">Compute backend</span
+                ><select name="backend">
+                  <option value="cuda" data-i18n="NVIDIA · CUDA 13.3">NVIDIA · CUDA 13.3</option>
+                  <option value="vulkan" data-i18n="AMD / Intel / NVIDIA · Vulkan">
+                    AMD / Intel / NVIDIA · Vulkan
+                  </option>
+                  <option value="cpu" data-i18n="CPU · slow">CPU · slow</option>
+                </select></label
+              >
+            </div>
+            <p class="tiny muted">
+              <span
+                data-i18n="* Approximate memory for a short context. The vision projector (0.93 GB) and runtime are downloaded separately. Q4 is the default balance; IQ3 has lower precision. CUDA requires a compatible, up-to-date NVIDIA driver."
+                >* Approximate memory for a short context. The vision projector (0.93 GB) and runtime are downloaded
+                separately. Q4 is the default balance; IQ3 has lower precision. CUDA requires a compatible, up-to-date
+                NVIDIA driver.</span
+              >
+            </p>
+            <div class="runtime-box">
+              <div class="runtime-heading">
+                <b><span data-i18n="Standalone local runtime">Standalone local runtime</span></b
+                ><span id="runtime-badge" class="pill"><span data-i18n="Not ready">Not ready</span></span>
+              </div>
+              <p id="runtime-message">
+                <span data-i18n="Download the runtime and selected model before first use."
+                  >Download the runtime and selected model before first use.</span
+                >
+              </p>
+              <div class="progress-track"><div id="download-progress"></div></div>
+              <div id="download-details" class="tiny muted"></div>
+              <div class="runtime-buttons">
+                <button type="button" id="install-runtime" class="primary">
+                  <span data-i18n="Download runtime and model">Download runtime and model</span></button
+                ><button type="button" id="cancel-install" class="secondary" hidden>
+                  <span data-i18n="Pause">Pause</span></button
+                ><button type="button" id="start-model" class="secondary">
+                  <span data-i18n="Start model">Start model</span></button
+                ><button type="button" id="stop-model" class="secondary" hidden>
+                  <span data-i18n="Release GPU">Release GPU</span>
+                </button>
+              </div>
+              <small id="runtime-path" class="tiny path"></small>
+            </div>
+          </div>
+          <div id="external-settings" hidden>
+            <p class="tiny muted">
+              <span
+                data-i18n="The model runs in its original application. Caption Studio connects without starting or stopping it."
+                >The model runs in its original application. Caption Studio connects without starting or stopping
+                it.</span
+              >
+            </p>
+            <label
+              ><span data-i18n="Local API address">Local API address</span
+              ><input name="local_url" type="url" placeholder="http://127.0.0.1:1234/v1" /></label
+            ><label
+              ><span data-i18n="Local API key (if required)">Local API key (if required)</span
+              ><input
+                id="local-api-key"
+                type="password"
+                autocomplete="new-password"
+                placeholder="Optional — for example, an Unsloth key"
+                data-i18n-placeholder="Optional — for example, an Unsloth key"
+              /><small id="local-key-status"
+                ><span data-i18n="Stored encrypted for this server address only."
+                  >Stored encrypted for this server address only.</span
+                ></small
+              ></label
+            ><label class="check"
+              ><input id="clear-local-key" type="checkbox" />
+              <span data-i18n="Remove saved local key">Remove saved local key</span></label
+            >
+            <div class="form-row">
+              <label
+                ><span data-i18n="Image-capable model">Image-capable model</span
+                ><input
+                  name="local_model"
+                  list="local-models"
+                  placeholder="Select or enter a model ID"
+                  data-i18n-placeholder="Select or enter a model ID" /><datalist id="local-models"></datalist></label
+              ><button type="button" id="load-local-models" class="secondary">
+                <span data-i18n="Load models">Load models</span>
+              </button>
+            </div>
+            <p id="local-model-status" class="tiny muted" aria-live="polite">
+              <span data-i18n="A model appearing in the list does not confirm image support."
+                >A model appearing in the list does not confirm image support.</span
+              >
+            </p>
+          </div>
+        </div>
+        <div id="cloud-settings" hidden>
+          <label
+            ><span data-i18n="Provider">Provider</span
+            ><select id="cloud-provider">
+              <option value="https://openrouter.ai/api/v1" data-i18n="OpenRouter">OpenRouter</option>
+              <option value="https://api.openai.com/v1" data-i18n="OpenAI">OpenAI</option>
+              <option value="https://generativelanguage.googleapis.com/v1beta/openai" data-i18n="Google Gemini">
+                Google Gemini
+              </option>
+              <option value="custom" data-i18n="Other compatible API">Other compatible API</option>
+            </select></label
+          ><label
+            ><span data-i18n="API address">API address</span
+            ><input name="cloud_url" type="url" placeholder="https://…/v1" /></label
+          ><label
+            ><span data-i18n="API key">API key</span
+            ><input
+              id="api-key"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Enter the provider key"
+              data-i18n-placeholder="Enter the provider key"
+            /><small id="key-status"
+              ><span data-i18n="The key is stored encrypted for your Windows account."
+                >The key is stored encrypted for your Windows account.</span
+              ></small
+            ></label
+          ><label class="check"
+            ><input id="clear-key" type="checkbox" />
+            <span data-i18n="Remove this provider’s saved key">Remove this provider’s saved key</span></label
+          ><label
+            ><span data-i18n="Image-capable model">Image-capable model</span
+            ><input
+              name="cloud_model"
+              list="cloud-models"
+              placeholder="Exact model ID from the provider"
+              data-i18n-placeholder="Exact model ID from the provider" /><datalist id="cloud-models"></datalist></label
+          ><button type="button" id="load-models" class="secondary">
+            <span data-i18n="Load available models">Load available models</span>
+          </button>
+          <p class="cloud-note">
+            <span
+              data-i18n="Selected images are sent to this provider for processing and billed at its rates. The model list may also include text-only models."
+              >Selected images are sent to this provider for processing and billed at its rates. The model list may also
+              include text-only models.</span
+            >
+          </p>
+        </div>
+        <details class="advanced">
+          <summary><span data-i18n="Analysis settings">Analysis settings</span></summary>
+          <div class="form-row">
+            <label
+              ><span data-i18n="Longest side for analysis">Longest side for analysis</span
+              ><select name="image_size">
+                <option value="768" data-i18n="768 px">768 px</option>
+                <option value="1024" data-i18n="1 024 px">1 024 px</option>
+                <option value="1536" data-i18n="1 536 px">1 536 px</option>
+                <option value="2048" data-i18n="2 048 px">2 048 px</option>
+              </select></label
+            ><label
+              ><span data-i18n="Request timeout (s)">Request timeout (s)</span
+              ><input name="timeout" type="number" min="30" max="900"
+            /></label>
+          </div>
+          <small class="muted"
+            ><span data-i18n="Originals are unchanged. The model receives a resized copy without EXIF metadata."
+              >Originals are unchanged. The model receives a resized copy without EXIF metadata.</span
+            ></small
+          >
+        </details>
+      </form>
+      <div class="dialog-footer">
+        <span id="settings-message" class="tiny muted" aria-live="polite"></span
+        ><button id="save-settings" class="primary">
+          <span data-i18n="Save and continue →">Save and continue →</span>
+        </button>
+      </div>
+    </dialog>
+    <dialog id="path-dialog">
+      <div class="dialog-header">
+        <h2><span data-i18n="Open folder">Open folder</span></h2>
+        <button class="close-dialog icon-button" aria-label="Close" data-i18n-aria-label="Close">×</button>
+      </div>
+      <label
+        ><span data-i18n="Folder path">Folder path</span><input id="folder-path" placeholder="C:\Datasets\My dataset"
+      /></label>
+      <p class="tiny muted">
+        <span data-i18n="Subfolder and append options are taken from the main window."
+          >Subfolder and append options are taken from the main window.</span
+        >
+      </p>
+      <div class="dialog-footer">
+        <button id="import-path" class="primary"><span data-i18n="Load images">Load images</span></button>
+      </div>
+    </dialog>
+    <dialog id="prompt-dialog">
+      <div class="dialog-header">
+        <h2><span data-i18n="Instructions for the dataset">Instructions for the dataset</span></h2>
+        <button class="close-dialog icon-button" aria-label="Close" data-i18n-aria-label="Close">×</button>
+      </div>
+      <pre id="prompt-text"></pre>
+      <p class="tiny muted">
+        <span data-i18n="The trigger word is inserted into the finished caption automatically."
+          >The trigger word is inserted into the finished caption automatically.</span
+        >
+      </p>
+    </dialog>
+    <dialog id="folder-dialog">
+      <div class="dialog-header">
+        <div>
+          <div class="eyebrow"><span data-i18n="SELECT FOLDER">SELECT FOLDER</span></div>
+          <h2><span data-i18n="Preview your dataset folder">Preview your dataset folder</span></h2>
+        </div>
+        <button class="close-dialog icon-button" aria-label="Close" data-i18n-aria-label="Close">×</button>
+      </div>
+      <div class="folder-navigation">
+        <button id="folder-back" class="secondary" title="Back (Alt+←)" disabled data-i18n-title="Back (Alt+←)">
+          <span data-i18n="← Back">← Back</span></button
+        ><button
+          id="folder-forward"
+          class="secondary"
+          title="Forward (Alt+→)"
+          disabled
+          data-i18n-title="Forward (Alt+→)"
+        >
+          <span data-i18n="Forward →">Forward →</span></button
+        ><button
+          id="folder-up"
+          class="secondary"
+          title="Up one folder (Alt+↑)"
+          disabled
+          data-i18n-title="Up one folder (Alt+↑)"
+        >
+          <span data-i18n="↑ Up one folder">↑ Up one folder</span></button
+        ><button id="folder-home" class="secondary" title="Home folder" data-i18n-title="Home folder">
+          <span data-i18n="⌂ Home">⌂ Home</span></button
+        ><button
+          id="folder-refresh"
+          class="secondary"
+          title="Refresh contents (F5)"
+          data-i18n-title="Refresh contents (F5)"
+        >
+          <span data-i18n="↻ Refresh">↻ Refresh</span>
+        </button>
+      </div>
+      <nav
+        id="folder-breadcrumbs"
+        aria-label="Folder breadcrumb path"
+        data-i18n-aria-label="Folder breadcrumb path"
+      ></nav>
+      <div class="folder-address">
+        <label for="browse-path"><span data-i18n="Path">Path</span></label
+        ><input
+          id="browse-path"
+          aria-label="Current folder path"
+          placeholder="C:\Datasets\My dataset"
+          data-i18n-aria-label="Current folder path"
+        /><button id="folder-go" class="secondary"><span data-i18n="Go">Go</span></button>
+      </div>
+      <div class="folder-browser">
+        <nav id="folder-roots" aria-label="Folder tree" data-i18n-aria-label="Folder tree"></nav>
+        <section class="folder-contents">
+          <p id="folder-summary" class="muted" aria-live="polite">
+            <span data-i18n="Loading folder contents…">Loading folder contents…</span>
+          </p>
+          <div id="folder-error" class="error-message" role="alert" hidden></div>
+          <div id="folder-grid"></div>
+          <div id="folder-pager" class="pagebar" hidden>
+            <button id="folder-prev" class="text-button">
+              <span data-i18n="← Previous images">← Previous images</span></button
+            ><span id="folder-page"></span
+            ><button id="folder-next" class="text-button"><span data-i18n="Next images →">Next images →</span></button>
+          </div>
+        </section>
+      </div>
+      <div class="dialog-footer">
+        <label class="check"
+          ><input id="folder-recursive" type="checkbox" />
+          <span data-i18n="Include subfolders">Include subfolders</span></label
+        ><button id="use-folder" class="primary" disabled>
+          <span data-i18n="Use this folder">Use this folder</span>
+        </button>
+      </div>
+    </dialog>
+    <script src="/assets/i18n.js"></script>
+    <script src="/assets/app.js"></script>
+    <script src="/assets/folder-browser.js"></script>
+  </body>
+</html>
