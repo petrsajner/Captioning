@@ -18,7 +18,7 @@ from .models import Settings
 from .quality import ProviderUnavailableError
 from .runtime import Runtime
 from .storage import KeyStore, archive_sidecar, fingerprint, preserve_damaged, read_json, save_json, write_caption
-from .training import ATTRIBUTES, training_plan
+from .training import ATTRIBUTES
 
 MAX_IMAGES = 20000
 MAX_KEY_LENGTH = 8192
@@ -147,7 +147,6 @@ class Studio:
             "version": __version__,
             "settings": self.settings.model_dump(),
             "training_attributes": ATTRIBUTES,
-            "training_plan": training_plan(self.settings),
             "has_key": self.keys.has(self.settings.cloud_url),
             "has_local_key": self.keys.has("local:" + self.settings.local_url),
             "rows": self.rows,
@@ -342,7 +341,6 @@ class Studio:
             "message": "Starting batch…",
             "id": uuid.uuid4().hex,
             "output_format": settings.output_format,
-            "training_plan": training_plan(settings),
         }
         for row in selected:
             if row["status"] != "invalid":

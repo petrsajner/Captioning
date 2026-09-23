@@ -134,21 +134,21 @@ def normalize_json(text: str, settings=None) -> str:
         cleaned = match.group(1).strip()
     data = validate_json(cleaned)
     if settings is not None:
-        learned = set(settings.learn_attributes)
-        if "background" in learned:
+        omitted = set(settings.omitted_attributes)
+        if "background" in omitted:
             data["background_setting"] = ""
             data["context"] = ""
             data["objects"] = data["objects"][:1]
-        if "lighting" in learned:
+        if "lighting" in omitted:
             data["lighting"] = {"conditions": "", "direction": ""}
-        if "composition" in learned:
+        if "composition" in omitted:
             data.pop("photographic_characteristics", None)
             data["aesthetics"]["composition"] = ""
             for obj in data["objects"]:
                 obj["location"] = ""
                 obj["relationship"] = ""
                 obj.pop("relative_size", None)
-        if "style" in learned:
+        if "style" in omitted:
             data.pop("style_medium", None)
             data.pop("artistic_style", None)
             data["aesthetics"].update(color_scheme="", mood_atmosphere="")
@@ -161,10 +161,10 @@ def normalize_json(text: str, settings=None) -> str:
                 "expression": ["expression"],
             }
             for group, fields in groups.items():
-                if group in learned:
+                if group in omitted:
                     for field in fields:
                         main.pop(field, None)
-            if {"hair", "accessories"} <= learned:
+            if {"hair", "accessories"} <= omitted:
                 main.pop("appearance_details", None)
         if not settings.text_in_image:
             data["text_render"] = []

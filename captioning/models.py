@@ -25,12 +25,13 @@ class Settings(BaseModel):
     preset: Literal["general", "character", "object", "style"] = "general"
     format: Literal["description", "tags"] = "description"
     output_format: Literal["normal", "bria_json"] = "normal"
-    learn_attributes: list[Attribute] = Field(default_factory=list)
+    # Caption details left out (unchecked in the UI); everything else is described.
+    omitted_attributes: list[Attribute] = Field(default_factory=list)
     language: Literal["English", "Czech"] = "English"
     words: int = Field(100, ge=20, le=300)
     trigger: str = Field("", max_length=100)
     subject: str = Field("", max_length=100)
-    # Read old recipes once; new saved recipes use learn_attributes.
+    # Read old recipes once; new saved recipes use omitted_attributes.
     omit_identity: bool = Field(False, exclude=True)
     lighting: bool = Field(True, exclude=True)
     composition: bool = Field(True, exclude=True)
@@ -44,16 +45,20 @@ class Settings(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def migrate_local_connection(cls, value):
-        if isinstance(value, dict) and "learn_attributes" not in value:
-            learned = []
-            if value.get("omit_identity", False):
-                learned.append("identity")
-            if value.get("lighting") is False:
-                learned.append("lighting")
-            if value.get("composition") is False:
-                learned.append("composition")
-            value = {**value, "learn_attributes": learned}
+    def migrate_saved_recipe(cls, value):
+        if isinstance(value, dict) and "omitted_attributes" not in value:
+            if "learn_attributes" in value:
+                # Name used up to 0.1.9 for the same list of omitted details.
+                omitted = value["learn_attributes"]
+            else:
+                omitted = []
+                if value.get("omit_identity", False):
+                    omitted.append("identity")
+                if value.get("lighting") is False:
+                    omitted.append("lighting")
+                if value.get("composition") is False:
+                    omitted.append("composition")
+            value = {**value, "omitted_attributes": omitted}
         if isinstance(value, dict) and "local_source" not in value:
             url = value.get("local_url", MANAGED_URL)
             if isinstance(url, str) and url.rstrip("/") != MANAGED_URL:
@@ -74,6 +79,9 @@ class Settings(BaseModel):
                 return cls(**data), damaged
             except ValidationError as exc:
                 fields = {error["loc"][0] for error in exc.errors() if error["loc"]} & data.keys()
+                if not fields:
+                    # The rejected value was derived from an old key during migration.
+                    fields = data.keys() - cls.model_fields.keys()
                 if not fields:
                     return cls(), True
                 for field in fields:

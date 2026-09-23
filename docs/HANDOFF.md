@@ -55,8 +55,9 @@ writes are deliberate simplifications at that scale.
   `ui_language` is independent of caption `language`. Old omitted-attribute settings
   migrate without changing behavior. Old output-token settings are ignored.
 - `captioning/training.py`: shared attribute definitions and mandatory per-attribute
-  model policy. **The persisted `learn_attributes` list means omitted details.**
-  The UI stores unchecked attributes in this list. Do not invert legacy recipes.
+  model policy. `omitted_attributes` lists the details left out of captions (unchecked
+  in the UI). Up to 0.1.9 the same list was saved as `learn_attributes`; it migrates
+  on load without inversion. The model prompt still labels these LEARN_WITH_LORA.
 - `captioning/bria.py`: FIBO structure, validation and normalization. Uses BRIA's
   ImageAnalysis field layout, plus optional scores from its fine-tuning example.
   Main subject is first in `objects`; mapped omitted fields are cleared, and the

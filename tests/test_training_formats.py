@@ -9,7 +9,7 @@ from captioning.bria import CaptionValidationError, normalize_json, validate_jso
 from captioning.models import Settings, make_prompt
 from captioning.provider import generate
 from captioning.service import Studio
-from captioning.training import ATTRIBUTES, training_plan
+from captioning.training import ATTRIBUTES
 
 
 def example():
@@ -37,15 +37,18 @@ def example():
 
 def test_migrate_old_checkbox_and_explicit_new_policy_wins():
     old = Settings(omit_identity=True, lighting=False, composition=False)
-    assert set(old.learn_attributes) == {"identity", "lighting", "composition"}
+    assert set(old.omitted_attributes) == {"identity", "lighting", "composition"}
     assert not {"omit_identity", "lighting", "composition"} & old.model_dump().keys()
-    explicit = Settings(omit_identity=True, learn_attributes=["clothing"])
-    assert explicit.learn_attributes == ["clothing"]
-    assert training_plan(explicit)["learn"] == ["Clothing"]
+    explicit = Settings(omit_identity=True, omitted_attributes=["clothing"])
+    assert explicit.omitted_attributes == ["clothing"]
+    renamed = Settings(learn_attributes=["clothing", "hair"])  # saved by 0.1.9 and earlier
+    assert renamed.omitted_attributes == ["clothing", "hair"] and "learn_attributes" not in renamed.model_dump()
+    recovered, damaged = Settings.recover({"learn_attributes": ["unknown"], "trigger": "kept"})
+    assert damaged and recovered.trigger == "kept" and recovered.omitted_attributes == []
 
 
 def test_policy_covers_each_attribute_without_preset_conflicts():
-    s = Settings(preset="character", learn_attributes=["identity", "clothing"], instructions="Describe all clothes.")
+    s = Settings(preset="character", omitted_attributes=["identity", "clothing"], instructions="Describe all clothes.")
     prompt = make_prompt(s)
     assert prompt.count("LEARN_WITH_LORA — DO NOT DESCRIBE:") == 2
     assert prompt.count("CONTROL_WITH_PROMPT — DESCRIBE IF VISIBLE:") == len(ATTRIBUTES) - 2
@@ -57,7 +60,7 @@ def test_bria_structure_policy_trigger_and_unicode():
     s = Settings(
         output_format="bria_json",
         trigger="\u65e5\u672c",
-        learn_attributes=["identity", "clothing", "lighting", "style"],
+        omitted_attributes=["identity", "clothing", "lighting", "style"],
     )
     caption = normalize_json("```json\n" + json.dumps(example()) + "\n```", s)
     data = json.loads(caption)
@@ -109,24 +112,24 @@ def test_job_freezes_caption_policy_and_output_format(tmp_path, monkeypatch):
         studio = Studio(tmp_path / "app")
         await studio.import_images([str(image)], "", False, False)
         studio.settings.output_format = "bria_json"
-        studio.settings.learn_attributes = ["identity"]
+        studio.settings.omitted_attributes = ["identity"]
         entered, release = asyncio.Event(), asyncio.Event()
 
         async def fake(path, settings, key, **kwargs):
             entered.set()
             await release.wait()
-            assert settings.output_format == "bria_json" and settings.learn_attributes == ["identity"]
+            assert settings.output_format == "bria_json" and settings.omitted_attributes == ["identity"]
             return normalize_json(json.dumps(example()), settings)
 
         monkeypatch.setattr("captioning.provider.generate", fake)
         await studio.start_job([studio.rows[0]["id"]])
         await entered.wait()
         studio.settings.output_format = "normal"
-        studio.settings.learn_attributes.clear()
+        studio.settings.omitted_attributes.clear()
         release.set()
         await studio.task
         assert image.with_suffix(".json").exists() and not image.with_suffix(".txt").exists()
-        assert studio.job["training_plan"]["learn"] == ["Identity / subject appearance"]
+        assert "shape_and_color" not in json.loads(image.with_suffix(".json").read_text(encoding="utf-8"))["objects"][0]
 
     asyncio.run(run())
 

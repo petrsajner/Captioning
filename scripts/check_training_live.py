@@ -28,7 +28,7 @@ async def main():
     output = workspace / "output" / "training-live"
     output.mkdir(parents=True, exist_ok=True)
     report = []
-    for name, output_format, learned in [
+    for name, output_format, omitted in [
         ("identity-learn", "normal", ["identity"]),
         ("identity-described", "normal", []),
         ("bria-identity-learn", "bria_json", ["identity", "lighting"]),
@@ -43,7 +43,7 @@ async def main():
             cloud_url=config["cloud_url"],
             cloud_model=config["cloud_model"],
             output_format=output_format,
-            learn_attributes=learned,
+            omitted_attributes=omitted,
             preset="general",
             words=70,
             trigger="testdog",

@@ -110,7 +110,7 @@ def backend_messages():
 def test_ui_language_is_persistent_and_does_not_change_recipe_or_prompt(tmp_path):
     studio = Studio(tmp_path)
     studio.save_settings(
-        Settings(trigger="subject", words=70, language="English", learn_attributes=["identity", "hair"])
+        Settings(trigger="subject", words=70, language="English", omitted_attributes=["identity", "hair"])
     )
     before = studio.settings.model_dump()
     prompt = make_prompt(studio.settings)

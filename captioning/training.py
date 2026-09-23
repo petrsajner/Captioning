@@ -78,16 +78,9 @@ ATTRIBUTES = [
 ]
 
 
-def training_plan(settings):
-    learned = set(settings.learn_attributes)
-    return {
-        "learn": [a["label"] for a in ATTRIBUTES if a["id"] in learned],
-        "describe": [a["label"] for a in ATTRIBUTES if a["id"] not in learned],
-    }
-
-
 def policy_prompt(settings):
-    learned = set(settings.learn_attributes)
+    # The model-facing labels are unchanged: omitted details are the ones the LoRA should learn.
+    omitted = set(settings.omitted_attributes)
     lines = [
         "MANDATORY CAPTION POLICY (higher priority than preset and optional hints):",
         "The user is deciding which attributes should be associated with their LoRA concept and which should be described for later prompt control.",
@@ -98,7 +91,7 @@ def policy_prompt(settings):
         lines.append(
             (
                 "LEARN_WITH_LORA — DO NOT DESCRIBE: "
-                if a["id"] in learned
+                if a["id"] in omitted
                 else "CONTROL_WITH_PROMPT — DESCRIBE IF VISIBLE: "
             )
             + a["instruction"]

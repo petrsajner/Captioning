@@ -21,7 +21,7 @@ async function action(fn) {try{await fn();}catch(e){toast(e.message,true);}}
 function formValues(form, base) {
   const out={...base};
   for(const el of form.elements) if(el.name&&!el.dataset.attribute) out[el.name]=el.type==='checkbox'?el.checked:(['number','range'].includes(el.type)||el.name==='image_size'?Number(el.value):el.value);
-  if(form===recipe)out.learn_attributes=[...form.querySelectorAll('[data-attribute]')].filter(el=>!el.checked).map(el=>el.dataset.attribute);
+  if(form===recipe)out.omitted_attributes=[...form.querySelectorAll('[data-attribute]')].filter(el=>!el.checked).map(el=>el.dataset.attribute);
   return out;
 }
 function fillForm(form, values) {for(const el of form.elements) if(el.name && el.name in values) {if(el.type==='checkbox')el.checked=values[el.name];else el.value=values[el.name];}}
@@ -322,12 +322,12 @@ $('load-local-models').onclick=async()=>{
 window.addEventListener('beforeunload',e=>{if(dirty||recipeDirty){e.preventDefault();e.returnValue='';}});
 
 function fillTrainingControls(settings){
-  const learned=new Set(settings.learn_attributes||[]);
-  $('training-controls').innerHTML=state.training_attributes.map(a=>`<label class="caption-detail"><span><input type="checkbox" name="include_${a.id}" data-attribute="${a.id}" ${learned.has(a.id)?'':'checked'}><span class="detail-name">${esc(t(a.label))}</span><span class="detail-state" aria-hidden="true"><span class="state-on">ON</span><span class="state-off">OFF</span></span></span><small>${esc(t(a.detail))}</small></label>`).join('');
+  const omitted=new Set(settings.omitted_attributes||[]);
+  $('training-controls').innerHTML=state.training_attributes.map(a=>`<label class="caption-detail"><span><input type="checkbox" name="include_${a.id}" data-attribute="${a.id}" ${omitted.has(a.id)?'':'checked'}><span class="detail-name">${esc(t(a.label))}</span><span class="detail-state" aria-hidden="true"><span class="state-on">ON</span><span class="state-off">OFF</span></span></span><small>${esc(t(a.detail))}</small></label>`).join('');
 }
 function renderTrainingPlan(){
-  const s=liveSettings(), learned=new Set(s.learn_attributes), attrs=state.training_attributes;
-  $('training-plan').textContent=t('{included} of {total} details included in caption', {included:attrs.length-learned.size,total:attrs.length});
+  const s=liveSettings(), omitted=new Set(s.omitted_attributes), attrs=state.training_attributes;
+  $('training-plan').textContent=t('{included} of {total} details included in caption', {included:attrs.length-omitted.size,total:attrs.length});
   const json=s.output_format==='bria_json', blocked=hasBusy()||state.runtime.installing||state.runtime.status==='loading';
   recipe.elements.format.disabled=json||blocked;recipe.elements.words.disabled=json||blocked;
   $('json-format-note').hidden=!json;
@@ -336,8 +336,8 @@ function renderTrainingPlan(){
   $('output-note').innerHTML=`<b>image.jpg → image.${json?'json':'txt'}</b><br>${esc(t('Same folder, UTF-8. Skipping applies to both formats. Replaced captions are backed up; the other format is archived so the trainer cannot select it accidentally.'))}`;
 }
 $('apply-training-preset').onclick=()=>{
-  const preset=recipe.elements.preset.value, learned=preset==='character'||preset==='object'?['identity']:preset==='style'?['style']:[];
-  fillTrainingControls({...liveSettings(),learn_attributes:learned});
+  const preset=recipe.elements.preset.value, omitted=preset==='character'||preset==='object'?['identity']:preset==='style'?['style']:[];
+  fillTrainingControls({...liveSettings(),omitted_attributes:omitted});
   recipe.dispatchEvent(new Event('input',{bubbles:true}));
 };
 

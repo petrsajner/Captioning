@@ -8,7 +8,7 @@ async (page) => {
     await recipe.locator('[name=preset]').selectOption('character');
     await page.locator('#apply-training-preset').click();
     await recipe.locator('[data-attribute=clothing]').uncheck();
-    await page.waitForFunction(async()=>{const s=await (await fetch('/api/state')).json();return s.settings.learn_attributes.includes('identity')&&s.settings.learn_attributes.includes('clothing');});
+    await page.waitForFunction(async()=>{const s=await (await fetch('/api/state')).json();return s.settings.omitted_attributes.includes('identity')&&s.settings.omitted_attributes.includes('clothing');});
     checks.push('attribute toggles saved and summarized');
     await page.locator('#preview-prompt').click();
     await page.locator('#prompt-dialog').waitFor({state:'visible'});

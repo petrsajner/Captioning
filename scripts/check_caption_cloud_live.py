@@ -26,7 +26,7 @@ async def main():
         words=40,
         subject="dog",
         trigger="testdog",
-        learn_attributes=["identity"],
+        omitted_attributes=["identity"],
     )
     result = await generate(workspace / "output/test-dataset/dog.jpg", s, KeyStore(root / "keys.json").get(s.cloud_url))
     output = workspace / "output/length-live-cloud"
