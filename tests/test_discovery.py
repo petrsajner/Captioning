@@ -124,6 +124,6 @@ def test_discovery_api_requires_session_and_does_not_change_settings(tmp_path, m
         assert response.status_code == 200 and response.json()["checked"] == 6
         assert studio.settings.model_dump() == before
         assert not (tmp_path / "settings.json").exists()
-        assert (
-            client.post("/api/local-servers", json={"url": "http://192.168.1.2/v1"}, headers=headers).status_code == 400
-        )
+        rejected = client.post("/api/local-servers", json={"url": "http://192.168.1.2/v1"}, headers=headers)
+        assert rejected.status_code == 400
+        assert rejected.json() == {"detail": "Local mode requires a localhost address."}

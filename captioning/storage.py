@@ -12,6 +12,8 @@ import uuid
 from ctypes import wintypes
 from pathlib import Path
 
+from .errors import UserError
+
 
 def atomic_bytes(path: Path, content: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -52,21 +54,21 @@ def read_json(path: Path, default, recovered: list[str] | None = None):
 
 def fingerprint(path: Path) -> str | None:
     if path.is_symlink():
-        raise ValueError("The caption is a symbolic link. Writing is blocked.")
+        raise UserError("The caption is a symbolic link. Writing is blocked.")
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
 
 
 def write_caption(image: Path, text: str, expected: str | None, overwrite: bool, suffix=".txt") -> str:
     """UTF-8 sidecar; preserve existing bytes and detect external modifications."""
     if suffix not in (".txt", ".json"):
-        raise ValueError("Invalid caption extension.")
+        raise UserError("Invalid caption extension.")
     text = text.strip()
     if not text:
-        raise ValueError("An empty caption cannot be saved.")
+        raise UserError("An empty caption cannot be saved.")
     path = image.with_suffix(suffix)
     current = fingerprint(path)
     if current != expected:
-        raise ValueError("The caption was changed outside the app. Reload the dataset.")
+        raise UserError("The caption was changed outside the app. Reload the dataset.")
     if current is not None and not overwrite:
         raise FileExistsError("The caption already exists.")
     data = (text + "\n").encode("utf-8")
@@ -88,12 +90,12 @@ def write_caption(image: Path, text: str, expected: str | None, overwrite: bool,
     else:
         old = path.read_bytes()
         if hashlib.sha256(old).hexdigest() != expected:
-            raise ValueError("The caption was changed outside the app.")
+            raise UserError("The caption was changed outside the app.")
         if old != data:
             backup = path.parent / ".caption-backups" / (path.name + "." + uuid.uuid4().hex + ".bak")
             atomic_bytes(backup, old)
             if fingerprint(path) != expected:
-                raise ValueError("The caption was changed outside the app.")
+                raise UserError("The caption was changed outside the app.")
             atomic_bytes(path, data)
     return hashlib.sha256(data).hexdigest()
 
@@ -101,7 +103,7 @@ def write_caption(image: Path, text: str, expected: str | None, overwrite: bool,
 def archive_sidecar(path: Path, expected: str):
     """Retire the other caption format after a successful format conversion."""
     if fingerprint(path) != expected:
-        raise ValueError(
+        raise UserError(
             "The original caption changed outside the app. The old format was not moved; reload the dataset."
         )
     backup_dir = path.parent / ".caption-backups"
@@ -116,7 +118,7 @@ class Blob(ctypes.Structure):
 
 def protect(data: bytes, decrypt=False) -> bytes:
     if os.name != "nt":
-        raise ValueError("Persistent API key storage requires Windows.")
+        raise UserError("Persistent API key storage requires Windows.")
     buf = ctypes.create_string_buffer(data)
     source = Blob(len(data), ctypes.cast(buf, ctypes.POINTER(ctypes.c_byte)))
     target = Blob()
@@ -149,7 +151,7 @@ def protect(data: bytes, decrypt=False) -> bytes:
         ]
         ok = fn(ctypes.byref(source), "Caption Studio", None, None, None, 1, ctypes.byref(target))
     if not ok:
-        raise ValueError("Windows could not access the saved key. Enter it again.")
+        raise UserError("Windows could not access the saved key. Enter it again.")
     try:
         return ctypes.string_at(target.pbData, target.cbData)
     finally:

@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from captioning.api import make_app
+from captioning.errors import ProviderUnavailableError, UserError
 from captioning.folders import PAGE_SIZE, FolderBrowser
 from captioning.models import Settings, make_prompt
 from captioning.provider import clean_caption, generate
@@ -47,9 +48,9 @@ def test_no_clobber_external_edit_and_empty(tmp_path):
     with pytest.raises(FileExistsError):
         write_caption(image, "new", old, False)
     image.with_suffix(".txt").write_text("External edit", encoding="utf-8")
-    with pytest.raises(ValueError, match="changed"):
+    with pytest.raises(UserError, match="changed"):
         write_caption(image, "new", old, True)
-    with pytest.raises(ValueError, match="empty"):
+    with pytest.raises(UserError, match="empty"):
         write_caption(image, " ", old, True)
     assert image.with_suffix(".txt").read_text() == "External edit"
 
@@ -179,7 +180,7 @@ def test_incomplete_response_rejected(tmp_path, monkeypatch, finish, content):
         result = asyncio.run(generate(image, Settings()))
         assert result == "unfinished" and result.needs_review
     else:
-        with pytest.raises(ValueError):
+        with pytest.raises(UserError):
             asyncio.run(generate(image, Settings()))
 
 
@@ -264,13 +265,13 @@ def test_download_bad_hash_and_zip_traversal(tmp_path, monkeypatch):
     runtime = Runtime(tmp_path)
     dest = tmp_path / "broken.bin"
     dest.write_bytes(b"bad")
-    with pytest.raises(ValueError, match="Checksum"):
+    with pytest.raises(UserError, match="Checksum"):
         runtime.verify(dest, "a" * 64, 3)
     assert not dest.exists()
     archive = tmp_path / "bad.zip"
     with zipfile.ZipFile(archive, "w") as z:
         z.writestr("../escaped.txt", "no")
-    with pytest.raises(ValueError, match="invalid path"):
+    with pytest.raises(UserError, match="invalid path"):
         safe_extract(archive, tmp_path / "target")
     assert not (tmp_path / "escaped.txt").exists()
 
@@ -289,7 +290,7 @@ def test_cloud_request_key_and_clean_failure(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "captioning.provider.httpx.AsyncClient", lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw)
     )
-    with pytest.raises(ValueError) as result:
+    with pytest.raises(ProviderUnavailableError) as result:
         asyncio.run(generate(image, Settings(mode="cloud", cloud_model="test/vision"), "fake-test-key"))
     assert "401" in str(result.value) and "fake-test-key" not in str(result.value)
 
@@ -331,7 +332,7 @@ def test_folder_browser_shows_images_subfolders_and_pages(tmp_path):
     empty = browser.listing(str(folder / "subfolder"))
     assert empty["image_count"] == 0 and empty["parent"] == str(folder)
     assert (folder / "foto-000.txt").read_text() == "untouched"
-    with pytest.raises(ValueError):
+    with pytest.raises(UserError):
         browser.image("not-registered")
 
 
@@ -387,3 +388,15 @@ def test_tree_api_auth_and_invalid_navigation_leave_dataset_intact(tmp_path):
         assert client.post("/api/folders", json={"path": str(tmp_path / "missing")}, headers=headers).status_code == 400
         assert client.post("/api/folder-tree", json={"path": str(image)}, headers=headers).status_code == 400
     assert json.dumps(studio.rows) == previous
+
+
+def test_rejected_request_is_an_image_error_not_a_pause(tmp_path, monkeypatch):
+    image = picture(tmp_path / "a.png")
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        "captioning.provider.httpx.AsyncClient",
+        lambda **kw: real_client(transport=httpx.MockTransport(lambda request: httpx.Response(400)), **kw),
+    )
+    with pytest.raises(UserError, match="HTTP 400") as result:
+        asyncio.run(generate(image, Settings()))
+    assert not isinstance(result.value, ProviderUnavailableError)

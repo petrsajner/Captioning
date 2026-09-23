@@ -11,6 +11,7 @@ from PIL import Image
 
 import app
 from captioning.api import make_app
+from captioning.errors import UserError
 from captioning.models import Settings
 from captioning.provider import INVALID_RESPONSE, generate, list_models
 from captioning.quality import unfinished
@@ -124,10 +125,10 @@ def test_non_object_provider_responses_are_invalid_format(tmp_path, monkeypatch,
             transport=httpx.MockTransport(lambda request: httpx.Response(200, content=body)), **kwargs
         ),
     )
-    with pytest.raises(ValueError, match=INVALID_RESPONSE):
+    with pytest.raises(UserError, match=INVALID_RESPONSE):
         asyncio.run(generate(image, Settings()))
     if body != b'{"choices":[{"message":"text"}]}':
-        with pytest.raises(ValueError, match=INVALID_RESPONSE):
+        with pytest.raises(UserError, match=INVALID_RESPONSE):
             asyncio.run(list_models(Settings()))
 
 

@@ -67,6 +67,9 @@ writes are deliberate simplifications at that scale.
 - `captioning/service.py`: import, batch lifecycle, immutable recipe per batch,
   persistent drafts/history, sidecar conflict and overwrite checks.
 - `captioning/storage.py`: UTF-8 writes, byte-preserving backups, fingerprints and DPAPI.
+- `captioning/errors.py`: `UserError` messages are UI message IDs (API 400);
+  `ProviderUnavailableError` pauses the batch. Anything else is a defect: logged, API 500.
+  Keep `ValueError` for pydantic validators and JSON parsing only.
 - `captioning/runtime.py`: Caption Studio's own pinned llama.cpp/Qwen downloads and
   process. Never start, stop or reconfigure an external model server.
 - `captioning/api.py`: local session protection and endpoints. `/api/ui-language`

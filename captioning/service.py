@@ -14,8 +14,8 @@ from PIL import Image
 
 from . import __version__, provider
 from .bria import CaptionValidationError, normalize_json
+from .errors import ProviderUnavailableError, UserError
 from .models import Settings
-from .quality import ProviderUnavailableError
 from .runtime import Runtime
 from .storage import KeyStore, archive_sidecar, fingerprint, preserve_damaged, read_json, save_json, write_caption
 from .training import ATTRIBUTES
@@ -102,7 +102,7 @@ class Studio:
                         ".txt": row["fingerprint"],
                         ".json": fingerprint(Path(row["path"]).with_suffix(".json")),
                     }
-                except (ValueError, OSError):
+                except (UserError, OSError):
                     row["fingerprints"] = {".txt": row["fingerprint"], ".json": None}
             if row["status"] in ("processing", "queued"):
                 row.update(status="pending", error="The previous run was interrupted. You can continue.")
@@ -113,7 +113,7 @@ class Studio:
 
     def idle(self):
         if self.job["running"] or self.importing:
-            raise ValueError("Wait for the operation to finish or stop the batch.")
+            raise UserError("Wait for the operation to finish or stop the batch.")
 
     def persist(self):
         save_json(self.root / "session.json", self.rows)
@@ -128,9 +128,9 @@ class Studio:
     ):
         self.idle()
         if self.runtime.installing or self.runtime.state["status"] == "loading":
-            raise ValueError("Wait for model setup to finish.")
+            raise UserError("Wait for model setup to finish.")
         if len(api_key or "") > MAX_KEY_LENGTH or len(local_api_key or "") > MAX_KEY_LENGTH:
-            raise ValueError("The API key is too long.")
+            raise UserError("The API key is too long.")
         if clear_key:
             self.keys.set(settings.cloud_url, "")
         elif api_key and api_key.strip():
@@ -165,7 +165,7 @@ class Studio:
     def row(self, image_id: str):
         row = next((r for r in self.rows if r["id"] == image_id), None)
         if not row:
-            raise ValueError("The image is not in the open dataset.")
+            raise UserError("The image is not in the open dataset.")
         return row
 
     @staticmethod
@@ -176,14 +176,14 @@ class Studio:
             if p.is_file() and p.suffix.lower() in provider.EXTENSIONS and p.stem.casefold() == image.stem.casefold()
         ]
         if len(matches) > 1:
-            raise ValueError("Duplicate filename stem: " + ", ".join(matches) + ". Rename the files first.")
+            raise UserError("Duplicate filename stem: " + ", ".join(matches) + ". Rename the files first.")
 
     def _scan(self, paths: list[str], folder: str, recursive: bool, append: bool):
         files = []
         if folder:
             directory = Path(folder).expanduser().resolve(strict=True)
             if not directory.is_dir():
-                raise ValueError("The selected path is not a folder.")
+                raise UserError("The selected path is not a folder.")
             # os.walk does not traverse directory symlinks. Avoid backup and dot folders.
             for current, dirs, names in os.walk(directory, followlinks=False):
                 dirs[:] = sorted(d for d in dirs if not d.startswith(".")) if recursive else []
@@ -195,9 +195,9 @@ class Studio:
             if p.suffix.lower() in provider.EXTENSIONS and p.is_file()
         }
         if not unique:
-            raise ValueError("The selection contains no supported images.")
+            raise UserError("The selection contains no supported images.")
         if len(unique) > MAX_IMAGES:
-            raise ValueError(f"Open no more than {MAX_IMAGES} images in one dataset.")
+            raise UserError(f"Open no more than {MAX_IMAGES} images in one dataset.")
         rows = list(self.rows) if append else []
         known = {r["path"].casefold() for r in rows}
         # Index each directory once; thousands of images must not trigger an O(n²) scan.
@@ -224,11 +224,11 @@ class Studio:
             }
             try:
                 if stem_counts[path.parent][path.stem.casefold()] > 1:
-                    raise ValueError("Duplicate filename stem: " + path.stem + ". Rename the files first.")
+                    raise UserError("Duplicate filename stem: " + path.stem + ". Rename the files first.")
                 with Image.open(path) as im:
                     row.update(width=im.width, height=im.height)
                     if getattr(im, "n_frames", 1) > 1:
-                        raise ValueError("Multi-frame images are not supported. Select a single frame.")
+                        raise UserError("Multi-frame images are not supported. Select a single frame.")
                     im.verify()
                 row["fingerprints"] = {suffix: fingerprint(path.with_suffix(suffix)) for suffix in (".txt", ".json")}
                 preferred = ".json" if self.settings.output_format == "bria_json" else ".txt"
@@ -273,10 +273,10 @@ class Studio:
         self.idle()
         row = self.row(image_id)
         if row["status"] == "invalid":
-            raise ValueError(row["error"])
+            raise UserError(row["error"])
         image = Path(row["path"])
         if not image.is_file():
-            raise ValueError("The original image no longer exists.")
+            raise UserError("The original image no longer exists.")
         self.collision(image)
         if row.get("caption_format") == "bria_json":
             text = normalize_json(text)
@@ -289,7 +289,7 @@ class Studio:
         hashes = row.get("fingerprints", {".txt": row.get("fingerprint"), ".json": None})
         for suffix in (".txt", ".json"):
             if fingerprint(image.with_suffix(suffix)) != hashes.get(suffix):
-                raise ValueError("The caption was changed outside the app. Reload the dataset.")
+                raise UserError("The caption was changed outside the app. Reload the dataset.")
 
     def _write_row(self, row, text, output_format, overwrite):
         if output_format == "bria_json":
@@ -320,14 +320,14 @@ class Studio:
         self.idle()
         selected = [self.row(i) for i in dict.fromkeys(ids)]
         if not selected:
-            raise ValueError("Select at least one image.")
+            raise UserError("Select at least one image.")
         settings = self.settings.model_copy(deep=True)
         if settings.mode == "cloud":
             if not settings.cloud_model.strip():
-                raise ValueError("Select a cloud model with image support in Settings.")
+                raise UserError("Select a cloud model with image support in Settings.")
             key = self.keys.get(settings.cloud_url)
             if not key:
-                raise ValueError("Enter this provider’s API key in Settings.")
+                raise UserError("Enter this provider’s API key in Settings.")
         else:
             key = self.local_key(settings)
         self.job = {

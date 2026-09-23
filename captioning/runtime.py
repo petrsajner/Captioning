@@ -15,6 +15,7 @@ from pathlib import Path
 
 import httpx
 
+from .errors import UserError
 from .models import MANAGED_MODEL, MANAGED_PORT
 from .storage import read_json, save_json
 
@@ -79,7 +80,7 @@ def safe_extract(archive: Path, destination: Path):
         for info in z.infolist():
             path = (destination / info.filename).resolve()
             if not path.is_relative_to(root) or (info.external_attr >> 16) & 0o170000 == 0o120000:
-                raise ValueError("The archive contains an invalid path.")
+                raise UserError("The archive contains an invalid path.")
         z.extractall(destination)
 
 
@@ -121,7 +122,7 @@ class Runtime:
                 self.state["done"] += len(chunk)
         if path.stat().st_size != size or h.hexdigest() != sha:
             path.unlink(missing_ok=True)
-            raise ValueError("Checksum mismatch. The damaged file was removed; start the download again.")
+            raise UserError("Checksum mismatch. The damaged file was removed; start the download again.")
 
     def download(self, url: str, destination: Path, size: int, sha: str):
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -143,7 +144,7 @@ class Runtime:
                         response.raise_for_status()
                         if offset and response.status_code == 206:
                             if not response.headers.get("Content-Range", "").startswith(f"bytes {offset}-"):
-                                raise ValueError("The server returned an incorrect file range.")
+                                raise UserError("The server returned an incorrect file range.")
                         elif offset:
                             offset = 0
                             self.state["done"] = 0
@@ -153,7 +154,7 @@ class Runtime:
                                 f.write(chunk)
                                 self.state["done"] += len(chunk)
                                 if self.state["done"] > size:
-                                    raise ValueError("The download exceeded the expected file size.")
+                                    raise UserError("The download exceeded the expected file size.")
             self.verify(partial, sha, size)
             os.replace(partial, destination)
         self.verified[str(destination)] = [sha, size, destination.stat().st_mtime_ns]
@@ -203,7 +204,7 @@ class Runtime:
                 existing = destination if destination.exists() else partial
                 needed += max(0, size - (existing.stat().st_size if existing.exists() else 0))
             if shutil.disk_usage(self.root).free < needed:
-                raise ValueError(f"Insufficient disk space. Approximately {needed / 1024**3:.1f} GB.")
+                raise UserError(f"Insufficient disk space. Approximately {needed / 1024**3:.1f} GB.")
             self.state.update(status="working")
             runtime = self.runtime_dir(backend)
             if not (runtime / "ready.json").exists():
@@ -221,7 +222,7 @@ class Runtime:
                     self.state.update(message="Extracting the local runtime…", done=0, total=0)
                     safe_extract(archive, staging)
                 if not any(staging.rglob("llama-server.exe")):
-                    raise ValueError("The downloaded package does not contain llama-server.exe.")
+                    raise UserError("The downloaded package does not contain llama-server.exe.")
                 self.checkpoint()
                 if runtime.exists():
                     # Fixed, application-owned staging target only.
@@ -251,9 +252,9 @@ class Runtime:
 
     def install(self, profile: str, backend: str):
         if self.installing:
-            raise ValueError("Installation is already running.")
+            raise UserError("Installation is already running.")
         if self.process and self.process.poll() is None:
-            raise ValueError("Stop the local model before installing.")
+            raise UserError("Stop the local model before installing.")
         self.cancel.clear()
         self.state.update(status="working", message="Preparing download…", done=0, total=0)
         self.install_task = asyncio.create_task(asyncio.to_thread(self._install, profile, backend))
@@ -262,17 +263,17 @@ class Runtime:
         async with self.start_lock:
             if self.process and self.process.poll() is None:
                 if self.process_profile != profile or self.process_backend != backend:
-                    raise ValueError("Another profile is running. Stop it first.")
+                    raise UserError("Another profile is running. Stop it first.")
                 return
             if self.installing:
-                raise ValueError("Wait for installation to finish.")
+                raise UserError("Wait for installation to finish.")
             if not self.ready(profile, backend):
-                raise ValueError("Download the selected local model in Settings first.")
+                raise UserError("Download the selected local model in Settings first.")
             with socket.socket() as sock:
                 try:
                     sock.bind(("127.0.0.1", MANAGED_PORT))
                 except OSError:
-                    raise ValueError(
+                    raise UserError(
                         f"Port {MANAGED_PORT} is in use. The other process was not stopped; check other running instances."
                     ) from None
             exe = next(self.runtime_dir(backend).rglob("llama-server.exe"))
@@ -324,7 +325,7 @@ class Runtime:
                 async with httpx.AsyncClient(timeout=3, trust_env=False) as client:
                     for _ in range(180):
                         if not self.process or self.process.poll() is not None:
-                            raise ValueError(
+                            raise UserError(
                                 "The model did not start. Check runtime/model.log, the GPU driver and available memory."
                             )
                         try:
@@ -335,7 +336,7 @@ class Runtime:
                         except httpx.HTTPError:
                             pass
                         await asyncio.sleep(1)
-                raise ValueError("Model loading timed out.")
+                raise UserError("Model loading timed out.")
             except BaseException:
                 self.stop()
                 self.state.update(status="error", message="Model startup failed. Check Settings and model.log.")

@@ -6,6 +6,7 @@ import pytest
 from PIL import Image
 
 from captioning.bria import CaptionValidationError, normalize_json, validate_json
+from captioning.errors import UserError
 from captioning.models import Settings, make_prompt
 from captioning.provider import generate
 from captioning.service import Studio
@@ -200,7 +201,7 @@ def test_bria_draft_preserves_txt_until_manual_save_and_detects_external_edit(tm
         assert row["status"] == "draft" and row["caption_format"] == "bria_json"
         assert path.with_suffix(".txt").read_text() == "old" and not path.with_suffix(".json").exists()
         path.with_suffix(".txt").write_text("user edit", encoding="utf-8")
-        with pytest.raises(ValueError, match="outside the app"):
+        with pytest.raises(UserError, match="outside the app"):
             studio.save_row(row["id"], row["caption"])
         assert not path.with_suffix(".json").exists() and path.with_suffix(".txt").read_text() == "user edit"
 

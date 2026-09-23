@@ -11,8 +11,9 @@ import httpx
 from PIL import Image, ImageOps
 
 from .bria import normalize_json, schema_prompt
+from .errors import ProviderUnavailableError, UserError
 from .models import Settings, make_prompt
-from .quality import CaptionResult, ProviderUnavailableError, unfinished, word_ceiling, word_count
+from .quality import CaptionResult, unfinished, word_ceiling, word_count
 from .training import policy_prompt
 
 EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
@@ -26,7 +27,7 @@ def response_json(response: httpx.Response) -> dict:
     except ValueError:
         body = None
     if not isinstance(body, dict):
-        raise ValueError(INVALID_RESPONSE)
+        raise UserError(INVALID_RESPONSE)
     return body
 
 
@@ -58,7 +59,7 @@ def clean_caption(value: str, trigger: str) -> str:
         value = value[1:-1]
     value = re.sub(r"\s+", " ", value).strip()
     if not value:
-        raise ValueError("The model returned an empty caption.")
+        raise UserError("The model returned an empty caption.")
     trigger = trigger.strip().strip(",")
     if trigger and not re.match(re.escape(trigger) + r"(?:\s|[,.:;]|$)", value, re.I):
         value = trigger + ", " + value
@@ -72,12 +73,12 @@ async def list_models(s: Settings, key: str = "") -> list[str]:
         async with httpx.AsyncClient(timeout=12, trust_env=False) as client:
             r = await client.get(base + "/models", headers=headers)
     except httpx.HTTPError:
-        raise ValueError("The API is unavailable. Start the local model or check the connection.") from None
+        raise UserError("The API is unavailable. Start the local model or check the connection.") from None
     if r.is_error:
-        raise ValueError(f"The API returned HTTP {r.status_code}. Check the address and API key.")
+        raise UserError(f"The API returned HTTP {r.status_code}. Check the address and API key.")
     data = response_json(r).get("data", [])
     if not isinstance(data, list):
-        raise ValueError(INVALID_RESPONSE)
+        raise UserError(INVALID_RESPONSE)
     return sorted(str(m["id"]) for m in data if isinstance(m, dict) and m.get("id"))
 
 
@@ -85,9 +86,9 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
     base = s.local_endpoint if s.mode == "local" else s.cloud_url
     model = s.local_model_id if s.mode == "local" else s.cloud_model
     if not model.strip():
-        raise ValueError("Select or enter an image-capable model ID in Settings.")
+        raise UserError("Select or enter an image-capable model ID in Settings.")
     if s.mode == "cloud" and not key:
-        raise ValueError("No API key is configured for this provider address.")
+        raise UserError("No API key is configured for this provider address.")
     encoded = base64.b64encode(await asyncio.to_thread(image_bytes, path, s.image_size)).decode()
     payload = {
         "model": model,
@@ -138,20 +139,20 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
                 error_type = (
                     ProviderUnavailableError
                     if r.status_code in (401, 402, 403, 404, 429, 500, 502, 503, 504)
-                    else ValueError
+                    else UserError
                 )
                 raise error_type(
                     f"HTTP {r.status_code}: " + hints.get(r.status_code, "The model server is not ready. Try again.")
                 )
             body = response_json(r)
             if body.get("error"):
-                raise ValueError("The provider returned a generation error. Check the model and account credit.")
+                raise UserError("The provider returned a generation error. Check the model and account credit.")
             choice = body["choices"][0]
             msg = choice["message"]
             if not isinstance(msg, dict):
-                raise ValueError(INVALID_RESPONSE)
+                raise UserError(INVALID_RESPONSE)
             if msg.get("refusal"):
-                raise ValueError("The provider declined to caption this image.")
+                raise UserError("The provider declined to caption this image.")
             content = msg.get("content") or ""
             if isinstance(content, list):
                 content = "\n".join(
@@ -160,7 +161,7 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
                     if isinstance(part, dict) and part.get("type") in ("text", "output_text")
                 )
             if not isinstance(content, str):
-                raise ValueError("The model did not return a text caption.")
+                raise UserError("The model did not return a text caption.")
             finish = str(choice.get("finish_reason") or "").lower()
             usage = body.get("usage") or {}
             if not isinstance(usage, dict):
@@ -183,7 +184,7 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
                     normalize_json(content, s) if s.output_format == "bria_json" else clean_caption(content, s.trigger)
                 )
                 complete = s.output_format == "bria_json" or not unfinished(text, s.format, finish)
-            except ValueError:
+            except UserError:
                 text = re.sub(r"<think>.*?(?:</think>|$)", "", content, flags=re.S).strip()
                 complete = False
             trace.update(
@@ -202,7 +203,7 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
             emit({"kind": "request_error", "stage": stage, "error_type": "connection", "app_token_limit": None})
             raise ProviderUnavailableError("The model server is unavailable. Check that it is running.") from None
         except (KeyError, IndexError, TypeError):
-            raise ValueError(INVALID_RESPONSE) from None
+            raise UserError(INVALID_RESPONSE) from None
 
     async with httpx.AsyncClient(timeout=httpx.Timeout(s.timeout, connect=15), trust_env=False) as client:
         if s.mode == "local" and s.local_source == "external":
@@ -234,7 +235,7 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
                 "retry_caption",
             )
         if not current["text"]:
-            raise ValueError(
+            raise UserError(
                 "The model did not return a caption."
                 if not current["blocked"]
                 else "The provider declined to process the image."
@@ -262,7 +263,9 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
                 )
                 try:
                     fixed = await request(client, [{"role": "user", "content": instruction}], "repair_json")
-                except ValueError:
+                except ProviderUnavailableError:
+                    raise  # Pause the batch: an unrepaired draft is not a usable caption.
+                except UserError:
                     break
                 if fixed["blocked"]:
                     break
@@ -308,8 +311,12 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
             instruction += "\nCaption to edit:\n" + json.dumps(best["text"], ensure_ascii=False)
             try:
                 edited = await request(client, [{"role": "user", "content": instruction}], stage)
-            except ValueError:
+            except ProviderUnavailableError:
+                if not candidates:
+                    raise  # Pause the batch instead of keeping an unfinished draft.
                 break  # A failed shortening must never discard an already complete caption.
+            except UserError:
+                break
             if edited["blocked"]:
                 break
             if edited["complete"] and edited["text"]:

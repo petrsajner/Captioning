@@ -10,6 +10,8 @@ import re
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from .errors import UserError
+
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
@@ -77,7 +79,7 @@ class FiboCaption(StrictModel):
     artistic_style: str | None = None
 
 
-class CaptionValidationError(ValueError):
+class CaptionValidationError(UserError):
     def __init__(self, message, draft):
         super().__init__(message)
         self.draft = draft

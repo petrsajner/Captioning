@@ -5,6 +5,7 @@ import secrets
 from collections import OrderedDict
 from pathlib import Path
 
+from .errors import UserError
 from .provider import EXTENSIONS
 
 PAGE_SIZE = 80
@@ -22,7 +23,7 @@ class FolderBrowser:
         """One tree level only; never scan descendants or decode images."""
         directory = Path(path).expanduser().resolve(strict=True)
         if not directory.is_dir():
-            raise ValueError("This path is not a folder.")
+            raise UserError("This path is not a folder.")
         folders = []
         with os.scandir(directory) as entries:
             for entry in entries:
@@ -37,7 +38,7 @@ class FolderBrowser:
     def listing(self, path: str, page: int = 0):
         directory = Path(path).expanduser().resolve(strict=True)
         if not directory.is_dir():
-            raise ValueError("This path is not a folder.")
+            raise UserError("This path is not a folder.")
         folders, images = [], []
         with os.scandir(directory) as entries:
             for entry in entries:
@@ -81,5 +82,5 @@ class FolderBrowser:
 
     def image(self, identifier: str):
         if identifier not in self.previews:
-            raise ValueError("The preview is no longer available. Open the folder again.")
+            raise UserError("The preview is no longer available. Open the folder again.")
         return self.previews[identifier]

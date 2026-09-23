@@ -5,9 +5,10 @@ import httpx
 import pytest
 from PIL import Image
 
+from captioning.errors import ProviderUnavailableError
 from captioning.models import Settings
 from captioning.provider import generate
-from captioning.quality import CaptionResult, ProviderUnavailableError, word_count
+from captioning.quality import CaptionResult, word_count
 from captioning.service import Studio
 
 
@@ -96,6 +97,20 @@ def test_unrepairable_fragment_is_kept_for_review_not_saved_as_done(image, monke
     calls = responses(monkeypatch, [original])
     result = asyncio.run(generate(image, Settings(words=40)))
     assert result == original and result.needs_review and len(calls) == 3
+
+
+def test_outage_while_completing_an_unfinished_caption_pauses_instead_of_review(image, monkeypatch):
+    calls = responses(monkeypatch, ["A person is standing in a room with a", httpx.ConnectError("offline")])
+    with pytest.raises(ProviderUnavailableError):
+        asyncio.run(generate(image, Settings(words=40)))
+    assert len(calls) == 2
+
+
+def test_outage_while_repairing_json_pauses_instead_of_review(image, monkeypatch):
+    calls = responses(monkeypatch, ['{"short_description":"A blue', httpx.ConnectError("offline")])
+    with pytest.raises(ProviderUnavailableError):
+        asyncio.run(generate(image, Settings(output_format="bria_json")))
+    assert len(calls) == 2
 
 
 def test_tags_do_not_require_sentence_punctuation(image, monkeypatch):

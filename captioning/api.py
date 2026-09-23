@@ -12,9 +12,10 @@ from typing import Literal
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from .discovery import CANDIDATES, discover
+from .errors import UserError
 from .folders import FolderBrowser
 from .models import MANAGED_URL, Settings, make_prompt
 from .provider import image_bytes, list_models
@@ -92,9 +93,15 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
         )
         return response
 
-    @app.exception_handler(ValueError)
-    async def value_error(request, exc):
+    @app.exception_handler(UserError)
+    async def user_error(request, exc):
         return JSONResponse({"detail": str(exc)}, status_code=400)
+
+    @app.exception_handler(ValidationError)
+    async def invalid_value(request, exc):
+        # Settings built from request fields, e.g. a typed server address.
+        messages = [error["msg"].removeprefix("Value error, ") for error in exc.errors(include_input=False)]
+        return JSONResponse({"detail": "; ".join(messages)}, status_code=400)
 
     @app.exception_handler(OSError)
     async def io_error(request, exc):
@@ -153,7 +160,7 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
         for endpoint in endpoints:
             try:
                 keys[endpoint] = studio.keys.get("local:" + endpoint)
-            except ValueError:
+            except UserError:
                 pass  # Unreadable credentials appear as an authentication request.
         owned = studio.runtime.process is not None and studio.runtime.process.poll() is None
         if owned:
@@ -169,7 +176,7 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
     async def pick(kind: str):
         studio.idle()
         if kind != "files":
-            raise ValueError("Unknown selection type.")
+            raise UserError("Unknown selection type.")
         result = studio.root / ("picker-" + uuid.uuid4().hex + ".json")
         if getattr(sys, "frozen", False):
             args = [sys.executable]

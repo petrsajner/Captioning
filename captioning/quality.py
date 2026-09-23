@@ -36,7 +36,3 @@ class CaptionResult(str):
         obj.needs_review = needs_review
         obj.history = history or []
         return obj
-
-
-class ProviderUnavailableError(ValueError):
-    """A connection/account/server problem, not a bad image in the dataset."""
