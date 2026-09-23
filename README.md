@@ -176,6 +176,7 @@ dependencies. Tests, linting, type checking and packaging tools are pinned in
 .venv/Scripts/python -m pip install -r requirements-dev.txt
 .venv/Scripts/python -m ruff check .
 .venv/Scripts/python -m ruff format --check .
+.venv/Scripts/python -m mypy
 .venv/Scripts/python -m pytest -q
 node --test tests/localization.test.cjs
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1

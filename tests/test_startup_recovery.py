@@ -51,7 +51,14 @@ def test_unusable_settings_fall_back_to_defaults(tmp_path, content):
 def test_session_rows_this_version_cannot_use_are_dropped_and_kept(tmp_path):
     image = tmp_path / "a.png"
     Image.new("RGB", (8, 8)).save(image)
-    good = {"id": "1", "path": str(image), "name": "a.png", "caption": "A caption.", "status": "processing"}
+    good = {
+        "id": "1",
+        "path": str(image),
+        "name": "a.png",
+        "caption": "A caption.",
+        "status": "processing",
+        "fingerprint": "abc",
+    }
     rows = [
         good,
         {**good, "id": "2", "status": "archived"},
@@ -62,8 +69,9 @@ def test_session_rows_this_version_cannot_use_are_dropped_and_kept(tmp_path):
     studio = Studio(tmp_path)
     assert [r["id"] for r in studio.rows] == ["1"]
     row = studio.rows[0]
+    assert "fingerprint" not in row  # the pre-0.1.5 single hash moved into fingerprints
     assert (
-        row["status"] == "pending" and row["exists"] is False and row["fingerprints"] == {".txt": None, ".json": None}
+        row["status"] == "pending" and row["exists"] is False and row["fingerprints"] == {".txt": "abc", ".json": None}
     )
     assert json.loads(damaged(tmp_path, "session.json")[0].read_text(encoding="utf-8")) == rows
     assert [r["id"] for r in json.loads((tmp_path / "session.json").read_text(encoding="utf-8"))] == ["1"]

@@ -10,6 +10,8 @@ if ($LASTEXITCODE -ne 0 -or $version -notmatch '^\d+\.\d+\.\d+$') { throw 'Unabl
 if ($LASTEXITCODE -ne 0) { throw 'Lint failed.' }
 & $pythonPath -m ruff format --check .
 if ($LASTEXITCODE -ne 0) { throw 'Formatting check failed.' }
+& $pythonPath -m mypy
+if ($LASTEXITCODE -ne 0) { throw 'Type check failed.' }
 & $pythonPath -m pytest -q
 if ($LASTEXITCODE -ne 0) { throw 'Tests failed.' }
 & $pythonPath 'scripts\licenses.py'

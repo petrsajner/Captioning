@@ -12,6 +12,7 @@ import subprocess
 import threading
 import zipfile
 from pathlib import Path
+from typing import TypedDict
 
 import httpx
 
@@ -84,6 +85,13 @@ def safe_extract(archive: Path, destination: Path):
         z.extractall(destination)
 
 
+class RuntimeState(TypedDict):
+    status: str  # idle, working, done, cancelled, error, loading or running
+    message: str
+    done: int
+    total: int
+
+
 class Runtime:
     def __init__(self, data_dir: Path):
         self.root = data_dir / "runtime"
@@ -95,7 +103,12 @@ class Runtime:
         self.process_backend: str | None = None
         self.api_key = secrets.token_urlsafe(32)
         self.start_lock = asyncio.Lock()
-        self.state = {"status": "idle", "message": "The local model is not ready yet.", "done": 0, "total": 0}
+        self.state: RuntimeState = {
+            "status": "idle",
+            "message": "The local model is not ready yet.",
+            "done": 0,
+            "total": 0,
+        }
         self.verified = read_json(self.root / "verified.json", {})
 
     @property
@@ -113,7 +126,7 @@ class Runtime:
         return self.verified.get(str(path)) == [sha, size, stat.st_mtime_ns]
 
     def verify(self, path: Path, sha: str, size: int):
-        self.state.update(message="Verifying file: " + path.name, done=0, total=size)
+        self.state.update({"message": "Verifying file: " + path.name, "done": 0, "total": size})
         h = hashlib.sha256()
         with path.open("rb") as f:
             while chunk := f.read(8 * 1024 * 1024):
@@ -136,7 +149,7 @@ class Runtime:
             if offset > size:
                 partial.unlink()
                 offset = 0
-            self.state.update(message="Downloading " + destination.name, done=offset, total=size)
+            self.state.update({"message": "Downloading " + destination.name, "done": offset, "total": size})
             if offset < size:
                 headers = {"Range": f"bytes={offset}-"} if offset else {}
                 with httpx.Client(follow_redirects=True, timeout=60, trust_env=False) as client:
@@ -181,9 +194,11 @@ class Runtime:
         if code is not None and self.state["status"] == "running":
             # The owned server exited by itself, for example after running out of GPU memory.
             self.state.update(
-                status="error",
-                message=f"The local model stopped unexpectedly (exit code {code}). "
-                "Check runtime/model.log, the GPU driver and available memory.",
+                {
+                    "status": "error",
+                    "message": f"The local model stopped unexpectedly (exit code {code}). "
+                    "Check runtime/model.log, the GPU driver and available memory.",
+                }
             )
         return {
             **self.state,
@@ -205,7 +220,7 @@ class Runtime:
                 needed += max(0, size - (existing.stat().st_size if existing.exists() else 0))
             if shutil.disk_usage(self.root).free < needed:
                 raise UserError(f"Insufficient disk space. Approximately {needed / 1024**3:.1f} GB.")
-            self.state.update(status="working")
+            self.state.update({"status": "working"})
             runtime = self.runtime_dir(backend)
             if not (runtime / "ready.json").exists():
                 staging = self.root / f"staging-{backend}"
@@ -219,7 +234,7 @@ class Runtime:
                         size,
                         sha,
                     )
-                    self.state.update(message="Extracting the local runtime…", done=0, total=0)
+                    self.state.update({"message": "Extracting the local runtime…", "done": 0, "total": 0})
                     safe_extract(archive, staging)
                 if not any(staging.rglob("llama-server.exe")):
                     raise UserError("The downloaded package does not contain llama-server.exe.")
@@ -238,17 +253,20 @@ class Runtime:
                     size,
                     sha,
                 )
-            self.state.update(status="done", message="The runtime and model are ready.", done=1, total=1)
+            self.state.update({"status": "done", "message": "The runtime and model are ready.", "done": 1, "total": 1})
         except SetupCancelled:
             self.state.update(
-                status="cancelled", message="Download paused. The next attempt will resume the downloaded data."
+                {"status": "cancelled", "message": "Download paused. The next attempt will resume the downloaded data."}
             )
         except httpx.HTTPError:
             self.state.update(
-                status="error", message="Download failed. Check your connection and retry; downloaded data is retained."
+                {
+                    "status": "error",
+                    "message": "Download failed. Check your connection and retry; downloaded data is retained.",
+                }
             )
         except Exception as e:
-            self.state.update(status="error", message=str(e))
+            self.state.update({"status": "error", "message": str(e)})
 
     def install(self, profile: str, backend: str):
         if self.installing:
@@ -256,7 +274,7 @@ class Runtime:
         if self.process and self.process.poll() is None:
             raise UserError("Stop the local model before installing.")
         self.cancel.clear()
-        self.state.update(status="working", message="Preparing download…", done=0, total=0)
+        self.state.update({"status": "working", "message": "Preparing download…", "done": 0, "total": 0})
         self.install_task = asyncio.create_task(asyncio.to_thread(self._install, profile, backend))
 
     async def start(self, profile: str, backend: str):
@@ -320,7 +338,7 @@ class Runtime:
                     creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
                 )
             self.process_profile, self.process_backend = profile, backend
-            self.state.update(status="loading", message="Loading the model into memory…")
+            self.state.update({"status": "loading", "message": "Loading the model into memory…"})
             try:
                 async with httpx.AsyncClient(timeout=3, trust_env=False) as client:
                     for _ in range(180):
@@ -331,7 +349,7 @@ class Runtime:
                         try:
                             r = await client.get(f"http://127.0.0.1:{MANAGED_PORT}/health")
                             if r.status_code == 200:
-                                self.state.update(status="running", message="The local model is running.")
+                                self.state.update({"status": "running", "message": "The local model is running."})
                                 return
                         except httpx.HTTPError:
                             pass
@@ -339,7 +357,7 @@ class Runtime:
                 raise UserError("Model loading timed out.")
             except BaseException:
                 self.stop()
-                self.state.update(status="error", message="Model startup failed. Check Settings and model.log.")
+                self.state.update({"status": "error", "message": "Model startup failed. Check Settings and model.log."})
                 raise
 
     def stop(self):
@@ -351,4 +369,4 @@ class Runtime:
                 self.process.kill()
                 self.process.wait(timeout=5)
         self.process = None
-        self.state.update(status="idle", message="The local model is stopped.")
+        self.state.update({"status": "idle", "message": "The local model is stopped."})
