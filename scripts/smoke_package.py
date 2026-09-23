@@ -40,7 +40,7 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
             base = url.split("/?")[0]
             s = client.get(base + "/api/state").json()
             assert s["settings"]["local_source"] == "managed"
-            assert client.get(base + "/assets/connections.css").status_code == 200
+            assert client.get(base + "/assets/style.css").headers["content-type"].startswith("text/css")
             assert 'id="app-version"' in client.get(base).text
             assert s["rows"] == [] and not s["has_key"] and not s["settings"]["setup_complete"]
             assert not s["runtime"]["ready"] and not s["runtime"]["running"]
