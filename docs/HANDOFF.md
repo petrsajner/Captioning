@@ -1,38 +1,36 @@
 # Caption Studio development handoff
 
-## Current release: 0.1.10 (2026-09-23)
+## Current release: 0.1.11 (2026-09-23)
 
-Backend cleanup from the 0.1.8 code review (phase 3). Model request bodies, prompts
-and BRIA normalization are byte-identical to 0.1.9 across scripted scenarios.
+Frontend cleanup from the 0.1.8 code review (phase 4). The interface looks and behaves
+as in 0.1.10; the backend only registers JavaScript/CSS MIME types.
 
-- Tooling: `pyproject.toml` configures pytest, ruff (lint + format, 120 columns) and
-  mypy. `requirements-lock.txt` holds only the bundled runtime pins (run.bat installs
-  it); dev tools are in `requirements-dev.txt`; licenses cover bundled packages only.
-  PyInstaller excludes pydantic's optional mypy plugin, and `build.ps1` fails if mypy,
-  ruff, pytest or PyInstaller ever end up in the package.
-- The version is defined only in `captioning/__init__.py`. Shared constants name the
-  managed port and alias, the image limit and the key length.
-- Settings: `learn_attributes` is now `omitted_attributes` (migrated on load). The
-  `training_plan` summary was never used by the UI and is removed.
-- Errors: `UserError` / `ProviderUnavailableError` replace `ValueError` for user-facing
-  failures. An outage while completing an unfinished caption or repairing JSON now
-  pauses the batch instead of leaving an unusable draft for review.
-- `provider.generate` is split into `CaptionSession` and small functions;
-  `CaptionResult` is a dataclass. Rows, jobs and runtime state are TypedDicts with a
-  `Status` enum; the pre-0.1.5 single `fingerprint` field is folded into `fingerprints`.
+- Prettier 3.9.9 formats the UI (`package.json`, dev only); `npm run format:check` and
+  `npm test` run in `build.ps1`. `style.css` was committed minified and is now readable.
+- One stylesheet replaces four. Rules that `training.css` re-declared are folded into
+  their base rules; a `.workspace` column rule for 1600 px+ that it silently overrode is
+  removed. `index.html` no longer closes SVG shapes twice.
+- `app.js` is split into ES modules without globals (see Architecture). Modules need a
+  JavaScript MIME type, so the server no longer relies on the Windows registry for it.
+- Diagnostics still use English text as message IDs with template matching in the UI.
+  Replacing them with message codes was considered and not done: it would change the
+  session.json format and every message site, and the locale tests already require a
+  Czech entry for each UI and backend message.
 
-Verified with 83 Python tests, ruff, mypy, the JavaScript localization test and a
-browser check on an isolated profile holding 0.1.9 settings: omitted details load as
-unchecked, the prompt matches them and the next save writes only the new field.
+Verified: computed style, geometry and text of every element are identical to 0.1.10
+in five UI states at 880, 1100, 1480 and 1700 px; browser flows with a stand-in model
+cover selection, filters, batches, stop, caption editing and history, recipe autosave,
+prompt preview, presets, settings discovery, language switching and imports.
 
-## Previous release: 0.1.9 (2026-09-23)
+## Previous release: 0.1.10 (2026-09-23)
 
-Maintenance release from the code review: startup recovery keeps unusable settings,
-key and session files as `<name>.damaged-<id>` and reports them once; a failed start
-shows a native message; non-object provider responses and unexpected API errors are
-reported cleanly; a crashed managed model shows its exit code; missing Czech labels
-were added and a test requires a Czech entry for every UI and backend message. Keep
-`Generation failed.` and ` · {v0} drafts to review`: older sessions may contain them.
+Backend cleanup (phase 3): ruff/mypy tooling and split runtime/dev pins; the version
+lives only in `captioning/__init__.py`; `learn_attributes` became `omitted_attributes`
+(migrated on load); `UserError`/`ProviderUnavailableError` replaced `ValueError`, and an
+outage while completing a caption or repairing JSON pauses the batch; `generate()` was
+split into `CaptionSession`; rows, jobs and runtime state are typed. Model requests are
+byte-identical to 0.1.9. Keep `Generation failed.` and ` · {v0} drafts to review` in the
+locale: sessions from 0.1.8 and earlier may contain their Czech text.
 
 ## Standing interface decisions
 
