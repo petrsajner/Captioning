@@ -8,7 +8,7 @@ from PIL import Image
 from captioning.bria import CaptionValidationError, normalize_json, validate_json
 from captioning.errors import UserError
 from captioning.models import Settings, make_prompt
-from captioning.provider import generate
+from captioning.provider import CaptionResult, generate
 from captioning.service import Studio
 from captioning.training import ATTRIBUTES
 
@@ -120,7 +120,7 @@ def test_job_freezes_caption_policy_and_output_format(tmp_path, monkeypatch):
             entered.set()
             await release.wait()
             assert settings.output_format == "bria_json" and settings.omitted_attributes == ["identity"]
-            return normalize_json(json.dumps(example()), settings)
+            return CaptionResult(normalize_json(json.dumps(example()), settings))
 
         monkeypatch.setattr("captioning.provider.generate", fake)
         await studio.start_job([studio.rows[0]["id"]])
@@ -148,7 +148,7 @@ def test_conversion_archives_old_format_and_round_trips(tmp_path, monkeypatch):
         studio.settings.output_format = "bria_json"
 
         async def bria(*_, **kwargs):
-            return normalize_json(json.dumps(example()))
+            return CaptionResult(normalize_json(json.dumps(example())))
 
         monkeypatch.setattr("captioning.provider.generate", bria)
         await studio.start_job([row["id"]])
@@ -169,7 +169,7 @@ def test_conversion_archives_old_format_and_round_trips(tmp_path, monkeypatch):
         studio.settings.output_format = "normal"
 
         async def normal(*_, **kwargs):
-            return "New text caption"
+            return CaptionResult("New text caption")
 
         monkeypatch.setattr("captioning.provider.generate", normal)
         await studio.start_job([row["id"]], regenerate=True)
@@ -192,7 +192,7 @@ def test_bria_draft_preserves_txt_until_manual_save_and_detects_external_edit(tm
         studio.settings.auto_save = False
 
         async def fake(*_, **kwargs):
-            return json.dumps(example())
+            return CaptionResult(json.dumps(example()))
 
         monkeypatch.setattr("captioning.provider.generate", fake)
         row = studio.rows[0]
@@ -224,7 +224,7 @@ def test_bria_provider_has_sufficient_budget_and_keeps_cloud_protocol(tmp_path, 
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs))
     s = Settings(mode="cloud", cloud_model="test-model", output_format="bria_json", trigger="ohwx")
     caption = asyncio.run(generate(path, s, "not-a-real-key"))
-    assert json.loads(caption)["short_description"].startswith("ohwx, ")
+    assert json.loads(caption.text)["short_description"].startswith("ohwx, ")
 
 
 def test_bad_generated_json_keeps_original_and_exposes_repairable_draft(tmp_path, monkeypatch):
@@ -237,7 +237,7 @@ def test_bad_generated_json_keeps_original_and_exposes_repairable_draft(tmp_path
         studio.settings.output_format = "bria_json"
 
         async def bad(*_, **kwargs):
-            return '{"subject":"wrong shape"}'
+            return CaptionResult('{"subject":"wrong shape"}')
 
         monkeypatch.setattr("captioning.provider.generate", bad)
         row = studio.rows[0]

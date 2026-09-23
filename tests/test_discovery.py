@@ -89,7 +89,7 @@ def test_external_generation_uses_selected_model_and_standard_payload(tmp_path, 
 
     mocked_client(monkeypatch, handler)
     settings = Settings(local_source="external", local_url="http://127.0.0.1:1234/v1", local_model="other-vision")
-    assert asyncio.run(generate(path, settings, "local-test-secret")) == "A blue square."
+    assert asyncio.run(generate(path, settings, "local-test-secret")).text == "A blue square."
 
 
 def test_local_keys_preserve_cloud_configuration_and_are_not_exposed(tmp_path):

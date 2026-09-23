@@ -406,24 +406,24 @@ class Studio:
                     # Check for external edits before spending time or cloud credits.
                     self._check_sidecars(row)
                     progress = functools.partial(self._progress, row, settings)
-                    caption = await provider.generate(image, settings, key, on_progress=progress)
+                    result = await provider.generate(image, settings, key, on_progress=progress)
                     row.update(
-                        caption=caption,
+                        caption=result.text,
                         caption_format=settings.output_format,
                         status="draft",
                         notice="",
                         seconds=round(time.monotonic() - started, 1),
                     )
-                    if getattr(caption, "needs_review", False):
+                    if result.needs_review:
                         row["status"] = "review"
                         self.job["review"] += 1
                     elif settings.auto_save:
                         self.collision(image)
                         self._write_row(
-                            row, caption, settings.output_format, overwrite=regenerate or not settings.skip_existing
+                            row, result.text, settings.output_format, overwrite=regenerate or not settings.skip_existing
                         )
                         self.job["saved"] += 1
-                    row["notice"] = getattr(caption, "notice", "")
+                    row["notice"] = result.notice
                     row["phase"] = ""
                 except asyncio.CancelledError:
                     received = [h for h in row.get("generation_history", []) if h.get("text")]

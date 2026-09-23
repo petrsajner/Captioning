@@ -17,7 +17,7 @@ from captioning.api import make_app
 from captioning.errors import ProviderUnavailableError, UserError
 from captioning.folders import PAGE_SIZE, FolderBrowser
 from captioning.models import Settings, make_prompt
-from captioning.provider import clean_caption, generate
+from captioning.provider import CaptionResult, clean_caption, generate
 from captioning.runtime import Runtime, SetupCancelled, safe_extract
 from captioning.service import Studio
 from captioning.storage import KeyStore, fingerprint, write_caption
@@ -87,7 +87,7 @@ def test_batch_failure_skip_draft_and_resume(tmp_path, monkeypatch):
             calls.append(path.name)
             if path.name == "b.png":
                 raise ValueError("Test model failure")
-            return "A red image."
+            return CaptionResult("A red image.")
 
         monkeypatch.setattr("captioning.provider.generate", fake)
         await studio.start_job([r["id"] for r in studio.rows])
@@ -116,7 +116,7 @@ def test_cancel_does_not_save(tmp_path, monkeypatch, before_first_tick):
         async def slow(*_, **kwargs):
             started.set()
             await asyncio.sleep(60)
-            return "Should not be written"
+            return CaptionResult("Should not be written")
 
         monkeypatch.setattr("captioning.provider.generate", slow)
         await studio.start_job([studio.rows[0]["id"]])
@@ -154,7 +154,7 @@ def test_payload_and_image_preprocessing(tmp_path, monkeypatch):
     )
     s = Settings(trigger="abc", image_size=1024)
     result = asyncio.run(generate(image, s))
-    assert result == "abc, A blue rectangle."
+    assert result.text == "abc, A blue rectangle."
     payload = captured[0]
     assert "sensitive-path" not in json.dumps(payload)
     encoded = payload["messages"][0]["content"][0]["image_url"]["url"].split(",", 1)[1]
@@ -178,7 +178,7 @@ def test_incomplete_response_rejected(tmp_path, monkeypatch, finish, content):
     )
     if finish == "length":
         result = asyncio.run(generate(image, Settings()))
-        assert result == "unfinished" and result.needs_review
+        assert result.text == "unfinished" and result.needs_review
     else:
         with pytest.raises(UserError):
             asyncio.run(generate(image, Settings()))
@@ -303,7 +303,7 @@ def test_external_change_during_inference_keeps_user_caption(tmp_path, monkeypat
 
         async def fake(*_, **kwargs):
             image.with_suffix(".txt").write_text("External caption", encoding="utf-8")
-            return "New generated draft"
+            return CaptionResult("New generated draft")
 
         monkeypatch.setattr("captioning.provider.generate", fake)
         await studio.start_job([studio.rows[0]["id"]])

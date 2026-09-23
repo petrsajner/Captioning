@@ -62,8 +62,9 @@ writes are deliberate simplifications at that scale.
   ImageAnalysis field layout, plus optional scores from its fine-tuning example.
   Main subject is first in `objects`; mapped omitted fields are cleared, and the
   model is instructed to omit those details from free text too.
-- `captioning/provider.py`: compatible image Chat Completions transport, full response
-  retention, automatic text/JSON revisions and service-availability detection.
+- `captioning/provider.py`: compatible image Chat Completions transport. `CaptionSession`
+  runs one image's request sequence (caption, retry, JSON repair or text revision), keeps
+  every response and returns a `CaptionResult`; instruction texts are separate functions.
 - `captioning/service.py`: import, batch lifecycle, immutable recipe per batch,
   persistent drafts/history, sidecar conflict and overwrite checks.
 - `captioning/storage.py`: UTF-8 writes, byte-preserving backups, fingerprints and DPAPI.

@@ -27,12 +27,3 @@ def unfinished(text: str, caption_format="description", finish_reason="") -> boo
     last = re.sub(r"[^\w]", "", tail.split()[-1].lower())
     dangling = dangling_words()
     return finish_reason.lower() in {"length", "max_tokens"} or last in dangling or word_count(text) >= 8
-
-
-class CaptionResult(str):
-    def __new__(cls, text, *, notice="", needs_review=False, history=None):
-        obj = super().__new__(cls, text)
-        obj.notice = notice
-        obj.needs_review = needs_review
-        obj.history = history or []
-        return obj

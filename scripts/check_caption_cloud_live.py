@@ -31,9 +31,9 @@ async def main():
     result = await generate(workspace / "output/test-dataset/dog.jpg", s, KeyStore(root / "keys.json").get(s.cloud_url))
     output = workspace / "output/length-live-cloud"
     output.mkdir(parents=True, exist_ok=True)
-    (output / "caption.txt").write_text(str(result) + "\n", encoding="utf-8")
+    (output / "caption.txt").write_text(result.text + "\n", encoding="utf-8")
     report = {
-        "words": word_count(result),
+        "words": word_count(result.text),
         "needs_review": result.needs_review,
         "notice": result.notice,
         "stages": [
