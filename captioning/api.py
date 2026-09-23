@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-from contextlib import asynccontextmanager
 import json
-from pathlib import Path
 import secrets
 import sys
 import uuid
+from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, Request
@@ -14,11 +14,11 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .models import Settings, make_prompt, MANAGED_URL
 from .discovery import CANDIDATES, discover
+from .folders import FolderBrowser
+from .models import MANAGED_URL, Settings, make_prompt
 from .provider import image_bytes, list_models
 from .service import Studio
-from .folders import FolderBrowser
 from .training import training_plan
 
 
@@ -83,8 +83,14 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
                 if request.headers.get("origin", origin) != origin or request.headers.get("x-caption-client") != "1":
                     return Response(status_code=403)
             response = await call_next(request)
-        response.headers.update({"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
-                                 "Referrer-Policy": "no-referrer", "X-Frame-Options": "DENY"})
+        response.headers.update(
+            {
+                "Cache-Control": "no-store",
+                "X-Content-Type-Options": "nosniff",
+                "Referrer-Policy": "no-referrer",
+                "X-Frame-Options": "DENY",
+            }
+        )
         return response
 
     @app.exception_handler(ValueError)
@@ -93,12 +99,17 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
 
     @app.exception_handler(OSError)
     async def io_error(request, exc):
-        return JSONResponse({"detail": "The file is unavailable or writing is not allowed: " + str(exc)}, status_code=400)
+        return JSONResponse(
+            {"detail": "The file is unavailable or writing is not allowed: " + str(exc)}, status_code=400
+        )
 
     @app.exception_handler(Exception)
     async def unexpected_error(request, exc):
         # The server still logs the traceback; the UI must not report a stopped application.
-        return JSONResponse({"detail": "An unexpected error occurred. If it repeats, check app.log in the data folder."}, status_code=500)
+        return JSONResponse(
+            {"detail": "An unexpected error occurred. If it repeats, check app.log in the data folder."},
+            status_code=500,
+        )
 
     @app.get("/")
     async def index():
@@ -111,8 +122,11 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
     @app.post("/api/settings")
     async def settings(body: SettingsRequest):
         studio.save_settings(body.settings, body.api_key, body.clear_key, body.local_api_key, body.clear_local_key)
-        return {"ok": True, "has_key": studio.keys.has(studio.settings.cloud_url),
-                "has_local_key": studio.keys.has("local:" + studio.settings.local_url)}
+        return {
+            "ok": True,
+            "has_key": studio.keys.has(studio.settings.cloud_url),
+            "has_local_key": studio.keys.has("local:" + studio.settings.local_url),
+        }
 
     @app.post("/api/ui-language")
     async def ui_language(body: LanguageRequest):
@@ -130,7 +144,11 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
 
     @app.post("/api/local-servers")
     async def local_servers(body: DiscoveryRequest):
-        configured = Settings(local_source="external", local_url=body.url).local_url if body.url.strip() else studio.settings.local_url
+        configured = (
+            Settings(local_source="external", local_url=body.url).local_url
+            if body.url.strip()
+            else studio.settings.local_url
+        )
         endpoints = {url for url, _ in CANDIDATES} | {configured}
         keys = {}
         for endpoint in endpoints:
@@ -158,7 +176,9 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
             args = [sys.executable]
         else:
             args = [sys.executable, str(Path(__file__).resolve().parent.parent / "app.py")]
-        process = await asyncio.create_subprocess_exec(*args, "--pick", kind, "--result", str(result), "--ui-language", studio.settings.ui_language)
+        process = await asyncio.create_subprocess_exec(
+            *args, "--pick", kind, "--result", str(result), "--ui-language", studio.settings.ui_language
+        )
         try:
             await process.wait()
             return {"paths": json.loads(result.read_text(encoding="utf-8")) if result.exists() else []}

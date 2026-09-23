@@ -3,6 +3,10 @@ $workspacePath = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $workspacePath
 $pythonPath = Join-Path $workspacePath '.venv\Scripts\python.exe'
 if (-not (Test-Path -LiteralPath $pythonPath)) { throw 'Create the .venv using run.bat first.' }
+& $pythonPath -m ruff check .
+if ($LASTEXITCODE -ne 0) { throw 'Lint failed.' }
+& $pythonPath -m ruff format --check .
+if ($LASTEXITCODE -ne 0) { throw 'Formatting check failed.' }
 & $pythonPath -m pytest -q
 if ($LASTEXITCODE -ne 0) { throw 'Tests failed.' }
 & $pythonPath 'scripts\licenses.py'

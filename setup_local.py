@@ -1,7 +1,9 @@
 """Optional command-line entry point for unattended local setup."""
+
 import argparse
 import asyncio
 import sys
+
 from captioning.runtime import Runtime
 from captioning.service import data_directory
 

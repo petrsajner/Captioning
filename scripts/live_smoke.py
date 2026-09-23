@@ -1,8 +1,10 @@
 """Opt-in live model check against the two public test images, using installed app."""
+
 import json
 import os
-from pathlib import Path
 import time
+from pathlib import Path
+
 import httpx
 
 workspace = Path(__file__).resolve().parents[1]
@@ -17,7 +19,9 @@ with httpx.Client(follow_redirects=True, trust_env=False, timeout=240) as client
     rows = [r for r in state["rows"] if Path(r["path"]).parent == dataset]
     assert len(rows) == 2 and {r["name"] for r in rows} == {"cats.png", "dog.jpg"}
     client.post(base + "/api/runtime/start", json={}, headers=headers).raise_for_status()
-    client.post(base + "/api/jobs", json={"ids": [r["id"] for r in rows], "regenerate": True}, headers=headers).raise_for_status()
+    client.post(
+        base + "/api/jobs", json={"ids": [r["id"] for r in rows], "regenerate": True}, headers=headers
+    ).raise_for_status()
     deadline = time.monotonic() + 120
     while time.monotonic() < deadline:
         state = client.get(base + "/api/state").json()
@@ -33,5 +37,7 @@ with httpx.Client(follow_redirects=True, trust_env=False, timeout=240) as client
         assert data.decode("utf-8").strip() == row["caption"]
         assert data.endswith(b"\n") and not data.startswith(b"\xef\xbb\xbf")
         report["rows"].append({k: row[k] for k in ("name", "status", "seconds", "caption")})
-    (workspace / "output" / "live-smoke.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    (workspace / "output" / "live-smoke.json").write_text(
+        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     print(json.dumps({"saved": state["job"]["saved"], "errors": 0, "seconds": [r["seconds"] for r in report["rows"]]}))

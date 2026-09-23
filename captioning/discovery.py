@@ -1,7 +1,10 @@
 """Bounded, read-only discovery of loopback OpenAI-compatible model APIs."""
+
 import asyncio
 import json
+
 import httpx
+
 from .models import MANAGED_URL, Settings
 
 CANDIDATES = [
@@ -30,8 +33,13 @@ async def probe(client, url, hint, key="", managed=False):
         data = json.loads(body)
         if not isinstance(data, dict) or not isinstance(data.get("data"), list):
             return None
-        models = sorted({m["id"] for m in data["data"] if isinstance(m, dict)
-                         and isinstance(m.get("id"), str) and 0 < len(m["id"]) <= 300})[:1000]
+        models = sorted(
+            {
+                m["id"]
+                for m in data["data"]
+                if isinstance(m, dict) and isinstance(m.get("id"), str) and 0 < len(m["id"]) <= 300
+            }
+        )[:1000]
         return {"url": url, "hint": hint, "status": "ready", "models": models, "managed": managed}
     except (httpx.HTTPError, ValueError, UnicodeError):
         return None
@@ -43,12 +51,18 @@ async def discover(configured_url="", keys=None, managed_running=False):
         url = Settings(local_source="external", local_url=configured_url).local_url
         if url not in dict(candidates):
             candidates.append((url, "Custom address"))
-    async with httpx.AsyncClient(timeout=httpx.Timeout(2.5, connect=1), follow_redirects=False, trust_env=False) as client:
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(2.5, connect=1), follow_redirects=False, trust_env=False
+    ) as client:
+
         async def check(url, hint):
             try:
-                return await asyncio.wait_for(probe(client, url, hint, (keys or {}).get(url, ""),
-                                                    managed_running and url == MANAGED_URL), timeout=3.5)
-            except asyncio.TimeoutError:
+                return await asyncio.wait_for(
+                    probe(client, url, hint, (keys or {}).get(url, ""), managed_running and url == MANAGED_URL),
+                    timeout=3.5,
+                )
+            except TimeoutError:
                 return None
+
         results = await asyncio.gather(*(check(url, hint) for url, hint in candidates))
     return {"servers": [r for r in results if r is not None], "checked": len(candidates)}

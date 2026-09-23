@@ -1,8 +1,9 @@
 """Presentation-only localization; captions, prompts and stored diagnostics stay intact."""
-from functools import lru_cache
+
 import json
-from pathlib import Path
 import sys
+from functools import lru_cache
+from pathlib import Path
 
 
 @lru_cache
@@ -17,5 +18,4 @@ def translate(text: str, language: str = "en") -> str:
 
 
 def dangling_words() -> frozenset[str]:
-    return frozenset(word for language in ("en", "cs")
-                     for word in catalog(language)["grammar"]["dangling_words"])
+    return frozenset(word for language in ("en", "cs") for word in catalog(language)["grammar"]["dangling_words"])

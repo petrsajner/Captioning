@@ -1,36 +1,70 @@
 """Self-contained model setup. Never imports or changes another application's runtime."""
+
 from __future__ import annotations
 
 import asyncio
 import hashlib
 import os
 import secrets
-from pathlib import Path
 import shutil
 import socket
 import subprocess
 import threading
 import zipfile
+from pathlib import Path
 
 import httpx
+
 from .storage import read_json, save_json
 
 REPO = "unsloth/Qwen3.8-27B-GGUF"
 REVISION = "4ca720788d1e01f1bff70c033e0d0028fd02e502"
 RELEASE = "b10821"
 FILES = {
-    "q3": ("Qwen3.8-27B-UD-IQ3_S.gguf", 12040883104, "d847e2c1e4aa276e4b7b8e9ad7628050e61e165d49ab995407bc36677a6f3864"),
-    "q4": ("Qwen3.8-27B-UD-Q4_K_M.gguf", 16464440224, "322e194ff79741c7baa497c240f677f54b201b0efab44ca8e50f122b39123482"),
-    "q5": ("Qwen3.8-27B-UD-Q5_K_M.gguf", 19771509664, "2de73110cb254cbf09b54b717578dadff12ef1194e7271527e68202f39ba4bfd"),
+    "q3": (
+        "Qwen3.8-27B-UD-IQ3_S.gguf",
+        12040883104,
+        "d847e2c1e4aa276e4b7b8e9ad7628050e61e165d49ab995407bc36677a6f3864",
+    ),
+    "q4": (
+        "Qwen3.8-27B-UD-Q4_K_M.gguf",
+        16464440224,
+        "322e194ff79741c7baa497c240f677f54b201b0efab44ca8e50f122b39123482",
+    ),
+    "q5": (
+        "Qwen3.8-27B-UD-Q5_K_M.gguf",
+        19771509664,
+        "2de73110cb254cbf09b54b717578dadff12ef1194e7271527e68202f39ba4bfd",
+    ),
     "vision": ("mmproj-F16.gguf", 927607488, "cbb841a9ee0636b2ec172f5bb8df2ea8dfeb01e90fe7c6126581d662a0b4e43e"),
 }
 ARCHIVES = {
     "cuda": [
-        ("llama-b10821-bin-win-cuda-13.3-x64.zip", 149589734, "3058afb6b1f1ec232fd7b747ed684f440ad03831809af713ae8452bff0c49cda"),
-        ("cudart-llama-bin-win-cuda-13.3-x64.zip", 390970417, "1462a050eb4c684921ba51dcc4cc488a036674c3e73e9945ee705b854808d03e"),
+        (
+            "llama-b10821-bin-win-cuda-13.3-x64.zip",
+            149589734,
+            "3058afb6b1f1ec232fd7b747ed684f440ad03831809af713ae8452bff0c49cda",
+        ),
+        (
+            "cudart-llama-bin-win-cuda-13.3-x64.zip",
+            390970417,
+            "1462a050eb4c684921ba51dcc4cc488a036674c3e73e9945ee705b854808d03e",
+        ),
     ],
-    "vulkan": [("llama-b10821-bin-win-vulkan-x64.zip", 35228149, "23dc394e279940c6b720dca0af53ebf678e48edda7a58ebcb5b52c41c3bd07cb")],
-    "cpu": [("llama-b10821-bin-win-cpu-x64.zip", 18413173, "e33b673c5d056da7128a66710fafe615a9ce35aa72f32c52b683bee56826ca12")],
+    "vulkan": [
+        (
+            "llama-b10821-bin-win-vulkan-x64.zip",
+            35228149,
+            "23dc394e279940c6b720dca0af53ebf678e48edda7a58ebcb5b52c41c3bd07cb",
+        )
+    ],
+    "cpu": [
+        (
+            "llama-b10821-bin-win-cpu-x64.zip",
+            18413173,
+            "e33b673c5d056da7128a66710fafe615a9ce35aa72f32c52b683bee56826ca12",
+        )
+    ],
 }
 
 
@@ -131,20 +165,32 @@ class Runtime:
         if not self.installing:
             self.verified = read_json(self.root / "verified.json", self.verified)
         runtime = self.runtime_dir(backend)
-        return ((runtime / "ready.json").is_file()
-                and any(runtime.rglob("llama-server.exe"))
-                and all(self.valid_file(self.root / "models" / FILES[k][0], FILES[k][2], FILES[k][1])
-                        for k in (profile, "vision")))
+        return (
+            (runtime / "ready.json").is_file()
+            and any(runtime.rglob("llama-server.exe"))
+            and all(
+                self.valid_file(self.root / "models" / FILES[k][0], FILES[k][2], FILES[k][1])
+                for k in (profile, "vision")
+            )
+        )
 
     def snapshot(self, profile: str, backend: str):
         code = self.process.poll() if self.process else None
         if code is not None and self.state["status"] == "running":
             # The owned server exited by itself, for example after running out of GPU memory.
-            self.state.update(status="error", message=f"The local model stopped unexpectedly (exit code {code}). "
-                                                      "Check runtime/model.log, the GPU driver and available memory.")
-        return {**self.state, "installing": self.installing, "ready": self.ready(profile, backend),
-                "running": self.process is not None and self.process.poll() is None,
-                "root": str(self.root), "profile": self.process_profile}
+            self.state.update(
+                status="error",
+                message=f"The local model stopped unexpectedly (exit code {code}). "
+                "Check runtime/model.log, the GPU driver and available memory.",
+            )
+        return {
+            **self.state,
+            "installing": self.installing,
+            "ready": self.ready(profile, backend),
+            "running": self.process is not None and self.process.poll() is None,
+            "root": str(self.root),
+            "profile": self.process_profile,
+        }
 
     def _install(self, profile: str, backend: str):
         try:
@@ -165,7 +211,12 @@ class Runtime:
                 for filename, size, sha in ARCHIVES[backend]:
                     self.checkpoint()
                     archive = self.root / "downloads" / filename
-                    self.download(f"https://github.com/ggml-org/llama.cpp/releases/download/{RELEASE}/{filename}", archive, size, sha)
+                    self.download(
+                        f"https://github.com/ggml-org/llama.cpp/releases/download/{RELEASE}/{filename}",
+                        archive,
+                        size,
+                        sha,
+                    )
                     self.state.update(message="Extracting the local runtime…", done=0, total=0)
                     safe_extract(archive, staging)
                 if not any(staging.rglob("llama-server.exe")):
@@ -179,12 +230,21 @@ class Runtime:
             for k in (profile, "vision"):
                 self.checkpoint()
                 filename, size, sha = FILES[k]
-                self.download(f"https://huggingface.co/{REPO}/resolve/{REVISION}/{filename}", self.root / "models" / filename, size, sha)
+                self.download(
+                    f"https://huggingface.co/{REPO}/resolve/{REVISION}/{filename}",
+                    self.root / "models" / filename,
+                    size,
+                    sha,
+                )
             self.state.update(status="done", message="The runtime and model are ready.", done=1, total=1)
         except SetupCancelled:
-            self.state.update(status="cancelled", message="Download paused. The next attempt will resume the downloaded data.")
+            self.state.update(
+                status="cancelled", message="Download paused. The next attempt will resume the downloaded data."
+            )
         except httpx.HTTPError:
-            self.state.update(status="error", message="Download failed. Check your connection and retry; downloaded data is retained.")
+            self.state.update(
+                status="error", message="Download failed. Check your connection and retry; downloaded data is retained."
+            )
         except Exception as e:
             self.state.update(status="error", message=str(e))
 
@@ -211,26 +271,61 @@ class Runtime:
                 try:
                     sock.bind(("127.0.0.1", 8091))
                 except OSError:
-                    raise ValueError("Port 8091 is in use. The other process was not stopped; check other running instances.") from None
+                    raise ValueError(
+                        "Port 8091 is in use. The other process was not stopped; check other running instances."
+                    ) from None
             exe = next(self.runtime_dir(backend).rglob("llama-server.exe"))
-            args = [str(exe), "-m", str(self.root / "models" / FILES[profile][0]),
-                    "--mmproj", str(self.root / "models" / FILES["vision"][0]),
-                    "--host", "127.0.0.1", "--port", "8091", "--alias", "caption-qwen",
-                    "--api-key", self.api_key, "--image-min-tokens", "1024",
-                    "-c", "8192", "-n", "-1", "-np", "1", "-ngl", "0" if backend == "cpu" else "999",
-                    "--jinja", "-fa", "on", "-ctk", "q8_0", "-ctv", "q8_0"]
+            args = [
+                str(exe),
+                "-m",
+                str(self.root / "models" / FILES[profile][0]),
+                "--mmproj",
+                str(self.root / "models" / FILES["vision"][0]),
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "8091",
+                "--alias",
+                "caption-qwen",
+                "--api-key",
+                self.api_key,
+                "--image-min-tokens",
+                "1024",
+                "-c",
+                "8192",
+                "-n",
+                "-1",
+                "-np",
+                "1",
+                "-ngl",
+                "0" if backend == "cpu" else "999",
+                "--jinja",
+                "-fa",
+                "on",
+                "-ctk",
+                "q8_0",
+                "-ctv",
+                "q8_0",
+            ]
             if backend == "cpu":
                 args.append("--no-mmproj-offload")
             with (self.root / "model.log").open("ab") as log:
-                self.process = subprocess.Popen(args, cwd=exe.parent, stdout=log, stderr=subprocess.STDOUT,
-                                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                self.process = subprocess.Popen(
+                    args,
+                    cwd=exe.parent,
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                )
             self.process_profile, self.process_backend = profile, backend
             self.state.update(status="loading", message="Loading the model into memory…")
             try:
                 async with httpx.AsyncClient(timeout=3, trust_env=False) as client:
                     for _ in range(180):
                         if not self.process or self.process.poll() is not None:
-                            raise ValueError("The model did not start. Check runtime/model.log, the GPU driver and available memory.")
+                            raise ValueError(
+                                "The model did not start. Check runtime/model.log, the GPU driver and available memory."
+                            )
                         try:
                             r = await client.get("http://127.0.0.1:8091/health")
                             if r.status_code == 200:

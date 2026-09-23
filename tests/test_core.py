@@ -2,23 +2,24 @@ import asyncio
 import base64
 import hashlib
 import io
+import itertools
 import json
 import os
-from pathlib import Path
 import zipfile
+from pathlib import Path
 
 import httpx
 import pytest
-from PIL import Image
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from captioning.api import make_app
+from captioning.folders import PAGE_SIZE, FolderBrowser
 from captioning.models import Settings, make_prompt
-from captioning.provider import clean_caption, generate, image_bytes
+from captioning.provider import clean_caption, generate
 from captioning.runtime import Runtime, SetupCancelled, safe_extract
 from captioning.service import Studio
 from captioning.storage import KeyStore, fingerprint, write_caption
-from captioning.folders import FolderBrowser, PAGE_SIZE
 
 
 def picture(path, color="red"):
@@ -80,11 +81,13 @@ def test_batch_failure_skip_draft_and_resume(tmp_path, monkeypatch):
         studio = Studio(tmp_path / "app")
         await studio.import_images([], str(folder), False, False)
         calls = []
+
         async def fake(path, settings, key, **kwargs):
             calls.append(path.name)
             if path.name == "b.png":
                 raise ValueError("Test model failure")
             return "A red image."
+
         monkeypatch.setattr("captioning.provider.generate", fake)
         await studio.start_job([r["id"] for r in studio.rows])
         await studio.task
@@ -97,6 +100,7 @@ def test_batch_failure_skip_draft_and_resume(tmp_path, monkeypatch):
         await reloaded.start_job([reloaded.rows[2]["id"]], regenerate=True)
         await reloaded.task
         assert reloaded.rows[2]["status"] == "draft"
+
     asyncio.run(run())
 
 
@@ -107,10 +111,12 @@ def test_cancel_does_not_save(tmp_path, monkeypatch, before_first_tick):
         studio = Studio(tmp_path / "app")
         await studio.import_images([str(image)], "", False, False)
         started = asyncio.Event()
+
         async def slow(*_, **kwargs):
             started.set()
             await asyncio.sleep(60)
             return "Should not be written"
+
         monkeypatch.setattr("captioning.provider.generate", slow)
         await studio.start_job([studio.rows[0]["id"]])
         if not before_first_tick:
@@ -119,6 +125,7 @@ def test_cancel_does_not_save(tmp_path, monkeypatch, before_first_tick):
         assert not image.with_suffix(".txt").exists()
         assert not studio.job["running"]
         assert studio.rows[0]["status"] == "pending"
+
     asyncio.run(run())
 
 
@@ -127,12 +134,23 @@ def test_payload_and_image_preprocessing(tmp_path, monkeypatch):
     Image.new("RGBA", (1800, 900), (0, 0, 255, 128)).save(image)
     real_client = httpx.AsyncClient
     captured = []
+
     def handler(request):
         data = json.loads(request.content)
         captured.append(data)
         assert request.url.path == "/v1/chat/completions"
-        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": "<think>internal</think>A blue rectangle."}}]})
-    monkeypatch.setattr("captioning.provider.httpx.AsyncClient", lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw))
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {"finish_reason": "stop", "message": {"content": "<think>internal</think>A blue rectangle."}}
+                ]
+            },
+        )
+
+    monkeypatch.setattr(
+        "captioning.provider.httpx.AsyncClient", lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw)
+    )
     s = Settings(trigger="abc", image_size=1024)
     result = asyncio.run(generate(image, s))
     assert result == "abc, A blue rectangle."
@@ -144,13 +162,19 @@ def test_payload_and_image_preprocessing(tmp_path, monkeypatch):
     assert payload["chat_template_kwargs"]["enable_thinking"] is False
 
 
-@pytest.mark.parametrize("finish,content", [("length", "unfinished"), ("content_filter", ""), ("stop", "<think>incomplete")])
+@pytest.mark.parametrize(
+    "finish,content", [("length", "unfinished"), ("content_filter", ""), ("stop", "<think>incomplete")]
+)
 def test_incomplete_response_rejected(tmp_path, monkeypatch, finish, content):
     image = picture(tmp_path / "a.png")
     real_client = httpx.AsyncClient
+
     def handler(_):
         return httpx.Response(200, json={"choices": [{"finish_reason": finish, "message": {"content": content}}]})
-    monkeypatch.setattr("captioning.provider.httpx.AsyncClient", lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw))
+
+    monkeypatch.setattr(
+        "captioning.provider.httpx.AsyncClient", lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw)
+    )
     if finish == "length":
         result = asyncio.run(generate(image, Settings()))
         assert result == "unfinished" and result.needs_review
@@ -160,9 +184,15 @@ def test_incomplete_response_rejected(tmp_path, monkeypatch, finish, content):
 
 
 def test_prompt_trigger_and_network_boundaries():
-    s = Settings(preset="character", subject="ohwx", trigger="ohwx", omit_identity=True, instructions="Describe clothing.")
+    s = Settings(
+        preset="character", subject="ohwx", trigger="ohwx", omit_identity=True, instructions="Describe clothing."
+    )
     prompt = make_prompt(s)
-    assert "ohwx" in prompt and "Describe clothing." in prompt and "LEARN_WITH_LORA — DO NOT DESCRIBE: stable visual identity" in prompt
+    assert (
+        "ohwx" in prompt
+        and "Describe clothing." in prompt
+        and "LEARN_WITH_LORA — DO NOT DESCRIBE: stable visual identity" in prompt
+    )
     assert clean_caption("ohwx, woman", "ohwx") == "ohwx, woman"
     assert clean_caption("ohwxish object", "ohwx") == "ohwx, ohwxish object"
     with pytest.raises(ValueError):
@@ -183,7 +213,12 @@ def test_local_api_auth_and_path_registration(tmp_path):
         assert client.get("/api/state").status_code == 200
         assert client.get("/api/image/not-registered").status_code == 400
         assert client.post("/api/jobs/stop", json={}).status_code == 403
-        assert client.post("/api/jobs/stop", json={}, headers={"x-caption-client": "1", "origin": "https://hostile.example"}).status_code == 403
+        assert (
+            client.post(
+                "/api/jobs/stop", json={}, headers={"x-caption-client": "1", "origin": "https://hostile.example"}
+            ).status_code
+            == 403
+        )
         assert client.post("/api/jobs/stop", json={}, headers={"x-caption-client": "1"}).status_code == 200
         assert client.get("/api/state", headers={"host": "hostile.example"}).status_code == 403
 
@@ -205,12 +240,18 @@ def test_download_resume_verify_and_cancel(tmp_path, monkeypatch):
     destination = tmp_path / "test.bin"
     data = b"a" * (1024 * 1024) + b"b" * (1024 * 1024)
     sha = hashlib.sha256(data).hexdigest()
-    destination.with_name("test.bin.part").write_bytes(data[:1024 * 1024])
+    destination.with_name("test.bin.part").write_bytes(data[: 1024 * 1024])
     real_client = httpx.Client
+
     def handler(request):
         assert request.headers["range"] == "bytes=1048576-"
-        return httpx.Response(206, headers={"Content-Range": "bytes 1048576-2097151/2097152"}, content=data[1024 * 1024:])
-    monkeypatch.setattr("captioning.runtime.httpx.Client", lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw))
+        return httpx.Response(
+            206, headers={"Content-Range": "bytes 1048576-2097151/2097152"}, content=data[1024 * 1024 :]
+        )
+
+    monkeypatch.setattr(
+        "captioning.runtime.httpx.Client", lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw)
+    )
     runtime.download("https://example.com/test.bin", destination, len(data), sha)
     assert destination.read_bytes() == data
     assert runtime.valid_file(destination, sha, len(data))
@@ -237,13 +278,17 @@ def test_download_bad_hash_and_zip_traversal(tmp_path, monkeypatch):
 def test_cloud_request_key_and_clean_failure(tmp_path, monkeypatch):
     image = picture(tmp_path / "private-photo.png")
     real_client = httpx.AsyncClient
+
     def handler(request):
         payload = json.loads(request.content)
         assert request.headers["authorization"] == "Bearer fake-test-key"
         assert "chat_template_kwargs" not in payload
         assert payload["model"] == "test/vision"
         return httpx.Response(401, json={"error": "fake-test-key private-photo.png provider internals"})
-    monkeypatch.setattr("captioning.provider.httpx.AsyncClient", lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw))
+
+    monkeypatch.setattr(
+        "captioning.provider.httpx.AsyncClient", lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw)
+    )
     with pytest.raises(ValueError) as result:
         asyncio.run(generate(image, Settings(mode="cloud", cloud_model="test/vision"), "fake-test-key"))
     assert "401" in str(result.value) and "fake-test-key" not in str(result.value)
@@ -254,15 +299,18 @@ def test_external_change_during_inference_keeps_user_caption(tmp_path, monkeypat
         image = picture(tmp_path / "images" / "a.png")
         studio = Studio(tmp_path / "app")
         await studio.import_images([str(image)], "", False, False)
+
         async def fake(*_, **kwargs):
             image.with_suffix(".txt").write_text("External caption", encoding="utf-8")
             return "New generated draft"
+
         monkeypatch.setattr("captioning.provider.generate", fake)
         await studio.start_job([studio.rows[0]["id"]])
         await studio.task
         assert image.with_suffix(".txt").read_text() == "External caption"
         assert studio.rows[0]["status"] == "error"
         assert studio.rows[0]["caption"] == "New generated draft"
+
     asyncio.run(run())
 
 
@@ -321,7 +369,7 @@ def test_folder_tree_is_one_level_and_breadcrumbs_reach_root(tmp_path):
     assert crumbs[-1]["path"] == str(first)
     assert crumbs[-2]["path"] == str(first.parent)
     assert crumbs[0]["path"] == str(Path(first.anchor))
-    assert all(Path(child["path"]).parent == Path(parent["path"]) for parent, child in zip(crumbs, crumbs[1:]))
+    assert all(Path(child["path"]).parent == Path(parent["path"]) for parent, child in itertools.pairwise(crumbs))
     assert browser.listing(first.anchor)["parent"] == first.anchor
 
 
@@ -336,6 +384,6 @@ def test_tree_api_auth_and_invalid_navigation_leave_dataset_intact(tmp_path):
         assert client.post("/api/folder-tree", json={"path": str(tmp_path)}, headers=headers).status_code == 403
         client.get("/?token=test-token")
         assert client.post("/api/folder-tree", json={"path": str(tmp_path)}, headers=headers).status_code == 200
-        assert client.post("/api/folders", json={"path": str(tmp_path / 'missing')}, headers=headers).status_code == 400
+        assert client.post("/api/folders", json={"path": str(tmp_path / "missing")}, headers=headers).status_code == 400
         assert client.post("/api/folder-tree", json={"path": str(image)}, headers=headers).status_code == 400
     assert json.dumps(studio.rows) == previous

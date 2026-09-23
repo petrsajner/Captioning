@@ -4,8 +4,10 @@ Reference: Bria-AI/FIBO/src/fibo_inference/vlm/gemini_api.py and the fine-tuning
 example. Empty required strings represent deliberately omitted conditioning.
 The upstream parse_caption normalizer removes empty fields. No invented schema.
 """
+
 import json
 import re
+
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 
@@ -82,16 +84,18 @@ class CaptionValidationError(ValueError):
 
 
 def schema_prompt():
-    return "\n".join([
-        "Return ONLY one valid BRIA FIBO JSON object, without markdown. Use the exact English field names below.",
-        "Put the main subject FIRST in objects. Its description is a brief generic category/name, not a catalogue of details.",
-        "Put its identity details in shape_and_color, texture, skin_tone_and_texture; hair and wearable accessories in appearance_details; garments in clothing.",
-        "Respect the caption policy in EVERY field, including short_description and context. Do not repeat omitted details in free text.",
-        "Use an empty string for required descriptive fields deliberately omitted by the policy or not observable; use null for optional fields. Do not invent content to fill the schema.",
-        "If background is omitted, list only the main subject in objects. Do not create separate objects for omitted clothing or accessories.",
-        "Do not guess gender, camera settings, exact focal length, intended use or aesthetic scores. context may be empty. No total word-count constraint applies to JSON.",
-        "Schema: " + json.dumps(FiboCaption.model_json_schema(), ensure_ascii=False),
-    ])
+    return "\n".join(
+        [
+            "Return ONLY one valid BRIA FIBO JSON object, without markdown. Use the exact English field names below.",
+            "Put the main subject FIRST in objects. Its description is a brief generic category/name, not a catalogue of details.",
+            "Put its identity details in shape_and_color, texture, skin_tone_and_texture; hair and wearable accessories in appearance_details; garments in clothing.",
+            "Respect the caption policy in EVERY field, including short_description and context. Do not repeat omitted details in free text.",
+            "Use an empty string for required descriptive fields deliberately omitted by the policy or not observable; use null for optional fields. Do not invent content to fill the schema.",
+            "If background is omitted, list only the main subject in objects. Do not create separate objects for omitted clothing or accessories.",
+            "Do not guess gender, camera settings, exact focal length, intended use or aesthetic scores. context may be empty. No total word-count constraint applies to JSON.",
+            "Schema: " + json.dumps(FiboCaption.model_json_schema(), ensure_ascii=False),
+        ]
+    )
 
 
 def _unique_pairs(pairs):
@@ -105,13 +109,19 @@ def _unique_pairs(pairs):
 
 def validate_json(text: str) -> dict:
     try:
+
         def invalid_constant(value):
             raise ValueError("Invalid JSON constant " + value)
-        parsed = json.loads(text.strip().lstrip("\ufeff"), object_pairs_hook=_unique_pairs, parse_constant=invalid_constant)
+
+        parsed = json.loads(
+            text.strip().lstrip("\ufeff"), object_pairs_hook=_unique_pairs, parse_constant=invalid_constant
+        )
         return FiboCaption.model_validate(parsed).model_dump(exclude_none=True)
     except (ValueError, TypeError) as exc:
         if isinstance(exc, ValidationError):
-            detail = "; ".join(".".join(map(str, e["loc"])) + ": " + e["msg"] for e in exc.errors(include_input=False)[:4])
+            detail = "; ".join(
+                ".".join(map(str, e["loc"])) + ": " + e["msg"] for e in exc.errors(include_input=False)[:4]
+            )
         else:
             detail = str(exc)
         raise CaptionValidationError("Invalid BRIA/FIBO JSON: " + detail, text) from None
@@ -130,7 +140,7 @@ def normalize_json(text: str, settings=None) -> str:
             data["context"] = ""
             data["objects"] = data["objects"][:1]
         if "lighting" in learned:
-            data["lighting"] = {"conditions":"", "direction":""}
+            data["lighting"] = {"conditions": "", "direction": ""}
         if "composition" in learned:
             data.pop("photographic_characteristics", None)
             data["aesthetics"]["composition"] = ""
@@ -144,11 +154,16 @@ def normalize_json(text: str, settings=None) -> str:
             data["aesthetics"].update(color_scheme="", mood_atmosphere="")
         if data["objects"]:
             main = data["objects"][0]
-            groups = {"identity":["shape_and_color", "texture", "gender", "skin_tone_and_texture"],
-                      "clothing":["clothing"], "pose":["pose", "action", "orientation"], "expression":["expression"]}
+            groups = {
+                "identity": ["shape_and_color", "texture", "gender", "skin_tone_and_texture"],
+                "clothing": ["clothing"],
+                "pose": ["pose", "action", "orientation"],
+                "expression": ["expression"],
+            }
             for group, fields in groups.items():
                 if group in learned:
-                    for field in fields: main.pop(field, None)
+                    for field in fields:
+                        main.pop(field, None)
             if {"hair", "accessories"} <= learned:
                 main.pop("appearance_details", None)
         if not settings.text_in_image:

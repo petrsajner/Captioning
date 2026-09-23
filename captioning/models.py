@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import Literal
 from urllib.parse import urlsplit
+
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+
 from .training import Attribute, policy_prompt
 
 MANAGED_URL = "http://127.0.0.1:8091/v1"
@@ -44,9 +46,12 @@ class Settings(BaseModel):
     def migrate_local_connection(cls, value):
         if isinstance(value, dict) and "learn_attributes" not in value:
             learned = []
-            if value.get("omit_identity", False): learned.append("identity")
-            if value.get("lighting") is False: learned.append("lighting")
-            if value.get("composition") is False: learned.append("composition")
+            if value.get("omit_identity", False):
+                learned.append("identity")
+            if value.get("lighting") is False:
+                learned.append("lighting")
+            if value.get("composition") is False:
+                learned.append("composition")
             value = {**value, "learn_attributes": learned}
         if isinstance(value, dict) and "local_source" not in value:
             url = value.get("local_url", MANAGED_URL)
@@ -55,7 +60,7 @@ class Settings(BaseModel):
         return value
 
     @classmethod
-    def recover(cls, saved) -> tuple["Settings", bool]:
+    def recover(cls, saved) -> tuple[Settings, bool]:
         """Load saved settings, dropping only fields this version rejects.
 
         Returns the settings and whether anything had to be discarded.
@@ -107,23 +112,37 @@ def make_prompt(s: Settings) -> str:
         "Do not mention the filename, pixel resolution or the captioning process.",
     ]
     if s.output_format == "normal":
-        parts += [f"Target about {s.words} words. This is an approximate range, not a hard limit. Finish the whole caption naturally; never stop mid-sentence to meet a count. Return only the caption, without a heading, explanation or markdown.",
-                  "Use comma-separated visual tags; no full sentences." if s.format == "tags" else "Use clear natural-language sentences in one paragraph."]
+        parts += [
+            f"Target about {s.words} words. This is an approximate range, not a hard limit. Finish the whole caption naturally; never stop mid-sentence to meet a count. Return only the caption, without a heading, explanation or markdown.",
+            "Use comma-separated visual tags; no full sentences."
+            if s.format == "tags"
+            else "Use clear natural-language sentences in one paragraph.",
+        ]
     else:
         from .bria import schema_prompt
+
         parts.append(schema_prompt())
-    parts.append({
-        "general": "Identify the main subject and describe only attributes allowed by the mandatory caption policy.",
-        "character": "The main training subject is a person or character. Keep its description separate from other people and obey the caption policy.",
-        "object": "The main training subject is an object or product. Obey the caption policy.",
-        "style": "This is a visual-style dataset. Describe depicted content while obeying the caption policy for style and other attributes.",
-    }[s.preset])
+    parts.append(
+        {
+            "general": "Identify the main subject and describe only attributes allowed by the mandatory caption policy.",
+            "character": "The main training subject is a person or character. Keep its description separate from other people and obey the caption policy.",
+            "object": "The main training subject is an object or product. Obey the caption policy.",
+            "style": "This is a visual-style dataset. Describe depicted content while obeying the caption policy for style and other attributes.",
+        }[s.preset]
+    )
     if s.subject.strip():
         parts.append(f"Refer to the main subject as {s.subject.strip()!r}. Do not use that name for other subjects.")
-    parts.append("Transcribe readable visible text when relevant." if s.text_in_image else "Do not transcribe text or watermarks.")
+    parts.append(
+        "Transcribe readable visible text when relevant."
+        if s.text_in_image
+        else "Do not transcribe text or watermarks."
+    )
     if s.trigger.strip():
-        parts.append("Do not add a training trigger token; the application will insert it into short_description." if s.output_format == "bria_json"
-                     else "Do not add a training trigger token; it will be prepended automatically.")
+        parts.append(
+            "Do not add a training trigger token; the application will insert it into short_description."
+            if s.output_format == "bria_json"
+            else "Do not add a training trigger token; it will be prepended automatically."
+        )
     if s.instructions.strip():
         parts.append("Additional dataset instructions: " + s.instructions.strip())
     parts.append(policy_prompt(s))

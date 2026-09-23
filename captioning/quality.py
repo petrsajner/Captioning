@@ -1,5 +1,7 @@
 """Soft caption length and conservative completion checks, never text slicing."""
+
 import re
+
 from .i18n import dangling_words
 
 

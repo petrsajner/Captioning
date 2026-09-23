@@ -9,12 +9,14 @@ if not exist ".venv\Scripts\python.exe" (
     exit /b 1
   )
 )
-if not exist ".venv\caption-ready" (
-  .venv\Scripts\python.exe -m pip install -r requirements.txt
+rem Reinstall whenever the validated runtime pins change.
+fc /b requirements-lock.txt .venv\caption-ready >nul 2>&1
+if errorlevel 1 (
+  .venv\Scripts\python.exe -m pip install -r requirements-lock.txt
   if errorlevel 1 (
     pause
     exit /b 1
   )
-  echo ready>.venv\caption-ready
+  copy /y requirements-lock.txt .venv\caption-ready >nul
 )
 start "" ".venv\Scripts\pythonw.exe" "app.py"

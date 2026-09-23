@@ -1,0 +1,23 @@
+# Tool configuration only. The application is packaged by scripts/build.ps1.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["build", "dist", "output"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "I", "UP"]
+# Model instructions and user-facing messages are kept as single readable strings.
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["app.py", "captioning"]
+check_untyped_defs = true
+plugins = ["pydantic.mypy"]
+# pywebview and the Windows-only standard modules ship without type information.
+ignore_missing_imports = true

@@ -167,10 +167,15 @@ application starts with every value it can still use and reports the kept file o
 ## Development
 
 Use Python 3.11 x64 and `run.bat` to create the project environment and run from
-source. Install development tools in `.venv`: `pytest==9.1.1` and `pyinstaller==6.22.2`.
-`requirements-lock.txt` records the validated Windows build environment.
+source. `run.bat` installs the validated runtime pins from `requirements-lock.txt`
+and reinstalls them when that file changes; `requirements.txt` lists only the direct
+dependencies. Tests, linting, type checking and packaging tools are pinned in
+`requirements-dev.txt`. Tool settings live in `pyproject.toml`.
 
 ```powershell
+.venv/Scripts/python -m pip install -r requirements-dev.txt
+.venv/Scripts/python -m ruff check .
+.venv/Scripts/python -m ruff format --check .
 .venv/Scripts/python -m pytest -q
 node --test tests/localization.test.cjs
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1

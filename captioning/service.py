@@ -1,37 +1,58 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import json
-from datetime import datetime, timezone
-from collections import Counter
 import os
-from pathlib import Path
 import time
 import uuid
+from collections import Counter
+from datetime import UTC, datetime
+from pathlib import Path
 
 from PIL import Image
-from . import __version__, provider
-from .models import Settings
-from .runtime import Runtime
-from .storage import KeyStore, fingerprint, preserve_damaged, read_json, save_json, write_caption, archive_sidecar
-from .bria import normalize_json, CaptionValidationError
-from .training import ATTRIBUTES, training_plan
-from .quality import ProviderUnavailableError
 
+from . import __version__, provider
+from .bria import CaptionValidationError, normalize_json
+from .models import Settings
+from .quality import ProviderUnavailableError
+from .runtime import Runtime
+from .storage import KeyStore, archive_sidecar, fingerprint, preserve_damaged, read_json, save_json, write_caption
+from .training import ATTRIBUTES, training_plan
 
 STATUSES = {"pending", "queued", "processing", "saved", "existing", "skipped", "draft", "review", "error", "invalid"}
-ROW_DEFAULTS = {"error": "", "notice": "", "width": 0, "height": 0, "exists": False, "seconds": None,
-                "fingerprint": None, "caption_format": "normal"}
+ROW_DEFAULTS = {
+    "error": "",
+    "notice": "",
+    "width": 0,
+    "height": 0,
+    "exists": False,
+    "seconds": None,
+    "fingerprint": None,
+    "caption_format": "normal",
+}
+STAGE_LABELS = {
+    "caption": "Captioning",
+    "shorten": "Shortening caption",
+    "complete": "Completing caption",
+    "repair_json": "Repairing JSON",
+    "retry_caption": "Requesting a response",
+}
 
 
 def data_directory() -> Path:
-    return Path(os.environ.get("CAPTION_STUDIO_DATA_DIR") or
-                str(Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "CaptionStudio"))
+    return Path(
+        os.environ.get("CAPTION_STUDIO_DATA_DIR")
+        or str(Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "CaptionStudio")
+    )
 
 
 def valid_row(row) -> bool:
-    return (isinstance(row, dict) and row.get("status") in STATUSES
-            and all(isinstance(row.get(key), str) for key in ("id", "path", "name", "caption")))
+    return (
+        isinstance(row, dict)
+        and row.get("status") in STATUSES
+        and all(isinstance(row.get(key), str) for key in ("id", "path", "name", "caption"))
+    )
 
 
 class Studio:
@@ -44,7 +65,16 @@ class Studio:
         self.keys = KeyStore(root / "keys.json", self.recovered)
         self.runtime = Runtime(root)
         self.rows: list[dict] = self._load_rows()
-        self.job = {"running": False, "total": 0, "completed": 0, "saved": 0, "errors": 0, "review": 0, "skipped": 0, "message": "Ready"}
+        self.job = {
+            "running": False,
+            "total": 0,
+            "completed": 0,
+            "saved": 0,
+            "errors": 0,
+            "review": 0,
+            "skipped": 0,
+            "message": "Ready",
+        }
         self.task: asyncio.Task | None = None
         self.importing = False
 
@@ -66,9 +96,12 @@ class Studio:
                 row.setdefault(key, value)
             if not isinstance(row.get("fingerprints"), dict):
                 try:
-                    row["fingerprints"] = {".txt":row["fingerprint"], ".json":fingerprint(Path(row["path"]).with_suffix(".json"))}
+                    row["fingerprints"] = {
+                        ".txt": row["fingerprint"],
+                        ".json": fingerprint(Path(row["path"]).with_suffix(".json")),
+                    }
                 except (ValueError, OSError):
-                    row["fingerprints"] = {".txt":row["fingerprint"], ".json":None}
+                    row["fingerprints"] = {".txt": row["fingerprint"], ".json": None}
             if row["status"] in ("processing", "queued"):
                 row.update(status="pending", error="The previous run was interrupted. You can continue.")
         if path.exists() and (not isinstance(saved, list) or len(rows) != len(saved)):
@@ -83,8 +116,14 @@ class Studio:
     def persist(self):
         save_json(self.root / "session.json", self.rows)
 
-    def save_settings(self, settings: Settings, api_key: str | None = None, clear_key=False,
-                      local_api_key: str | None = None, clear_local_key=False):
+    def save_settings(
+        self,
+        settings: Settings,
+        api_key: str | None = None,
+        clear_key=False,
+        local_api_key: str | None = None,
+        clear_local_key=False,
+    ):
         self.idle()
         if self.runtime.installing or self.runtime.state["status"] == "loading":
             raise ValueError("Wait for model setup to finish.")
@@ -102,13 +141,20 @@ class Studio:
         self.settings = settings
 
     def snapshot(self):
-        return {"version": __version__, "settings": self.settings.model_dump(),
-                "training_attributes": ATTRIBUTES, "training_plan": training_plan(self.settings),
-                "has_key": self.keys.has(self.settings.cloud_url),
-                "has_local_key": self.keys.has("local:" + self.settings.local_url),
-                "rows": self.rows, "job": self.job, "importing": self.importing,
-                "runtime": self.runtime.snapshot(self.settings.model_profile, self.settings.backend),
-                "data_dir": str(self.root), "recovered": self.recovered}
+        return {
+            "version": __version__,
+            "settings": self.settings.model_dump(),
+            "training_attributes": ATTRIBUTES,
+            "training_plan": training_plan(self.settings),
+            "has_key": self.keys.has(self.settings.cloud_url),
+            "has_local_key": self.keys.has("local:" + self.settings.local_url),
+            "rows": self.rows,
+            "job": self.job,
+            "importing": self.importing,
+            "runtime": self.runtime.snapshot(self.settings.model_profile, self.settings.backend),
+            "data_dir": str(self.root),
+            "recovered": self.recovered,
+        }
 
     def local_key(self, settings: Settings):
         if settings.local_source == "managed":
@@ -123,8 +169,11 @@ class Studio:
 
     @staticmethod
     def collision(image: Path):
-        matches = [p.name for p in image.parent.iterdir()
-                   if p.is_file() and p.suffix.lower() in provider.EXTENSIONS and p.stem.casefold() == image.stem.casefold()]
+        matches = [
+            p.name
+            for p in image.parent.iterdir()
+            if p.is_file() and p.suffix.lower() in provider.EXTENSIONS and p.stem.casefold() == image.stem.casefold()
+        ]
         if len(matches) > 1:
             raise ValueError("Duplicate filename stem: " + ", ".join(matches) + ". Rename the files first.")
 
@@ -139,8 +188,11 @@ class Studio:
                 dirs[:] = sorted(d for d in dirs if not d.startswith(".")) if recursive else []
                 files.extend(Path(current) / n for n in sorted(names) if Path(n).suffix.lower() in provider.EXTENSIONS)
         files.extend(Path(p).expanduser() for p in paths)
-        unique = {str(p.resolve()).casefold(): p.resolve() for p in files
-                  if p.suffix.lower() in provider.EXTENSIONS and p.is_file()}
+        unique = {
+            str(p.resolve()).casefold(): p.resolve()
+            for p in files
+            if p.suffix.lower() in provider.EXTENSIONS and p.is_file()
+        }
         if not unique:
             raise ValueError("The selection contains no supported images.")
         if len(unique) > 20000:
@@ -150,14 +202,25 @@ class Studio:
         # Index each directory once; thousands of images must not trigger an O(n²) scan.
         stem_counts = {}
         for parent in {p.parent for p in unique.values()}:
-            stem_counts[parent] = Counter(p.stem.casefold() for p in parent.iterdir()
-                                          if p.is_file() and p.suffix.lower() in provider.EXTENSIONS)
+            stem_counts[parent] = Counter(
+                p.stem.casefold() for p in parent.iterdir() if p.is_file() and p.suffix.lower() in provider.EXTENSIONS
+            )
         for path in sorted(unique.values(), key=lambda p: str(p).casefold()):
             if str(path).casefold() in known:
                 continue
-            row = {"id": uuid.uuid4().hex, "path": str(path), "name": path.name,
-                   "caption": "", "fingerprint": None, "status": "pending", "error": "",
-                   "width": 0, "height": 0, "exists": False, "seconds": None}
+            row = {
+                "id": uuid.uuid4().hex,
+                "path": str(path),
+                "name": path.name,
+                "caption": "",
+                "fingerprint": None,
+                "status": "pending",
+                "error": "",
+                "width": 0,
+                "height": 0,
+                "exists": False,
+                "seconds": None,
+            }
             try:
                 if stem_counts[path.parent][path.stem.casefold()] > 1:
                     raise ValueError("Duplicate filename stem: " + path.stem + ". Rename the files first.")
@@ -166,10 +229,16 @@ class Studio:
                     if getattr(im, "n_frames", 1) > 1:
                         raise ValueError("Multi-frame images are not supported. Select a single frame.")
                     im.verify()
-                row["fingerprints"] = {suffix:fingerprint(path.with_suffix(suffix)) for suffix in (".txt", ".json")}
+                row["fingerprints"] = {suffix: fingerprint(path.with_suffix(suffix)) for suffix in (".txt", ".json")}
                 preferred = ".json" if self.settings.output_format == "bria_json" else ".txt"
                 other = ".txt" if preferred == ".json" else ".json"
-                suffix = preferred if path.with_suffix(preferred).exists() else other if path.with_suffix(other).exists() else preferred
+                suffix = (
+                    preferred
+                    if path.with_suffix(preferred).exists()
+                    else other
+                    if path.with_suffix(other).exists()
+                    else preferred
+                )
                 target = path.with_suffix(suffix)
                 row["caption_format"] = "bria_json" if suffix == ".json" else "normal"
                 row["fingerprint"] = row["fingerprints"][suffix]
@@ -181,7 +250,9 @@ class Studio:
                         except CaptionValidationError as exc:
                             row.update(status="error", error=str(exc))
                 if all(row["fingerprints"].values()):
-                    row["notice"] = "Both .txt and .json exist. LoRA Studio currently prefers .txt. Saving or regenerating keeps the selected format and backs up the other one."
+                    row["notice"] = (
+                        "Both .txt and .json exist. LoRA Studio currently prefers .txt. Saving or regenerating keeps the selected format and backs up the other one."
+                    )
             except Exception as e:
                 row.update(status="invalid", error=str(e))
             rows.append(row)
@@ -214,7 +285,7 @@ class Studio:
     @staticmethod
     def _check_sidecars(row):
         image = Path(row["path"])
-        hashes = row.get("fingerprints", {".txt":row.get("fingerprint"), ".json":None})
+        hashes = row.get("fingerprints", {".txt": row.get("fingerprint"), ".json": None})
         for suffix in (".txt", ".json"):
             if fingerprint(image.with_suffix(suffix)) != hashes.get(suffix):
                 raise ValueError("The caption was changed outside the app. Reload the dataset.")
@@ -234,8 +305,15 @@ class Studio:
         if hashes.get(other) is not None:
             archive_sidecar(image.with_suffix(other), hashes[other])
             hashes[other] = None
-        row.update(caption=text.strip(), fingerprint=digest, caption_format=output_format,
-                   exists=True, status="saved", error="", notice="")
+        row.update(
+            caption=text.strip(),
+            fingerprint=digest,
+            caption_format=output_format,
+            exists=True,
+            status="saved",
+            error="",
+            notice="",
+        )
 
     async def start_job(self, ids: list[str], regenerate=False):
         self.idle()
@@ -251,14 +329,53 @@ class Studio:
                 raise ValueError("Enter this provider’s API key in Settings.")
         else:
             key = self.local_key(settings)
-        self.job = {"running": True, "total": len(selected), "completed": 0, "saved": 0,
-                    "errors": 0, "review": 0, "skipped": 0, "message": "Starting batch…", "id":uuid.uuid4().hex,
-                    "output_format": settings.output_format, "training_plan": training_plan(settings)}
+        self.job = {
+            "running": True,
+            "total": len(selected),
+            "completed": 0,
+            "saved": 0,
+            "errors": 0,
+            "review": 0,
+            "skipped": 0,
+            "message": "Starting batch…",
+            "id": uuid.uuid4().hex,
+            "output_format": settings.output_format,
+            "training_plan": training_plan(settings),
+        }
         for row in selected:
             if row["status"] != "invalid":
                 row["status"] = "queued"
         self.persist()
         self.task = asyncio.create_task(self._run(selected, settings, key, regenerate))
+
+    def _progress(self, row, settings, event):
+        stage = event.get("stage", "caption")
+        row["phase"] = stage
+        self.job["message"] = STAGE_LABELS.get(stage, "Processing") + " · " + row["name"]
+        if event.get("kind") == "response":
+            row["generation_history"].append({k: v for k, v in event.items() if k != "kind"})
+            self.persist()
+        if event.get("kind") in ("response", "request_error"):
+            self._log_generation(row, settings, event)
+
+    def _log_generation(self, row, settings, event):
+        """Operational evidence without images, captions, prompts or credentials."""
+        diagnostic = {
+            "time": datetime.now(UTC).isoformat(),
+            "job": self.job.get("id"),
+            "image": row["id"],
+            "mode": settings.mode,
+            "model": settings.cloud_model if settings.mode == "cloud" else settings.local_model_id,
+            "target_words": settings.words,
+            **{k: v for k, v in event.items() if k not in ("kind", "text")},
+        }
+        log = self.root / "logs" / "generation.jsonl"
+        try:
+            log.parent.mkdir(exist_ok=True)
+            with log.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(diagnostic, ensure_ascii=False) + "\n")
+        except OSError:
+            pass  # Diagnostic logging must not turn a valid caption into a failure.
 
     async def _run(self, selected, settings, key, regenerate):
         try:
@@ -268,10 +385,16 @@ class Studio:
                     self.job["completed"] += 1
                     continue
                 image = Path(row["path"])
-                if settings.skip_existing and not regenerate and any(image.with_suffix(s).exists() for s in (".txt", ".json")):
+                if (
+                    settings.skip_existing
+                    and not regenerate
+                    and any(image.with_suffix(s).exists() for s in (".txt", ".json"))
+                ):
                     row.update(status="skipped", error="")
                     if row.get("caption_format", "normal") != settings.output_format:
-                        row["notice"] = "The existing caption uses another format. Use Regenerate or turn off Skip existing captions to convert it."
+                        row["notice"] = (
+                            "The existing caption uses another format. Use Regenerate or turn off Skip existing captions to convert it."
+                        )
                     self.job["skipped"] += 1
                     self.job["completed"] += 1
                     continue
@@ -282,34 +405,23 @@ class Studio:
                     self.collision(image)
                     # Check for external edits before spending time or cloud credits.
                     self._check_sidecars(row)
-                    def progress(event):
-                        stage = event.get("stage", "caption")
-                        row["phase"] = stage
-                        labels = {"caption":"Captioning", "shorten":"Shortening caption", "complete":"Completing caption", "repair_json":"Repairing JSON", "retry_caption":"Requesting a response"}
-                        self.job["message"] = labels.get(stage, "Processing") + " · " + row["name"]
-                        if event.get("kind") == "response":
-                            row["generation_history"].append({k:v for k,v in event.items() if k != "kind"})
-                            self.persist()
-                        if event.get("kind") in ("response", "request_error"):
-                            # Operational evidence without images, captions, prompts or credentials.
-                            log = self.root / "logs" / "generation.jsonl"
-                            diagnostic = {"time":datetime.now(timezone.utc).isoformat(), "job":self.job.get("id"), "image":row["id"],
-                                          "mode":settings.mode, "model":settings.cloud_model if settings.mode=="cloud" else settings.local_model_id,
-                                          "target_words":settings.words,
-                                          **{k:v for k,v in event.items() if k not in ("kind", "text")}}
-                            try:
-                                log.parent.mkdir(exist_ok=True)
-                                with log.open("a", encoding="utf-8") as f: f.write(json.dumps(diagnostic, ensure_ascii=False) + "\n")
-                            except OSError:
-                                pass  # Diagnostic logging must not turn a valid caption into a failure.
+                    progress = functools.partial(self._progress, row, settings)
                     caption = await provider.generate(image, settings, key, on_progress=progress)
-                    row.update(caption=caption, caption_format=settings.output_format, status="draft", notice="", seconds=round(time.monotonic() - started, 1))
+                    row.update(
+                        caption=caption,
+                        caption_format=settings.output_format,
+                        status="draft",
+                        notice="",
+                        seconds=round(time.monotonic() - started, 1),
+                    )
                     if getattr(caption, "needs_review", False):
                         row["status"] = "review"
                         self.job["review"] += 1
                     elif settings.auto_save:
                         self.collision(image)
-                        self._write_row(row, caption, settings.output_format, overwrite=regenerate or not settings.skip_existing)
+                        self._write_row(
+                            row, caption, settings.output_format, overwrite=regenerate or not settings.skip_existing
+                        )
                         self.job["saved"] += 1
                     row["notice"] = getattr(caption, "notice", "")
                     row["phase"] = ""
@@ -317,16 +429,27 @@ class Studio:
                     received = [h for h in row.get("generation_history", []) if h.get("text")]
                     if received:
                         best = next((h for h in reversed(received) if h.get("complete")), received[0])
-                        row.update(caption=best["text"], caption_format=settings.output_format, status="draft" if best.get("complete") else "review",
-                                   error="", notice="Batch stopped. The received response has been kept as a draft.", phase="")
+                        row.update(
+                            caption=best["text"],
+                            caption_format=settings.output_format,
+                            status="draft" if best.get("complete") else "review",
+                            error="",
+                            notice="Batch stopped. The received response has been kept as a draft.",
+                            phase="",
+                        )
                     else:
                         row.update(status="pending", error="Processing was stopped.", phase="")
                     raise
                 except ProviderUnavailableError as e:
-                    row.update(status="pending", error="", phase="", notice="Waiting for the model connection to be restored.")
-                    self.job.update(paused=True, message="Batch paused: " + str(e),
-                                    remaining_ids=[r["id"] for r in selected if r["status"] in ("queued", "pending")],
-                                    resume_regenerate=regenerate)
+                    row.update(
+                        status="pending", error="", phase="", notice="Waiting for the model connection to be restored."
+                    )
+                    self.job.update(
+                        paused=True,
+                        message="Batch paused: " + str(e),
+                        remaining_ids=[r["id"] for r in selected if r["status"] in ("queued", "pending")],
+                        resume_regenerate=regenerate,
+                    )
                     return
                 except Exception as e:
                     row.update(status="error", error=str(e))
@@ -335,8 +458,11 @@ class Studio:
                     self.job["errors"] += 1
                 self.job["completed"] += 1
                 self.persist()
-            self.job["message"] = "Batch completed" if not self.job["errors"] else "Finished with errors — check the marked images"
-            if self.job["review"]: self.job["message"] += f" · {self.job['review']} drafts to review"
+            self.job["message"] = (
+                "Batch completed" if not self.job["errors"] else "Finished with errors — check the marked images"
+            )
+            if self.job["review"]:
+                self.job["message"] += f" · {self.job['review']} drafts to review"
         except asyncio.CancelledError:
             self.job["message"] = "Batch stopped; saved captions have been preserved"
         finally:

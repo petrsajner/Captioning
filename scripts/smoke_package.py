@@ -1,11 +1,12 @@
 """Run an installed EXE with no source/runtime paths and a fresh data directory."""
+
 import argparse
 import json
 import os
-from pathlib import Path
 import subprocess
 import tempfile
 import time
+from pathlib import Path
 
 import httpx
 from PIL import Image
@@ -23,15 +24,16 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
     env.pop("PYTHONHOME", None)
     env["PATH"] = os.path.join(os.environ["SystemRoot"], "System32")
     env["CAPTION_STUDIO_DATA_DIR"] = str(root / "profile")
-    proc = subprocess.Popen([str(exe), "--no-open"], cwd=root, env=env,
-                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    proc = subprocess.Popen(
+        [str(exe), "--no-open"], cwd=root, env=env, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    )
     try:
         launch = root / "profile" / "launch.json"
         for _ in range(100):
             if launch.exists():
                 break
             assert proc.poll() is None, "Packaged app exited before readiness"
-            time.sleep(.1)
+            time.sleep(0.1)
         url = json.loads(launch.read_text())["url"]
         with httpx.Client(follow_redirects=True, trust_env=False, timeout=20) as client:
             assert client.get(url).status_code == 200
@@ -53,8 +55,8 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
                 assert response.status_code == 200 and "messages" in response.json()
             assert client.get(base + "/assets/i18n.js").status_code == 200
             before_language = s["settings"]
-            client.post(base + "/api/ui-language", json={"language":"cs"}, headers=headers).raise_for_status()
-            assert client.get(base + "/api/state").json()["settings"] == {**before_language, "ui_language":"cs"}
+            client.post(base + "/api/ui-language", json={"language": "cs"}, headers=headers).raise_for_status()
+            assert client.get(base + "/api/state").json()["settings"] == {**before_language, "ui_language": "cs"}
             assert json.loads((root / "profile" / "settings.json").read_text())["ui_language"] == "cs"
             listing_response = client.post(base + "/api/folders", json={"path": str(path.parent)}, headers=headers)
             assert listing_response.status_code == 200, listing_response.text
@@ -78,26 +80,41 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
             # The packaged JSON writer must validate structure and retire conflicting TXT.
             json_image = root / "dataset" / "bria.png"
             Image.new("RGB", (60, 40), "blue").save(json_image)
-            fibo = {"short_description":"A blue image.", "objects":[], "background_setting":"",
-                    "lighting":{"conditions":"", "direction":""},
-                    "aesthetics":{"composition":"", "color_scheme":"blue", "mood_atmosphere":""}, "context":""}
+            fibo = {
+                "short_description": "A blue image.",
+                "objects": [],
+                "background_setting": "",
+                "lighting": {"conditions": "", "direction": ""},
+                "aesthetics": {"composition": "", "color_scheme": "blue", "mood_atmosphere": ""},
+                "context": "",
+            }
             json_image.with_suffix(".json").write_text(json.dumps(fibo), encoding="utf-8")
             json_image.with_suffix(".txt").write_text("retire this format", encoding="utf-8")
-            config = s["settings"]; config["output_format"] = "bria_json"
-            client.post(base + "/api/settings", json={"settings":config}, headers=headers).raise_for_status()
-            client.post(base + "/api/import", json={"paths":[str(json_image)]}, headers=headers).raise_for_status()
+            config = s["settings"]
+            config["output_format"] = "bria_json"
+            client.post(base + "/api/settings", json={"settings": config}, headers=headers).raise_for_status()
+            client.post(base + "/api/import", json={"paths": [str(json_image)]}, headers=headers).raise_for_status()
             json_row = client.get(base + "/api/state").json()["rows"][0]
             assert json_row["caption_format"] == "bria_json"
             endpoint = base + "/api/caption/" + json_row["id"]
-            assert client.put(endpoint, json={"text":"{}"}, headers=headers).status_code == 400
-            client.put(endpoint, json={"text":json.dumps(fibo)}, headers=headers).raise_for_status()
+            assert client.put(endpoint, json={"text": "{}"}, headers=headers).status_code == 400
+            client.put(endpoint, json={"text": json.dumps(fibo)}, headers=headers).raise_for_status()
             assert not json_image.with_suffix(".txt").exists()
             assert json.loads(json_image.with_suffix(".json").read_text())["short_description"] == "A blue image."
-            assert any(p.read_bytes()==b"retire this format" for p in (json_image.parent/".caption-backups").glob("*.bak"))
-            report = {"exe": str(exe), "version": s["version"], "fresh_profile": True,
-                      "isolated_PATH": True, "image_preview": True, "folder_preview_before_import": True,
-                      "sidecar_write": True, "bria_validation_and_format_conversion": True,
-                      "localization_assets_and_preference": True}
+            assert any(
+                p.read_bytes() == b"retire this format" for p in (json_image.parent / ".caption-backups").glob("*.bak")
+            )
+            report = {
+                "exe": str(exe),
+                "version": s["version"],
+                "fresh_profile": True,
+                "isolated_PATH": True,
+                "image_preview": True,
+                "folder_preview_before_import": True,
+                "sidecar_write": True,
+                "bria_validation_and_format_conversion": True,
+                "localization_assets_and_preference": True,
+            }
             (output / "package-smoke.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
             print(json.dumps(report, indent=2))
     finally:

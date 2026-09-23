@@ -1,15 +1,16 @@
 """Local persistence, safe sidecars and Windows-protected provider credentials."""
+
 from __future__ import annotations
 
 import base64
 import ctypes
-from ctypes import wintypes
 import hashlib
 import json
 import os
-from pathlib import Path
 import tempfile
 import uuid
+from ctypes import wintypes
+from pathlib import Path
 
 
 def atomic_bytes(path: Path, content: bytes) -> None:
@@ -100,7 +101,9 @@ def write_caption(image: Path, text: str, expected: str | None, overwrite: bool,
 def archive_sidecar(path: Path, expected: str):
     """Retire the other caption format after a successful format conversion."""
     if fingerprint(path) != expected:
-        raise ValueError("The original caption changed outside the app. The old format was not moved; reload the dataset.")
+        raise ValueError(
+            "The original caption changed outside the app. The old format was not moved; reload the dataset."
+        )
     backup_dir = path.parent / ".caption-backups"
     backup_dir.mkdir(exist_ok=True)
     target = backup_dir / (path.name + "." + uuid.uuid4().hex + ".bak")
@@ -123,13 +126,27 @@ def protect(data: bytes, decrypt=False) -> bytes:
     kernel.LocalFree.restype = ctypes.c_void_p
     if decrypt:
         fn = crypt.CryptUnprotectData
-        fn.argtypes = [ctypes.POINTER(Blob), ctypes.c_void_p, ctypes.c_void_p,
-                       ctypes.c_void_p, ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(Blob)]
+        fn.argtypes = [
+            ctypes.POINTER(Blob),
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            wintypes.DWORD,
+            ctypes.POINTER(Blob),
+        ]
         ok = fn(ctypes.byref(source), None, None, None, None, 1, ctypes.byref(target))
     else:
         fn = crypt.CryptProtectData
-        fn.argtypes = [ctypes.POINTER(Blob), wintypes.LPCWSTR, ctypes.c_void_p,
-                       ctypes.c_void_p, ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(Blob)]
+        fn.argtypes = [
+            ctypes.POINTER(Blob),
+            wintypes.LPCWSTR,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            wintypes.DWORD,
+            ctypes.POINTER(Blob),
+        ]
         ok = fn(ctypes.byref(source), "Caption Studio", None, None, None, 1, ctypes.byref(target))
     if not ok:
         raise ValueError("Windows could not access the saved key. Enter it again.")

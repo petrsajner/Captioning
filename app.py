@@ -1,10 +1,10 @@
 """Caption Studio desktop entry point. Frozen distribution includes private Python."""
+
 from __future__ import annotations
 
 import argparse
 import json
 import os
-from pathlib import Path
 import secrets
 import socket
 import sys
@@ -12,6 +12,7 @@ import threading
 import time
 import traceback
 import webbrowser
+from pathlib import Path
 
 
 def interface_language(root: Path) -> str:
@@ -25,22 +26,33 @@ def interface_language(root: Path) -> str:
 
 def show_message(text: str, language: str, detail: str = "", error=False):
     import ctypes
+
     from captioning.i18n import translate
+
     message = translate(text, language) + ("\n\n" + detail if detail else "")
     ctypes.windll.user32.MessageBoxW(0, message, "Caption Studio", 0x10 if error else 0)
 
 
 def pick(result, language="en"):
     from captioning.i18n import translate
-    def t(text): return translate(text, language)
+
+    def t(text):
+        return translate(text, language)
+
     import tkinter as tk
     from tkinter import filedialog
+
     root = tk.Tk()
     root.withdraw()
     root.attributes("-topmost", True)
     try:
-        paths = list(filedialog.askopenfilenames(parent=root, title=t("Select images"), filetypes=[
-            (t("Images"), "*.jpg *.jpeg *.png *.webp *.bmp *.tif *.tiff"), (t("All files"), "*.*")]))
+        paths = list(
+            filedialog.askopenfilenames(
+                parent=root,
+                title=t("Select images"),
+                filetypes=[(t("Images"), "*.jpg *.jpeg *.png *.webp *.bmp *.tif *.tiff"), (t("All files"), "*.*")],
+            )
+        )
         Path(result).write_text(json.dumps(paths, ensure_ascii=False), encoding="utf-8")
     finally:
         root.destroy()
@@ -59,10 +71,11 @@ def main():
         pick(args.result, args.ui_language or "en")
         return
 
-    from captioning.service import Studio, data_directory
+    import uvicorn
+
     from captioning import __version__
     from captioning.api import make_app
-    import uvicorn
+    from captioning.service import Studio, data_directory
 
     root = data_directory()
     root.mkdir(parents=True, exist_ok=True)
@@ -70,6 +83,7 @@ def main():
     lock_file = (root / "instance.lock").open("a+b")
     if os.name == "nt":
         import msvcrt
+
         try:
             lock_file.seek(0)
             if lock_file.read(1) == b"":
@@ -113,9 +127,13 @@ def main():
             listener.close()
         lock_file.close()
         if not (args.browser or args.no_open):
-            show_message("Caption Studio could not start. Details were written to app.log in the data folder.",
-                         interface_language(root), str(root), error=True)
-        raise SystemExit(1)
+            show_message(
+                "Caption Studio could not start. Details were written to app.log in the data folder.",
+                interface_language(root),
+                str(root),
+                error=True,
+            )
+        raise SystemExit(1) from None
     url = f"http://127.0.0.1:{port}/?token={token}"
     # Test/browser launch details stay local and are replaced on each launch.
     (root / "launch.json").write_text(json.dumps({"url": url, "pid": os.getpid()}), encoding="utf-8")
@@ -129,7 +147,15 @@ def main():
         else:
             try:
                 import webview
-                webview.create_window(f"Caption Studio {__version__}", url, width=1480, height=940, min_size=(1080, 700), background_color="#101412")
+
+                webview.create_window(
+                    f"Caption Studio {__version__}",
+                    url,
+                    width=1480,
+                    height=940,
+                    min_size=(1080, 700),
+                    background_color="#101412",
+                )
                 webview.start(gui="edgechromium", private_mode=True, icon=str(assets / "caption-studio.ico"))
             except Exception as exc:
                 print("The desktop window is unavailable; opening the browser.", type(exc).__name__, flush=True)
@@ -149,5 +175,6 @@ def main():
 
 if __name__ == "__main__":
     import multiprocessing
+
     multiprocessing.freeze_support()
     main()

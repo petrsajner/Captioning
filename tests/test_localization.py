@@ -1,8 +1,9 @@
 import ast
-from pathlib import Path
 import re
+from pathlib import Path
 
 from fastapi.testclient import TestClient
+
 from captioning.api import make_app
 from captioning.i18n import catalog, translate
 from captioning.models import Settings, make_prompt
@@ -64,8 +65,11 @@ def message_templates(node):
     if isinstance(node, ast.IfExp):
         return message_templates(node.body) + message_templates(node.orelse)
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
-        return [left + right for left in message_templates(node.left) or ["{}"]
-                for right in message_templates(node.right) or ["{}"]]
+        return [
+            left + right
+            for left in message_templates(node.left) or ["{}"]
+            for right in message_templates(node.right) or ["{}"]
+        ]
     return []
 
 
@@ -81,13 +85,21 @@ def backend_messages():
                 if isinstance(node.func, ast.Name) and node.func.id in ("show_message", "translate", "t") and node.args:
                     values.append(node.args[0])
             elif isinstance(node, ast.Dict):
-                values += [value for key, value in zip(node.keys, node.values)
-                           if isinstance(key, ast.Constant) and key.value in USER_FIELDS]
+                values += [
+                    value
+                    for key, value in zip(node.keys, node.values, strict=True)
+                    if isinstance(key, ast.Constant) and key.value in USER_FIELDS
+                ]
             elif isinstance(node, (ast.Assign, ast.AugAssign)):
                 targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-                if any(isinstance(t, ast.Name) and t.id in ("hints", "labels") for t in targets) and isinstance(node.value, ast.Dict):
+                if any(
+                    isinstance(t, ast.Name) and t.id.lower().endswith(("hints", "labels")) for t in targets
+                ) and isinstance(node.value, ast.Dict):
                     values += node.value.values
-                elif any(isinstance(t, ast.Subscript) and isinstance(t.slice, ast.Constant) and t.slice.value in USER_FIELDS for t in targets):
+                elif any(
+                    isinstance(t, ast.Subscript) and isinstance(t.slice, ast.Constant) and t.slice.value in USER_FIELDS
+                    for t in targets
+                ):
                     values.append(node.value)
             for value in values:
                 for text in message_templates(value):
@@ -97,20 +109,22 @@ def backend_messages():
 
 def test_ui_language_is_persistent_and_does_not_change_recipe_or_prompt(tmp_path):
     studio = Studio(tmp_path)
-    studio.save_settings(Settings(trigger="subject", words=70, language="English", learn_attributes=["identity", "hair"]))
+    studio.save_settings(
+        Settings(trigger="subject", words=70, language="English", learn_attributes=["identity", "hair"])
+    )
     before = studio.settings.model_dump()
     prompt = make_prompt(studio.settings)
     app = make_app(studio, "test-token", 8888, Path(__file__).parents[1] / "ui")
     with TestClient(app, base_url="http://127.0.0.1:8888") as client:
         client.get("/?token=test-token")
         assert studio.settings.ui_language == "en"
-        assert client.post("/api/ui-language", json={"language":"cs"}).status_code == 403
-        headers = {"X-Caption-Client":"1"}
-        assert client.post("/api/ui-language", json={"language":"cs"}, headers=headers).status_code == 200
-        assert studio.settings.model_dump() == {**before, "ui_language":"cs"}
+        assert client.post("/api/ui-language", json={"language": "cs"}).status_code == 403
+        headers = {"X-Caption-Client": "1"}
+        assert client.post("/api/ui-language", json={"language": "cs"}, headers=headers).status_code == 200
+        assert studio.settings.model_dump() == {**before, "ui_language": "cs"}
         assert make_prompt(studio.settings) == prompt
         assert Studio(tmp_path).settings.ui_language == "cs"
-        assert client.post("/api/ui-language", json={"language":"invalid"}, headers=headers).status_code == 422
+        assert client.post("/api/ui-language", json={"language": "invalid"}, headers=headers).status_code == 422
         assert studio.settings.ui_language == "cs"
         for language in ("en", "cs"):
             response = client.get(f"/assets/locales/{language}.json")
@@ -120,7 +134,7 @@ def test_ui_language_is_persistent_and_does_not_change_recipe_or_prompt(tmp_path
 def test_interface_language_does_not_change_fibo_schema_or_caption_language():
     for output_format in ("normal", "bria_json"):
         settings = Settings(output_format=output_format, language="Czech")
-        assert make_prompt(settings) == make_prompt(settings.model_copy(update={"ui_language":"cs"}))
+        assert make_prompt(settings) == make_prompt(settings.model_copy(update={"ui_language": "cs"}))
 
 
 def test_localization_tokens_match_and_czech_is_only_in_locale_resources():
@@ -132,9 +146,11 @@ def test_localization_tokens_match_and_czech_is_only_in_locale_resources():
     root = Path(__file__).parents[1]
     files = [root / "app.py", root / "run.bat"]
     for folder in ("captioning", "ui", "scripts", "tests", "installer"):
-        files += [p for p in (root/folder).rglob("*") if p.suffix in (".py", ".js", ".html", ".css", ".ps1", ".iss")]
+        files += [p for p in (root / folder).rglob("*") if p.suffix in (".py", ".js", ".html", ".css", ".ps1", ".iss")]
     for path in files:
-        assert not re.search("[\u010d\u010f\u011b\u0148\u0159\u0165\u016f\u017e\u0161]", path.read_text(encoding="utf-8").lower()), path
+        assert not re.search(
+            "[\u010d\u010f\u011b\u0148\u0159\u0165\u016f\u017e\u0161]", path.read_text(encoding="utf-8").lower()
+        ), path
 
 
 def test_every_ui_message_has_a_czech_translation():
