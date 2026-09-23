@@ -16,6 +16,13 @@ every copy self-contained and runnable from any folder or drive). `captioning/pa
   converted), so moved models stay verified without re-hashing.
 - `build.ps1` refuses to build while `dist\CaptionStudio\data` exists, because PyInstaller
   deletes that folder. Never run a build output without `CAPTION_STUDIO_DATA_DIR`.
+- The installer deletes `{app}\_internal` and `{app}\licenses` before copying, because it
+  never removed files dropped from a release (0.1.8 still carried UCRT DLLs from an older
+  build environment and pre-0.1.11 UI files). `{app}\data` is never touched.
+
+Installed on the development machine over 0.1.8: the first start moved the data into
+`{app}\data` with byte-identical settings, keys and session; a reinstall left the data
+folder unchanged and the installed bundle identical to the build. Logs: `output/install-0.1.13*`.
 
 ## Previous release: 0.1.12 (2026-09-23)
 

@@ -38,6 +38,12 @@ english.AppLanguage=en
 [Tasks]
 Name: "desktopicon"; Description: "{cm:DesktopIcon}"; GroupDescription: "{cm:Shortcuts}"; Flags: unchecked
 
+[InstallDelete]
+; The bundle is always shipped complete; remove the previous one so no stale files remain.
+; User data in {app}\data is never touched.
+Type: filesandordirs; Name: "{app}\_internal"
+Type: filesandordirs; Name: "{app}\licenses"
+
 [Files]
 Source: "..\dist\CaptionStudio\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
