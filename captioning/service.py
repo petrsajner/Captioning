@@ -298,13 +298,14 @@ class Studio:
                 target = path.with_suffix(suffix)
                 row["caption_format"] = "bria_json" if suffix == ".json" else "normal"
                 if target.exists():
-                    row.update(
-                        {
-                            "caption": target.read_text(encoding="utf-8-sig").strip(),
-                            "exists": True,
-                            "status": Status.EXISTING,
-                        }
-                    )
+                    try:
+                        existing = target.read_text(encoding="utf-8-sig").strip()
+                    except UnicodeDecodeError:
+                        # Older tools often saved captions in a legacy code page; never guess and overwrite.
+                        raise UserError(
+                            "The existing caption is not UTF-8 text. Save it as UTF-8 or remove it, then load the dataset again."
+                        ) from None
+                    row.update({"caption": existing, "exists": True, "status": Status.EXISTING})
                     if suffix == ".json":
                         try:
                             row["caption"] = normalize_json(row["caption"])

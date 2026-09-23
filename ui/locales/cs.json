@@ -109,6 +109,7 @@
     "Select at least one image.": "Vyberte alespoň jeden obrázek.",
     "Multi-frame images are not supported. Select a single frame.": "Vícesnímkové obrázky nejsou podporované. Vyberte jeden snímek.",
     "The selection contains no supported images.": "Výběr neobsahuje podporované obrázky.",
+    "The existing caption is not UTF-8 text. Save it as UTF-8 or remove it, then load the dataset again.": "Stávající popisek není text v UTF-8. Uložte ho v UTF-8 nebo ho odstraňte a sadu načtěte znovu.",
     "Windows could not access the saved key. Enter it again.": "Windows nemohl zpřístupnit uložený klíč. Zadejte jej znovu.",
     "Retained the complete response (": "Zachována celá odpověď (",
     " words; target about ": " slov; cíl přibližně ",

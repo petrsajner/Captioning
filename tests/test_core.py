@@ -400,3 +400,16 @@ def test_rejected_request_is_an_image_error_not_a_pause(tmp_path, monkeypatch):
     with pytest.raises(UserError, match="HTTP 400") as result:
         asyncio.run(generate(image, Settings()))
     assert not isinstance(result.value, ProviderUnavailableError)
+
+
+def test_legacy_encoded_caption_is_reported_and_never_overwritten(tmp_path):
+    image = picture(tmp_path / "images" / "a.png")
+    legacy = bytes.fromhex("8e6c759d6f75e86bfd206bf9f2")  # Czech words in cp1250, not valid UTF-8
+    image.with_suffix(".txt").write_bytes(legacy)
+    studio = Studio(tmp_path / "app")
+    asyncio.run(studio.import_images([str(image)], "", False, False))
+    row = studio.rows[0]
+    assert row["status"] == "invalid" and "not UTF-8" in row["error"]
+    with pytest.raises(UserError, match="not UTF-8"):
+        studio.save_row(row["id"], "New caption")
+    assert image.with_suffix(".txt").read_bytes() == legacy
