@@ -1,34 +1,38 @@
 # Caption Studio development handoff
 
-## Current release: 0.1.9 (2026-09-23)
+## Current release: 0.1.10 (2026-09-23)
 
-Maintenance release from the 0.1.8 code review. Model requests, caption policy,
-prompts and saved recipes are unchanged.
+Backend cleanup from the 0.1.8 code review (phase 3). Model request bodies, prompts
+and BRIA normalization are byte-identical to 0.1.9 across scripted scenarios.
 
-- Startup recovery: `Settings.recover` drops only the fields this version rejects;
-  session rows with an unknown status or missing id/path/name/caption are dropped.
-  The original file is kept as `<name>.damaged-<id>` and reported once in the UI
-  (`recovered` in `/api/state`). A remaining startup failure shows a native message
-  pointing to `app.log` instead of exiting silently.
-- Provider responses that are not JSON objects report an invalid response format.
-  Unexpected API errors return JSON 500, so the UI no longer claims the app stopped.
-- A managed llama-server that exits on its own is reported with its exit code.
-- `unfinished()` no longer crashes on text made only of closing quotes or brackets.
-- Localization: added the missing processing labels and removed 43 obsolete
-  fragment keys. Tests now require a Czech entry for every UI message ID and every
-  backend diagnostic. Keep `Generation failed.` and ` · {v0} drafts to review`:
-  older sessions may still contain their Czech text.
+- Tooling: `pyproject.toml` configures pytest, ruff (lint + format, 120 columns) and
+  mypy. `requirements-lock.txt` holds only the bundled runtime pins (run.bat installs
+  it); dev tools are in `requirements-dev.txt`; licenses cover bundled packages only.
+  PyInstaller excludes pydantic's optional mypy plugin, and `build.ps1` fails if mypy,
+  ruff, pytest or PyInstaller ever end up in the package.
+- The version is defined only in `captioning/__init__.py`. Shared constants name the
+  managed port and alias, the image limit and the key length.
+- Settings: `learn_attributes` is now `omitted_attributes` (migrated on load). The
+  `training_plan` summary was never used by the UI and is removed.
+- Errors: `UserError` / `ProviderUnavailableError` replace `ValueError` for user-facing
+  failures. An outage while completing an unfinished caption or repairing JSON now
+  pauses the batch instead of leaving an unusable draft for review.
+- `provider.generate` is split into `CaptionSession` and small functions;
+  `CaptionResult` is a dataclass. Rows, jobs and runtime state are TypedDicts with a
+  `Status` enum; the pre-0.1.5 single `fingerprint` field is folded into `fingerprints`.
 
-Verified with 80 Python tests, the JavaScript localization test and a browser check
-on an isolated profile: recovered-settings notice in Czech, local-server selection
-message in both languages and processing labels.
+Verified with 83 Python tests, ruff, mypy, the JavaScript localization test and a
+browser check on an isolated profile holding 0.1.9 settings: omitted details load as
+unchecked, the prompt matches them and the next save writes only the new field.
 
-## Previous release: 0.1.8 (2026-09-15)
+## Previous release: 0.1.9 (2026-09-23)
 
-Added an explicit ON/OFF legend beside caption detail choices, with live ON/OFF
-labels on each checkbox. ON means free future change; OFF means fixed in LoRA.
-The persistent application header displays copyright Petr Sajner 2026.
-Build and installation logs are in `output/*0.1.8*`.
+Maintenance release from the code review: startup recovery keeps unusable settings,
+key and session files as `<name>.damaged-<id>` and reports them once; a failed start
+shows a native message; non-object provider responses and unexpected API errors are
+reported cleanly; a crashed managed model shows its exit code; missing Czech labels
+were added and a test requires a Czech entry for every UI and backend message. Keep
+`Generation failed.` and ` · {v0} drafts to review`: older sessions may contain them.
 
 ## Standing interface decisions
 
@@ -125,8 +129,9 @@ Run the Python suite, `node --test tests/localization.test.cjs`, and browser che
 switching, unsaved caption/key/connection preservation, checkbox-to-prompt behavior,
 folder thumbnails/navigation/errors, BRIA controls and persistence across reload.
 
-Build with `scripts/build.ps1`; it tests, gathers licenses, packages Python/UI with
-PyInstaller, compiles Inno Setup and writes the portable ZIP plus SHA-256 manifest.
+Build with `scripts/build.ps1`; it runs ruff (lint and format check), mypy and pytest,
+gathers licenses of the bundled runtime packages, packages Python/UI with PyInstaller,
+compiles Inno Setup and writes the portable ZIP plus SHA-256 manifest.
 `scripts/smoke_package.py <exe>` runs a packaged executable in a fresh temporary
 profile, from outside the source tree, with a minimal PATH. It checks localization
 assets, import, thumbnails, sidecar writes and validated JSON format conversion.

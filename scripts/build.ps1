@@ -16,8 +16,11 @@ if ($LASTEXITCODE -ne 0) { throw 'Type check failed.' }
 if ($LASTEXITCODE -ne 0) { throw 'Tests failed.' }
 & $pythonPath 'scripts\licenses.py'
 if ($LASTEXITCODE -ne 0) { throw 'License collection failed.' }
-& $pythonPath -m PyInstaller --noconfirm --clean --windowed --onedir --name CaptionStudio --icon 'ui\caption-studio.ico' --add-data 'ui;ui' --collect-all webview --hidden-import uvicorn.logging --hidden-import uvicorn.loops.auto --hidden-import uvicorn.protocols.http.auto --hidden-import uvicorn.protocols.websockets.auto --hidden-import uvicorn.lifespan.on app.py
+& $pythonPath -m PyInstaller --noconfirm --clean --windowed --onedir --name CaptionStudio --icon 'ui\caption-studio.ico' --add-data 'ui;ui' --collect-all webview --hidden-import uvicorn.logging --hidden-import uvicorn.loops.auto --hidden-import uvicorn.protocols.http.auto --hidden-import uvicorn.protocols.websockets.auto --hidden-import uvicorn.lifespan.on --exclude-module pydantic.mypy --exclude-module mypy app.py
 if ($LASTEXITCODE -ne 0) { throw 'Application build failed.' }
+# Development tools in .venv must never ship; pydantic's optional mypy plugin would pull mypy in.
+$bundledTools = 'mypy', 'ruff', 'pytest', '_pytest', 'PyInstaller' | Where-Object { Test-Path -LiteralPath "dist\CaptionStudio\_internal\$_" }
+if ($bundledTools) { throw "Development tools were bundled: $($bundledTools -join ', ')" }
 Copy-Item -LiteralPath 'output\licenses' -Destination 'dist\CaptionStudio\licenses' -Recurse -Force
 $candidates = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe", "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe")
 $isccPath = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
