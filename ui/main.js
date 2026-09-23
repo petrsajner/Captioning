@@ -106,12 +106,17 @@ try {
   ui.active = ui.state.rows[0]?.id || null;
   render();
   if (!ui.state.settings.setup_complete) openSettings();
-  if (ui.state.recovered.length) {
-    const note = t('Some saved data could not be used and was reset. The original file was kept as: {names}', {
-      names: ui.state.recovered.join(', '),
-    });
-    toast(note, true);
-    if ($('settings-dialog').open) $('settings-message').textContent = note;
+  // One-time startup messages: moved data folder, preserved damaged files. They carry paths, so stay longer.
+  const notes = ui.state.notices.map((notice) => t(notice));
+  if (ui.state.recovered.length)
+    notes.push(
+      t('Some saved data could not be used and was reset. The original file was kept as: {names}', {
+        names: ui.state.recovered.join(', '),
+      }),
+    );
+  if (notes.length) {
+    toast(notes.join(' '), ui.state.recovered.length > 0, 20000);
+    if ($('settings-dialog').open) $('settings-message').textContent = notes.join(' ');
   }
   setInterval(
     () =>

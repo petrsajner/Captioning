@@ -109,7 +109,21 @@ class Runtime:
             "done": 0,
             "total": 0,
         }
-        self.verified = read_json(self.root / "verified.json", {})
+        self.verified = self._load_verified()
+
+    def _key(self, path: Path) -> str:
+        """Verification cache key relative to the runtime folder, so a moved data folder stays verified."""
+        return path.relative_to(self.root).as_posix() if path.is_relative_to(self.root) else str(path)
+
+    def _load_verified(self) -> dict:
+        verified = {}
+        for key, value in read_json(self.root / "verified.json", {}).items():
+            parts = Path(key).parts
+            if Path(key).is_absolute() and "runtime" in parts:
+                # Absolute keys written before 0.1.13; keep the part below the runtime folder.
+                key = Path(*parts[len(parts) - parts[::-1].index("runtime") :]).as_posix()
+            verified[key] = value
+        return verified
 
     @property
     def installing(self):
@@ -123,7 +137,7 @@ class Runtime:
         if not path.is_file() or path.stat().st_size != size:
             return False
         stat = path.stat()
-        return self.verified.get(str(path)) == [sha, size, stat.st_mtime_ns]
+        return self.verified.get(self._key(path)) == [sha, size, stat.st_mtime_ns]
 
     def verify(self, path: Path, sha: str, size: int):
         self.state.update({"message": "Verifying file: " + path.name, "done": 0, "total": size})
@@ -170,7 +184,7 @@ class Runtime:
                                     raise UserError("The download exceeded the expected file size.")
             self.verify(partial, sha, size)
             os.replace(partial, destination)
-        self.verified[str(destination)] = [sha, size, destination.stat().st_mtime_ns]
+        self.verified[self._key(destination)] = [sha, size, destination.stat().st_mtime_ns]
         save_json(self.root / "verified.json", self.verified)
 
     def runtime_dir(self, backend: str):
@@ -178,7 +192,7 @@ class Runtime:
 
     def ready(self, profile: str, backend: str):
         if not self.installing:
-            self.verified = read_json(self.root / "verified.json", self.verified)
+            self.verified = self._load_verified()
         runtime = self.runtime_dir(backend)
         return (
             (runtime / "ready.json").is_file()

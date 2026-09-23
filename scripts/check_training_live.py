@@ -12,7 +12,8 @@ from pathlib import Path
 
 from captioning.bria import validate_json
 from captioning.models import Settings
-from captioning.service import Studio, data_directory
+from captioning.paths import data_directory
+from captioning.service import Studio
 from captioning.storage import KeyStore
 
 

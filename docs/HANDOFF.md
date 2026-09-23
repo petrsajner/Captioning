@@ -1,6 +1,23 @@
 # Caption Studio development handoff
 
-## Current release: 0.1.12 (2026-09-23)
+## Current release: 0.1.13 (2026-09-23)
+
+User data now lives in a `data` folder next to `CaptionStudio.exe` (at the user's request:
+every copy self-contained and runnable from any folder or drive). `captioning/paths.py`:
+
+- `CAPTION_STUDIO_DATA_DIR` still overrides the location; tests always use it.
+- A built program moves `%LOCALAPPDATA%\CaptionStudio` (pre-0.1.13) once when its own data
+  folder is empty: one rename on the same drive; on another drive only settings, keys,
+  session and logs are copied, then removed, and a notice explains how to move the model.
+  Nothing moves while an older instance holds the lock or if copying fails.
+- A source checkout uses `<repo>/data` (git-ignored) and never adopts installed data.
+- An unwritable program folder falls back to `%LOCALAPPDATA%\CaptionStudio` with a notice.
+- `runtime/verified.json` keys are relative to the runtime folder (old absolute keys are
+  converted), so moved models stay verified without re-hashing.
+- `build.ps1` refuses to build while `dist\CaptionStudio\data` exists, because PyInstaller
+  deletes that folder. Never run a build output without `CAPTION_STUDIO_DATA_DIR`.
+
+## Previous release: 0.1.12 (2026-09-23)
 
 Tests and QA from the 0.1.8 code review (phase 5).
 
@@ -14,18 +31,10 @@ Tests and QA from the 0.1.8 code review (phase 5).
   clear message; it is still never overwritten.
 - Live helper scripts use `data_directory()` and accept `--names` instead of fixed files.
 
-Application files are located relative to the program (`_MEIPASS`/`__file__`); user data
-lives in `%LOCALAPPDATA%\CaptionStudio` unless `CAPTION_STUDIO_DATA_DIR` is set. The build
-was checked from its output folder and from a copy in a folder with spaces and diacritics.
-
-## Previous release: 0.1.11 (2026-09-23)
-
-Frontend cleanup (phase 4): Prettier-formatted UI, one stylesheet with folded override
-rules, ES modules without globals and explicit JavaScript/CSS MIME types. Computed style,
-geometry and text were identical to 0.1.10 in five UI states at four widths. English text
-stays the message ID for diagnostics; message codes were considered and not adopted
-because they would change session.json and every message site. Keep `Generation failed.`
-and ` · {v0} drafts to review` in the locale for sessions from 0.1.8 and earlier.
+Phase 4 (0.1.11) formatted the UI with Prettier, merged the stylesheets and split the UI
+into ES modules; English text stays the diagnostic message ID (message codes would change
+session.json and every message site). Keep `Generation failed.` and ` · {v0} drafts to
+review` in the locale for sessions from 0.1.8 and earlier.
 
 ## Standing interface decisions
 
@@ -65,6 +74,8 @@ writes are deliberate simplifications at that scale.
 - `captioning/service.py`: import, batch lifecycle, immutable recipe per batch,
   persistent drafts/history, sidecar conflict and overwrite checks.
 - `captioning/storage.py`: UTF-8 writes, byte-preserving backups, fingerprints and DPAPI.
+- `captioning/paths.py`: program folder, data folder (`data` next to the program) and the
+  one-time move from the pre-0.1.13 location.
 - `captioning/errors.py`: `UserError` messages are UI message IDs (API 400);
   `ProviderUnavailableError` pauses the batch. Anything else is a defect: logged, API 500.
   Keep `ValueError` for pydantic validators and JSON parsing only.

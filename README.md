@@ -24,7 +24,8 @@ terminal and use Ctrl+C to shut it down.
 
 For the portable edition, extract the entire ZIP and run `CaptionStudio.exe`.
 Keep its `_internal` directory beside the executable. Both editions include a
-private Python runtime and store data in the same user profile by default.
+private Python runtime and keep all their data in a `data` folder next to
+`CaptionStudio.exe`, so a copy can be moved or run from any folder or drive.
 
 ## Connect a model
 
@@ -145,7 +146,7 @@ and [caption normalizer](https://github.com/Bria-AI/FIBO/blob/main/src/fibo_infe
 - API keys are encrypted with Windows DPAPI and separated by provider/server address.
   The local application API listens on `127.0.0.1` and requires a session token.
 
-Data is stored in `%LOCALAPPDATA%/CaptionStudio`:
+Data is stored in the `data` folder next to `CaptionStudio.exe`:
 
 | Location | Contents |
 |---|---|
@@ -158,7 +159,14 @@ Data is stored in `%LOCALAPPDATA%/CaptionStudio`:
 | `logs/generation.jsonl` | Request stages and counts, without captions, images or keys |
 
 Models, settings and datasets survive uninstall. For an isolated profile, set
-`CAPTION_STUDIO_DATA_DIR` before launch.
+`CAPTION_STUDIO_DATA_DIR` before launch. If the program folder cannot be written to,
+data is kept in `%LOCALAPPDATA%/CaptionStudio` instead and the application says so.
+
+Versions before 0.1.13 kept data in `%LOCALAPPDATA%/CaptionStudio`. The first start
+of a newer installed or portable copy moves it into its `data` folder once. On the
+same drive everything moves instantly. On another drive, settings, keys and the
+session move and the application explains how to move the downloaded model. Saved
+API keys are tied to your Windows account; on another computer, enter them again.
 
 If a saved settings, key or session file cannot be used, for example after a
 manual edit, the original is kept beside it as `<name>.damaged-<id>`. The

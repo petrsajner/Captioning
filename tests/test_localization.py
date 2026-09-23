@@ -82,7 +82,11 @@ def backend_messages():
                 values.append(node.exc.args[0])
             elif isinstance(node, ast.Call):
                 values += [keyword.value for keyword in node.keywords if keyword.arg in USER_FIELDS]
-                if isinstance(node.func, ast.Name) and node.func.id in ("show_message", "translate", "t") and node.args:
+                if (
+                    isinstance(node.func, ast.Name)
+                    and node.func.id in ("show_message", "translate", "t", "notice")
+                    and node.args
+                ):
                     values.append(node.args[0])
             elif isinstance(node, ast.Dict):
                 values += [

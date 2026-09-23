@@ -13,8 +13,9 @@ import sys
 from pathlib import Path
 
 from captioning.models import Settings
+from captioning.paths import data_directory
 from captioning.quality import word_ceiling, word_count
-from captioning.service import Studio, data_directory
+from captioning.service import Studio
 
 
 async def main():

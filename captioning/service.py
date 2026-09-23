@@ -95,13 +95,6 @@ STAGE_LABELS = {
 }
 
 
-def data_directory() -> Path:
-    return Path(
-        os.environ.get("CAPTION_STUDIO_DATA_DIR")
-        or str(Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "CaptionStudio")
-    )
-
-
 def valid_row(row) -> bool:
     return (
         isinstance(row, dict)
@@ -111,9 +104,11 @@ def valid_row(row) -> bool:
 
 
 class Studio:
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, notices: list[str] | None = None):
         self.root = root
         root.mkdir(parents=True, exist_ok=True)
+        # One-time startup messages, for example about moving the data folder.
+        self.notices = notices or []
         # Unusable saved files are kept beside the originals under these names.
         self.recovered: list[str] = []
         self.settings = self._load_settings()
@@ -211,6 +206,7 @@ class Studio:
             "runtime": self.runtime.snapshot(self.settings.model_profile, self.settings.backend),
             "data_dir": str(self.root),
             "recovered": self.recovered,
+            "notices": self.notices,
         }
 
     def local_key(self, settings: Settings):

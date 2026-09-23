@@ -6,9 +6,9 @@ import json
 from pathlib import Path
 
 from captioning.models import Settings
+from captioning.paths import data_directory
 from captioning.provider import generate
 from captioning.quality import word_count
-from captioning.service import data_directory
 from captioning.storage import KeyStore
 
 

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import httpx
 
-from captioning.service import data_directory
+from captioning.paths import data_directory
 
 workspace = Path(__file__).resolve().parents[1]
 dataset = workspace / "output" / "test-dataset"

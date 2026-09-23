@@ -75,10 +75,11 @@ def main():
 
     from captioning import __version__
     from captioning.api import make_app
-    from captioning.service import Studio, data_directory
+    from captioning.paths import prepare_data_directory
+    from captioning.service import Studio
 
-    root = data_directory()
-    root.mkdir(parents=True, exist_ok=True)
+    # Next to the program; older per-user data is moved here once.
+    root, notices = prepare_data_directory()
     # A session's dataset and model are owned by one instance.
     lock_file = (root / "instance.lock").open("a+b")
     if os.name == "nt":
@@ -102,7 +103,7 @@ def main():
         sys.stdout.reconfigure(encoding="utf-8")
     listener = None
     try:
-        studio = Studio(root)
+        studio = Studio(root, notices)
         if args.ui_language:
             studio.save_settings(studio.settings.model_copy(update={"ui_language": args.ui_language}))
         listener = socket.socket()

@@ -3,12 +3,12 @@ import { t } from './i18n.js';
 
 let toastTimer;
 
-export function toast(text, error = false) {
+export function toast(text, error = false, duration = error ? 11000 : 4500) {
   $('toast').textContent = t(text);
   $('toast').className = 'toast' + (error ? ' error' : '');
   $('toast').hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => ($('toast').hidden = true), error ? 11000 : 4500);
+  toastTimer = setTimeout(() => ($('toast').hidden = true), duration);
 }
 
 export async function api(path, body, method = 'POST') {

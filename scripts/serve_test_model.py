@@ -11,8 +11,8 @@ from pathlib import Path
 
 import httpx
 
+from captioning.paths import data_directory
 from captioning.runtime import FILES, RELEASE
-from captioning.service import data_directory
 
 workspace = Path(__file__).resolve().parents[1]
 runtime = data_directory() / "runtime"

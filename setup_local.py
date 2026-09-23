@@ -4,8 +4,8 @@ import argparse
 import asyncio
 import sys
 
+from captioning.paths import prepare_data_directory
 from captioning.runtime import Runtime
-from captioning.service import data_directory
 
 
 async def main():
@@ -13,7 +13,7 @@ async def main():
     parser.add_argument("--profile", choices=["q3", "q4", "q5"], default="q4")
     parser.add_argument("--backend", choices=["cuda", "vulkan", "cpu"], default="cuda")
     args = parser.parse_args()
-    runtime = Runtime(data_directory())
+    runtime = Runtime(prepare_data_directory()[0])
     runtime.install(args.profile, args.backend)
     try:
         while runtime.installing:
