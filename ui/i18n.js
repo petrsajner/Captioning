@@ -1,38 +1,13 @@
-'use strict';
 // English source strings are message IDs. Only explicitly marked UI is translated.
-const i18n = {
+export const i18n = {
   language: 'en',
   messages: {},
   patterns: [],
   legacyPatterns: [],
   legacy: new Map(),
-  ready: null,
-  setLanguage(language) {
-    this.language = language === 'cs' ? 'cs' : 'en';
-    document.documentElement.lang = this.language;
-    this.applyStatic();
-    for (const id of [
-      'recipe-status',
-      'key-status',
-      'local-key-status',
-      'local-discovery-message',
-      'local-model-status',
-      'settings-message',
-      'toast',
-      'folder-error',
-    ]) {
-      const element = document.getElementById(id);
-      if (element) element.textContent = diagnostic(element.textContent);
-    }
-  },
-  applyStatic() {
-    for (const element of document.querySelectorAll('[data-i18n]')) element.textContent = t(element.dataset.i18n);
-    for (const attribute of ['title', 'placeholder', 'aria-label', 'alt'])
-      for (const element of document.querySelectorAll(`[data-i18n-${attribute}]`))
-        element.setAttribute(attribute, t(element.getAttribute(`data-i18n-${attribute}`)));
-  },
 };
-function t(key, values) {
+
+export function t(key, values) {
   const source = String(key ?? '');
   let result = source;
   if (i18n.language === 'cs') {
@@ -51,9 +26,10 @@ function t(key, values) {
   }
   return values ? result.replace(/\{(\w+)\}/g, (all, name) => String(values[name] ?? all)) : result;
 }
+
 // Existing sessions may contain Czech diagnostics from older versions. Only
 // diagnostic fields use this adapter; filenames and generated text never do.
-function diagnostic(text) {
+export function diagnostic(text) {
   const source = String(text ?? '');
   if (i18n.legacy.has(source)) return t(i18n.legacy.get(source));
   for (const entry of i18n.legacyPatterns) {
@@ -65,6 +41,7 @@ function diagnostic(text) {
   }
   return t(source);
 }
+
 function messagePatterns(messages) {
   return messages
     .filter(([key]) => /\{\w+\}/.test(key))
@@ -86,18 +63,47 @@ function messagePatterns(messages) {
     })
     .sort((a, b) => b.weight - a.weight);
 }
-i18n.ready = fetch('/assets/locales/cs.json')
-  .then((response) => {
-    if (!response.ok) throw Error('Unable to load interface translations.');
-    return response.json();
-  })
-  .then((catalog) => {
-    i18n.messages = catalog.messages;
-    i18n.legacy = new Map(Object.entries(catalog.messages).map(([key, value]) => [value, key]));
-    i18n.patterns = messagePatterns(Object.entries(catalog.messages));
-    i18n.legacyPatterns = messagePatterns(
-      Object.entries(catalog.messages)
-        .filter(([key, value]) => key !== value)
-        .map(([key, value]) => [value, key]),
-    );
-  });
+
+export function useCatalog(catalog) {
+  i18n.messages = catalog.messages;
+  i18n.legacy = new Map(Object.entries(catalog.messages).map(([key, value]) => [value, key]));
+  i18n.patterns = messagePatterns(Object.entries(catalog.messages));
+  i18n.legacyPatterns = messagePatterns(
+    Object.entries(catalog.messages)
+      .filter(([key, value]) => key !== value)
+      .map(([key, value]) => [value, key]),
+  );
+}
+
+export async function loadTranslations() {
+  const response = await fetch('/assets/locales/cs.json');
+  if (!response.ok) throw Error('Unable to load interface translations.');
+  useCatalog(await response.json());
+}
+
+function applyStatic() {
+  for (const element of document.querySelectorAll('[data-i18n]')) element.textContent = t(element.dataset.i18n);
+  for (const attribute of ['title', 'placeholder', 'aria-label', 'alt'])
+    for (const element of document.querySelectorAll(`[data-i18n-${attribute}]`))
+      element.setAttribute(attribute, t(element.getAttribute(`data-i18n-${attribute}`)));
+}
+
+export function setLanguage(language) {
+  i18n.language = language === 'cs' ? 'cs' : 'en';
+  document.documentElement.lang = i18n.language;
+  applyStatic();
+  // Messages already on screen are diagnostics; re-translate them in place.
+  for (const id of [
+    'recipe-status',
+    'key-status',
+    'local-key-status',
+    'local-discovery-message',
+    'local-model-status',
+    'settings-message',
+    'toast',
+    'folder-error',
+  ]) {
+    const element = document.getElementById(id);
+    if (element) element.textContent = diagnostic(element.textContent);
+  }
+}

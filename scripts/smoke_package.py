@@ -53,7 +53,7 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
             for language in ("en", "cs"):
                 response = client.get(base + "/assets/locales/" + language + ".json")
                 assert response.status_code == 200 and "messages" in response.json()
-            assert client.get(base + "/assets/i18n.js").status_code == 200
+            assert client.get(base + "/assets/main.js").headers["content-type"].startswith("text/javascript")
             before_language = s["settings"]
             client.post(base + "/api/ui-language", json={"language": "cs"}, headers=headers).raise_for_status()
             assert client.get(base + "/api/state").json()["settings"] == {**before_language, "ui_language": "cs"}

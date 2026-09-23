@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import mimetypes
 import secrets
 import sys
 import uuid
@@ -20,6 +21,10 @@ from .folders import FolderBrowser
 from .models import MANAGED_URL, Settings, make_prompt
 from .provider import image_bytes, list_models
 from .service import MAX_IMAGES, MAX_KEY_LENGTH, Studio
+
+# Windows registry entries can map .js/.css to other types; the UI's module scripts need these.
+mimetypes.add_type("text/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
 
 
 class ImportRequest(BaseModel):

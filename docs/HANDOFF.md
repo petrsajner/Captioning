@@ -79,6 +79,11 @@ writes are deliberate simplifications at that scale.
   process. Never start, stop or reconfigure an external model server.
 - `captioning/api.py`: local session protection and endpoints. `/api/ui-language`
   persists only the interface preference through the existing settings guards.
+- `ui/`: ES modules without a build step, loaded from `main.js` (entry, header/run bar,
+  polling). `store.js` holds shared UI state and the render/refresh hooks main provides;
+  `recipe.js`, `dataset.js` (grid, inspector, import, batches), `settings.js` and
+  `folder-browser.js` own their panels; `api.js` and `dom.js` are helpers. No globals.
+  One `style.css`. The server registers JavaScript/CSS MIME types explicitly.
 - `ui/i18n.js`: explicit static markers, message IDs and parameterized translations.
   Localize only UI/diagnostic fields; never captions, history bodies, prompts, model
   IDs, paths or editable values. Captured filenames remain opaque. Old stored Czech

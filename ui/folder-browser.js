@@ -1,7 +1,11 @@
-'use strict';
+// Folder dialog with previews, tree, breadcrumbs and history; importing is delegated to onImport.
+import { api } from './api.js';
+import { $, esc } from './dom.js';
+import { t } from './i18n.js';
 
-class FolderPicker {
-  constructor() {
+export class FolderPicker {
+  constructor(onImport) {
+    this.onImport = onImport;
     this.listing = null;
     this.history = [];
     this.historyIndex = -1;
@@ -345,7 +349,7 @@ class FolderPicker {
     this.error('');
     $('recursive').checked = $('folder-recursive').checked;
     try {
-      if ((await doImport([], path)) !== false) $('folder-dialog').close();
+      if ((await this.onImport([], path)) !== false) $('folder-dialog').close();
     } catch (e) {
       this.error(e.message);
     } finally {
@@ -354,5 +358,3 @@ class FolderPicker {
     }
   }
 }
-
-const folderPicker = new FolderPicker();
