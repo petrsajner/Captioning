@@ -18,7 +18,7 @@ test('clips show their frames and get WAN I2V captions; photo-only outputs leave
   await card(page, 'walk.mp4').click();
   await expect(page.locator('#preview-video')).toBeVisible();
   await expect(page.locator('#preview-image')).toBeHidden();
-  await expect(page.locator('#image-meta')).toContainText('96 × 64 px · 2 s · 24 fps · 48 frames');
+  await expect(page.locator('#image-meta')).toContainText('96 × 64 px · 2.0 s · 24 fps · 48 frames');
   await expect(page.locator('#frame-strip figure')).toHaveCount(4);
   await expect(page.locator('#frame-strip figcaption').first()).toHaveText('0.25 s');
   await expect(page.locator('#clip-note')).toContainText('WAN 2.2 I2V (A14B) trains at 16 fps');

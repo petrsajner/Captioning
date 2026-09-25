@@ -59,11 +59,15 @@ def probe(path: Path) -> ClipInfo:
             raise UserError(UNREADABLE) from None
         rotation = int(first.rotation or 0) % 360
         width, height = (first.height, first.width) if rotation in (90, 270) else (first.width, first.height)
+        # A clip cut without re-encoding keeps the header's count, including frames before the cut.
+        frames = (
+            stream.frames if stream.frames and abs(stream.frames - duration * fps) <= fps else round(duration * fps)
+        )
         return {
             "width": width,
             "height": height,
             "fps": round(fps, 3),
-            "frames": int(stream.frames or round(duration * fps)),
+            "frames": int(frames),
             "duration": round(duration, 3),
             "has_audio": bool(container.streams.audio),
             "rotation": rotation,

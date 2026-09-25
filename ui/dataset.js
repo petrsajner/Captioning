@@ -124,7 +124,7 @@ export function renderGrid() {
           label =
             view.status === 'unused' ? t(r.kind === 'clip' ? 'Video models only' : 'Clips only') : statusLabel(view),
           size =
-            (r.kind === 'clip' ? `<span class="clip-badge">▶ ${r.clip?.duration ?? '?'} s</span> · ` : '') +
+            (r.kind === 'clip' ? `<span class="clip-badge">▶ ${(r.clip?.duration ?? 0).toFixed(1)} s</span> · ` : '') +
             `${r.width} × ${r.height}`;
         return `<article class="image-card ${view.status} ${r.id === ui.active ? 'active' : ''}" data-id="${r.id}" tabindex="0" aria-label="${esc(r.name)}"><input class="card-select" type="checkbox" ${selected.has(r.id) ? 'checked' : ''} aria-label="${esc(t('Select {name}', { name: r.name }))}"><img class="thumb" loading="lazy" src="/api/image/${r.id}" alt="${esc(r.name)}"><div class="card-info"><div class="card-name" title="${esc(r.path)}">${esc(r.name)}</div><div class="card-bottom"><span>${size}</span><span class="status-label ${view.status}">${esc(label)}</span></div>${modelDots(r, current)}</div></article>`;
       })
@@ -221,8 +221,10 @@ export function renderInspector() {
   renderClip(row);
   $('image-name').textContent = row.name;
   $('image-meta').textContent = clip
-    ? t('{width} × {height} px · {duration} s · {fps} fps · {frames} frames', { ...row.clip }) +
-      (row.clip.has_audio ? ' · ' + t('audio') : '')
+    ? t('{width} × {height} px · {duration} s · {fps} fps · {frames} frames', {
+        ...row.clip,
+        duration: row.clip.duration.toFixed(1),
+      }) + (row.clip.has_audio ? ' · ' + t('audio') : '')
     : `${row.width} × ${row.height} px${slot.seconds ? ' · ' + slot.seconds + ' s' : ''}`;
   $('image-path').textContent = row.path;
   $('image-path').title = row.path;

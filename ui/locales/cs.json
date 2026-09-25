@@ -468,9 +468,7 @@
     "e.g. Velmira": "např. Velmira",
     "The character name was placed at the first mention of the character type.": "Jméno postavy bylo doplněno k první zmínce typu postavy.",
     "Hair color": "Barva vlasů",
-    "The main person’s hair color and tones.": "Barva a odstíny vlasů hlavní osoby.",
     "Hairstyle": "Účes",
-    "Hair length, cut and how it is worn, such as a ponytail or bangs.": "Délka, střih a úprava vlasů, například culík nebo ofina.",
     "All video models · .wan / .wan-i2v / .ltx / .h3": "Všechny video modely · .wan / .wan-i2v / .ltx / .h3",
     "At most 30 frames per clip, about one megapixel each; longer clips get 30 frames spread evenly.": "Nejvýš 30 snímků z klipu, každý asi jeden megapixel; delší klipy dostanou 30 rovnoměrně rozložených snímků.",
     "Camera movement": "Pohyb kamery",
@@ -495,7 +493,9 @@
     "Choose a frame interval of 0.25, 0.5 or 1 second.": "Zvolte interval snímků 0,25, 0,5 nebo 1 sekundu.",
     "The selection contains no supported images or video clips.": "Výběr neobsahuje žádné podporované obrázky ani videoklipy.",
     "This file is not a video clip.": "Tento soubor není videoklip.",
-    "The video cannot be read.": "Video nelze přečíst."
+    "The video cannot be read.": "Video nelze přečíst.",
+    "The main person’s hair and facial hair color and tones.": "Barva a odstíny vlasů a vousů hlavní osoby.",
+    "Hair length, cut and how it is worn, such as a ponytail or bangs; beard or stubble.": "Délka, střih a úprava vlasů, například culík nebo ofina; vousy nebo strniště."
   },
   "grammar": {
     "dangling_words": [

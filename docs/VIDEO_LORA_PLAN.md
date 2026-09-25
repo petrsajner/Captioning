@@ -1,7 +1,7 @@
 # Plan: captions for video character LoRAs
 
-Status: 0.2.0 (photos: sections 2–4, the runtime alignment of section 5 and D7) is
-implemented; 0.2.1 (clips, WAN I2V) is planned. Written 2026-09-25. The decisions in
+Status: 0.2.0 (photos, runtime alignment, D7) and 0.2.1 (clips, WAN I2V) are implemented;
+the LORA Train handoff (section 10) is next. Written 2026-09-25. The decisions in
 section 11 were confirmed by Petr on 2026-09-25.
 
 ## 1. Goal and scope

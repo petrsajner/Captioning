@@ -84,7 +84,7 @@ GPU. Selected images are sent to the chosen provider and billed under its terms.
    change with prompts. Leave out details you want the LoRA to capture.
 4. Select images and click **Create captions**. Captions are processed one at a time.
 5. Click an image to review or edit its caption. Each caption file of the image has
-   its own tab (`.txt`, `.json`, `.wan.txt`, `.ltx.txt`, `.h3.txt`). Save with
+   its own tab (`.txt`, `.json`, `.wan.txt`, `.wan-i2v.txt`, `.ltx.txt`, `.h3.txt`). Save with
    **Save caption** or Ctrl+S. **Regenerate** creates the open tab's caption again
    and allows replacing it.
 
@@ -118,16 +118,28 @@ or reuse in the editor. Stopping during a revision retains the response received
 
 ### Video model captions (WAN 2.2, LTX-2.5, MiniMax H3)
 
-For character LoRAs of video models. Every model gets its own caption file next to
-the image, in the shape its prompts use:
+For character LoRAs of video models. Photos and video clips (`.mp4`, `.mov`, `.webm`,
+`.mkv`, `.m4v`, `.avi`) can be in the same dataset. Every model gets its own caption
+file next to the media, in the shape its prompts use:
 
-| Output | File | Shape |
-|---|---|---|
-| WAN 2.2 | `name.wan.txt` | Plain sentences: the character and action, details, setting, lighting, shot |
-| LTX-2.5 | `name.ltx.txt` | One present-tense paragraph that opens with the shot |
-| MiniMax H3 | `name.h3.txt` | The official three fields; photos are a static `[Shot 1]` with `N/A` sound |
+| Output | File | For | Shape |
+|---|---|---|---|
+| WAN 2.2 | `name.wan.txt` | photos, clips | Plain sentences: the character and action, details, setting, lighting, shot |
+| WAN 2.2 I2V | `name.wan-i2v.txt` | clips | Only the motion and the camera movement, at most 100 words; the first frame shows the rest |
+| LTX-2.5 | `name.ltx.txt` | photos, clips | One present-tense paragraph that opens with the shot |
+| MiniMax H3 | `name.h3.txt` | photos, clips | The official three fields; a photo is a static `[Shot 1]`; sound is `N/A` |
 
-**All video models** creates the three files in one batch. The captions are English
+**All video models** creates every file that applies in one batch. Normal and BRIA
+describe photos only; clips show "Video models only" there.
+
+**Clips.** Caption Studio reads prepared clips and never changes them. The model receives
+one frame every 0.5 s (Settings → Analysis settings: 0.25, 0.5 or 1 s), at most 30
+frames of about one megapixel each, each labeled with its time; longer clips get 30
+frames spread evenly. The details **Motion over time** and **Camera movement** appear for
+the video models and describe what happens over the clip. The inspector plays the clip,
+shows its size, length, frame rate and audio, the frames sent to the model, and what the
+selected model trains on. For cloud APIs the frames are compressed further if a request
+would exceed 18 MB. The captions are English
 descriptions; caption language and tags do not apply. The model names the character
 once, and Caption Studio writes the trigger and **Character type** there, for example
 `Velmira, a woman, sits by the window…`: at the very start for WAN, after the opening
@@ -173,8 +185,9 @@ and [caption normalizer](https://github.com/Bria-AI/FIBO/blob/main/src/fibo_infe
 - Turn off **Save captions automatically** to keep results as drafts. The current
   dataset and drafts persist across restarts. Opening a new dataset without append
   replaces the current working list.
-- Original images are unchanged. The model receives an oriented, resized copy with
-  EXIF metadata removed. Multi-frame images are not supported.
+- Original images and clips are unchanged. The model receives an oriented, resized copy
+  with EXIF metadata removed, or re-encoded frames of a clip. Multi-frame images are not
+  supported.
 - Local inference uses localhost. Downloads require internet. Cloud inference sends
   selected image copies and the recipe to the configured provider.
 - API keys are encrypted with Windows DPAPI and separated by provider/server address.

@@ -28,14 +28,14 @@ ATTRIBUTES = [
     {
         "id": "hair_color",
         "label": "Hair color",
-        "detail": "The main person’s hair color and tones.",
-        "instruction": "hair color and hair tones of the main person, including color words for the hair such as blonde, brunette, dark, light-colored or red",
+        "detail": "The main person’s hair and facial hair color and tones.",
+        "instruction": "hair color and hair tones of the main person, including the color of any beard or other facial hair and color words such as blonde, brunette, dark, gray, light-colored or red",
     },
     {
         "id": "hairstyle",
         "label": "Hairstyle",
-        "detail": "Hair length, cut and how it is worn, such as a ponytail or bangs.",
-        "instruction": "hairstyle of the main person: hair length, cut, parting and how it is worn, such as loose, braided, a ponytail or bangs",
+        "detail": "Hair length, cut and how it is worn, such as a ponytail or bangs; beard or stubble.",
+        "instruction": "hairstyle of the main person: hair length, cut, parting and how it is worn, such as loose, braided, a ponytail or bangs, and the shape of any beard, moustache or stubble",
     },
     {
         "id": "clothing",

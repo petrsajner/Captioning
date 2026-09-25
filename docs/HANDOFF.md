@@ -1,6 +1,38 @@
 # Caption Studio development handoff
 
-## Current release: 0.2.0 (2026-09-25)
+## Current release: 0.2.1 (2026-09-25)
+
+Video clips, following [VIDEO_LORA_PLAN.md](VIDEO_LORA_PLAN.md) section 5.
+
+- Clips (`.mp4 .mov .webm .mkv .m4v .avi`) import next to photos. `captioning/media.py` reads
+  them with PyAV (bundled; its wheel ships FFmpeg): size as displayed (the display matrix is
+  applied), rate, length, frames, audio. A clip cut without re-encoding keeps its header's
+  frame count, so the count comes from length × rate when the two disagree.
+- Rows have `kind` (`image`/`clip`) and `clip`; outputs per kind are `MEDIA_OUTPUTS`: clips get
+  WAN, **WAN 2.2 I2V** (`name.wan-i2v.txt`, motion and camera only, at most 100 words), LTX and
+  H3; Normal and BRIA stay photo-only.
+- The model gets a frame every `clip_interval` seconds (0.25/0.5/1, default 0.5) at the middles
+  of equal parts, at most 30, about 1 MP each, labeled "Frame n at t s:". If the frames would
+  exceed 18 MB they are re-encoded at lower JPEG quality (the frame count never drops).
+- Every video model has its own photo and clip instructions (`video.py`). New details
+  **Motion over time** and **Camera movement** (`"media": "clip"`) are sent for clips only.
+  H3 clips describe their own camera movement; only photos get the static-shot sentence.
+- Facial hair is part of the hair details: its color under hair color, its shape under hairstyle.
+- Inspector: player (`/api/media/{id}`, range requests), meta line, model note, frame strip
+  (`/api/clip-frames/{id}`, `/api/frame/{id}?t=`, cached). Cards show ▶ and the length.
+- Live checks with copies (`scripts/check_video_captions_live.py`, reports in `output/`):
+  - Marvin (Qwen3.8 27B Q5, b10935): 3 of Petr's own clips (6 s, 12 s, 68 s;
+    13/25/30 frames) × 4 models: 12/12 saved, the trigger once each, motion and static camera
+    described, 16–31 s per caption. A 30-frame request used 32,409 prompt tokens (the managed
+    64k window fits) and 7.5 MB of frames; Marvin's preallocated VRAM did not grow.
+  - Gemini 3.8 Flash (`https://generativelanguage.googleapis.com/v1beta/openai`,
+    `gemini-3.8-flash`): the same clips 12/12 in one pass each, 14–22 s including frame
+    decoding of 4K; 4 Velmira photos × 3 models 12/12, 6–9 s. No hair color with
+    `--omit identity hair_color`.
+  - Not measured: the managed runtime's own placements with a 30-frame request, because the
+    managed runtime is not installed on the development PC (Petr uses Marvin).
+
+## Previous release: 0.2.0 (2026-09-25)
 
 Caption outputs for video character LoRAs, following [VIDEO_LORA_PLAN.md](VIDEO_LORA_PLAN.md)
 (photos; clips follow in 0.2.1).
