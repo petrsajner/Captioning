@@ -103,6 +103,10 @@ def test_later_mentions_and_a_missing_token_read_naturally():
     assert text == "A close-up frames Velmira, a woman."
     text, _, _ = finish_video_caption("<character> is a woman with long hair.", "wan", "Velmira", "a woman")
     assert text == "Velmira, a woman, has long hair."
+    text, _, _ = finish_video_caption(
+        "A close-up frames <character> as a woman with a ponytail.", "ltx", "Velmira", "a woman"
+    )
+    assert text == "A close-up frames Velmira, a woman, with a ponytail."
 
 
 def test_without_a_trigger_the_class_opens_the_caption():

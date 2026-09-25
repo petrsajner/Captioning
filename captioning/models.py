@@ -77,6 +77,17 @@ class Settings(BaseModel):
                 if value.get("composition") is False:
                     omitted.append("composition")
             value = {**value, "omitted_attributes": omitted}
+        if (
+            isinstance(value, dict)
+            and isinstance(value.get("omitted_attributes"), list)
+            and "hair" in value["omitted_attributes"]
+        ):
+            # Up to 0.2.0 one "hair" detail covered both color and hairstyle.
+            omitted = [a for a in value["omitted_attributes"] if a != "hair"]
+            value = {
+                **value,
+                "omitted_attributes": omitted + [a for a in ("hair_color", "hairstyle") if a not in omitted],
+            }
         if isinstance(value, dict) and "local_source" not in value:
             url = value.get("local_url", MANAGED_URL)
             if isinstance(url, str) and url.rstrip("/") != MANAGED_URL:

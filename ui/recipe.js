@@ -112,8 +112,14 @@ recipe.addEventListener('input', () => {
 recipe.addEventListener('submit', (e) => e.preventDefault());
 
 $('apply-training-preset').onclick = () => {
+  // A character's hair color belongs to the LoRA; its hairstyle stays free for prompts.
   const preset = recipe.elements.preset.value,
-    omitted = preset === 'character' || preset === 'object' ? ['identity'] : preset === 'style' ? ['style'] : [];
+    omitted =
+      {
+        character: ['identity', 'hair_color'],
+        object: ['identity'],
+        style: ['style'],
+      }[preset] || [];
   fillTrainingControls({ ...liveSettings(), omitted_attributes: omitted });
   recipe.dispatchEvent(new Event('input', { bubbles: true }));
 };

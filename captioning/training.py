@@ -4,7 +4,8 @@ from typing import Literal
 
 Attribute = Literal[
     "identity",
-    "hair",
+    "hair_color",
+    "hairstyle",
     "clothing",
     "accessories",
     "pose",
@@ -21,11 +22,18 @@ ATTRIBUTES = [
         "detail": "Facial and physical features; an object’s characteristic shape, material and colors.",
         "instruction": "stable visual identity of the MAIN subject: facial structure and distinctive physical features; for an animal its coat markings; for an object its characteristic shape, material and colors",
     },
+    # Separate since 0.2.0: a character's hair color usually belongs to the LoRA, its hairstyle to the prompt.
     {
-        "id": "hair",
-        "label": "Hair and hairstyle",
-        "detail": "The main person’s hairstyle, hair length and color.",
-        "instruction": "hairstyle, hair length and hair color of the main person",
+        "id": "hair_color",
+        "label": "Hair color",
+        "detail": "The main person’s hair color and tones.",
+        "instruction": "hair color and hair tones of the main person, including color words for the hair such as blonde, brunette, dark, light-colored or red",
+    },
+    {
+        "id": "hairstyle",
+        "label": "Hairstyle",
+        "detail": "Hair length, cut and how it is worn, such as a ponytail or bangs.",
+        "instruction": "hairstyle of the main person: hair length, cut, parting and how it is worn, such as loose, braided, a ponytail or bangs",
     },
     {
         "id": "clothing",

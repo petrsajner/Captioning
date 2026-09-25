@@ -75,9 +75,11 @@ Trainers that read these names:
 
 ### 3.1 Rules shared by all model outputs
 
-1. **Identity uses the existing detail policy.** The preset "Character / person" already
-   omits `identity`. Everything else stays as the user sets it, and `policy_prompt`
-   applies unchanged. No new identity logic is added.
+1. **Identity uses the existing detail policy.** The preset "Character / person" omits
+   `identity` and, since 0.2.0, `hair_color`: hair color and hairstyle are separate details
+   so the hairstyle stays promptable (Petr, 2026-09-25). Everything else stays as the user
+   sets it, and `policy_prompt` applies unchanged. The model shapes never name attributes
+   themselves; the recipe alone decides what is described.
 2. **Opening: trigger once, then the class in apposition.** Example:
    `Velmira, a woman, sits …`. After that the caption uses a pronoun and never repeats
    the name. Reasons, verified in trainer code:

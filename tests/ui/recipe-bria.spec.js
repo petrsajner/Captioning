@@ -9,7 +9,7 @@ test('detail choices reach the prompt and BRIA JSON captions are validated on sa
   await recipe.locator('[data-attribute=clothing]').uncheck();
   await expect
     .poll(async () => (await state(page)).settings.omitted_attributes.sort())
-    .toEqual(['clothing', 'identity']);
+    .toEqual(['clothing', 'hair_color', 'identity']);
 
   await page.locator('#preview-prompt').click();
   await expect(page.locator('#prompt-dialog')).toBeVisible();
@@ -44,7 +44,7 @@ test('detail choices reach the prompt and BRIA JSON captions are validated on sa
   expect(JSON.parse(readFileSync(sidecar, 'utf8')).short_description).toBe(JSON.parse(original).short_description);
 
   await page.reload();
-  await expect(page.locator('[data-attribute]')).toHaveCount(10);
+  await expect(page.locator('[data-attribute]')).toHaveCount(11);
   await expect(recipe.locator('[data-attribute=clothing]')).not.toBeChecked();
   await expect(recipe.locator('[name=output_format]')).toHaveValue('bria_json');
 });

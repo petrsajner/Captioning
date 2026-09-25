@@ -125,8 +125,6 @@
     " drafts to review": " návrhů ke kontrole",
     "Identity / subject appearance": "Identita / vzhled subjektu",
     "Facial and physical features; an object’s characteristic shape, material and colors.": "Obličej, tělesné rysy; u objektu typický tvar, materiál a barvy.",
-    "Hair and hairstyle": "Vlasy a účes",
-    "The main person’s hairstyle, hair length and color.": "Účes, délka a barva vlasů hlavní osoby.",
     "Clothing": "Oblečení",
     "Garments, cut, colors and fabric.": "Oděv, jeho střih, barvy a materiál.",
     "Accessories": "Doplňky",
@@ -469,7 +467,11 @@
     "Written in English after the trigger, for example “Velmira, a woman, …”. It also tells the model which pronouns to use.": "Píše se anglicky za trigger, například „Velmira, a woman, …“. Model podle toho volí i zájmena.",
     "Written once where the character is first named: “{trigger}, {cls}, …”.": "Zapíše se jednou tam, kde je postava poprvé zmíněna: „{trigger}, {cls}, …“.",
     "e.g. Velmira": "např. Velmira",
-    "The character name was placed at the first mention of the character type.": "Jméno postavy bylo doplněno k první zmínce typu postavy."
+    "The character name was placed at the first mention of the character type.": "Jméno postavy bylo doplněno k první zmínce typu postavy.",
+    "Hair color": "Barva vlasů",
+    "The main person’s hair color and tones.": "Barva a odstíny vlasů hlavní osoby.",
+    "Hairstyle": "Účes",
+    "Hair length, cut and how it is worn, such as a ponytail or bangs.": "Délka, střih a úprava vlasů, například culík nebo ofina."
   },
   "grammar": {
     "dangling_words": [

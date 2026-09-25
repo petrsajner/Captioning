@@ -90,10 +90,13 @@ GPU. Selected images are sent to the chosen provider and billed under its terms.
 
 Checked details are described when visible; unchecked details are omitted. The
 model receives an explicit instruction for every detail in both output modes.
-**Apply defaults for this LoRA type** omits identity for character/object datasets
-or style for style datasets, and includes the other details. Merely changing the
-dataset type does not overwrite your choices. Existing recipes retain their
-original include/omit meaning when upgraded.
+**Apply defaults for this LoRA type** omits identity and hair color for character
+datasets, identity for object datasets or style for style datasets, and includes the
+other details. Hair color and hairstyle are separate details: a character's hair color
+usually belongs to the LoRA while its hairstyle (loose, ponytail, bangs) stays free for
+prompts. Merely changing the dataset type does not overwrite your choices. Existing
+recipes retain their original include/omit meaning when upgraded; a recipe that
+omitted "Hair and hairstyle" now omits both hair details.
 
 ### Normal captions
 

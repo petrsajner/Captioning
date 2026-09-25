@@ -166,7 +166,7 @@ def normalize_json(text: str, settings=None) -> str:
                 if group in omitted:
                     for field in fields:
                         main.pop(field, None)
-            if {"hair", "accessories"} <= omitted:
+            if {"hair_color", "hairstyle", "accessories"} <= omitted:
                 main.pop("appearance_details", None)
         if not settings.text_in_image:
             data["text_render"] = []

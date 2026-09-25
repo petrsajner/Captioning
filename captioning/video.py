@@ -199,12 +199,13 @@ def finish_video_caption(draft: str, output: str, trigger: str, character_class:
     # "frames a <character>", "<character>, a woman, sits", "<character> is a woman with ...".
     body = re.sub(r"\b(?:a|an|the)\s+" + re.escape(CHARACTER), CHARACTER, body, flags=re.I)
     body = re.sub(re.escape(CHARACTER) + r"\s*,?\s*" + re.escape(character_class) + r"\b", CHARACTER, body, flags=re.I)
-    body = re.sub(
-        re.escape(CHARACTER) + r"\s+is\s+" + re.escape(character_class) + r"\s+with\b",
-        CHARACTER + " has",
-        body,
-        flags=re.I,
-    )
+    for verb, replacement in (("is", " has"), ("as", " with")):
+        body = re.sub(
+            re.escape(CHARACTER) + rf"\s+{verb}\s+" + re.escape(character_class) + r"\s+with\b",
+            CHARACTER + replacement,
+            body,
+            flags=re.I,
+        )
     first, later = opening(trigger, character_class), definite(character_class)
     count = body.count(CHARACTER)
     mention = re.search(r"\b" + re.escape(character_class) + r"\b", body, flags=re.I)

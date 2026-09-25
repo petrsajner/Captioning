@@ -43,7 +43,15 @@ def test_migrate_old_checkbox_and_explicit_new_policy_wins():
     explicit = Settings(omit_identity=True, omitted_attributes=["clothing"])
     assert explicit.omitted_attributes == ["clothing"]
     renamed = Settings(learn_attributes=["clothing", "hair"])  # saved by 0.1.9 and earlier
-    assert renamed.omitted_attributes == ["clothing", "hair"] and "learn_attributes" not in renamed.model_dump()
+    assert renamed.omitted_attributes == ["clothing", "hair_color", "hairstyle"]
+    assert "learn_attributes" not in renamed.model_dump()
+    # Up to 0.2.0 one "hair" detail covered color and style; omitting it omits both.
+    split = Settings(omitted_attributes=["identity", "hair", "hairstyle"])
+    assert split.omitted_attributes == ["identity", "hairstyle", "hair_color"]
+    assert Settings.recover({"omitted_attributes": ["hair"]}) == (
+        Settings(omitted_attributes=["hair_color", "hairstyle"]),
+        False,
+    )
     recovered, damaged = Settings.recover({"learn_attributes": ["unknown"], "trigger": "kept"})
     assert damaged and recovered.trigger == "kept" and recovered.omitted_attributes == []
 
@@ -55,6 +63,17 @@ def test_policy_covers_each_attribute_without_preset_conflicts():
     assert prompt.count("CONTROL_WITH_PROMPT — DESCRIBE IF VISIBLE:") == len(ATTRIBUTES) - 2
     assert prompt.index("MANDATORY CAPTION POLICY") > prompt.index("Describe all clothes.")
     assert "CONTROL_WITH_PROMPT — DESCRIBE IF VISIBLE: clothing" not in prompt
+    # Hair color can belong to the LoRA while the hairstyle stays free for prompts.
+    hair = make_prompt(Settings(preset="character", omitted_attributes=["identity", "hair_color"]))
+    assert "LEARN_WITH_LORA — DO NOT DESCRIBE: hair color" in hair
+    assert "CONTROL_WITH_PROMPT — DESCRIBE IF VISIBLE: hairstyle of the main person" in hair
+
+
+def test_bria_keeps_appearance_details_until_hair_and_accessories_are_all_omitted():
+    kept = json.loads(normalize_json(json.dumps(example()), Settings(omitted_attributes=["hair_color", "accessories"])))
+    assert kept["objects"][0]["appearance_details"] == "short hair and glasses"
+    omitted = Settings(omitted_attributes=["hair_color", "hairstyle", "accessories"])
+    assert "appearance_details" not in json.loads(normalize_json(json.dumps(example()), omitted))["objects"][0]
 
 
 def test_bria_structure_policy_trigger_and_unicode():

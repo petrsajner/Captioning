@@ -18,6 +18,16 @@ Caption outputs for video character LoRAs, following [VIDEO_LORA_PLAN.md](VIDEO_
   earlier migrate once. The inspector has a tab per caption file; Regenerate creates only
   the open tab's output; Continue resumes the exact image/output pairs of a paused batch.
 - Images that would share any caption file (`a.jpg` + `a.wan.png`) are rejected on import.
+- The detail "Hair and hairstyle" is split into **Hair color** (`hair_color`) and **Hairstyle**
+  (`hairstyle`) (Petr, 2026-09-25). Saved recipes that omitted `hair` omit both. The character
+  defaults omit identity and hair color. Versions before 0.2.0 reject the new IDs and would
+  drop the saved detail choices when downgraded.
+- Checked live on Marvin (Qwen3.8 27B Q5) with copies of four photos of Petr's "Young Velmira"
+  set (`scripts/check_video_captions_live.py`): 12/12 captions saved, the trigger once in
+  each, hairstyles described and no hair color with `--omit identity hair_color`. Fixes came
+  from these runs: no attribute names in the model shapes (the recipe decides), "the woman"
+  for later mentions, LTX names the character in its opening shot sentence, and a missing
+  token is placed at the first mention of the character type.
 - The managed runtime matches Marvin: llama.cpp b10935, a new Q2_K_XL profile, `-c 65536`,
   `--fit off`, the image projector on the CPU for IQ3. Placements and memory figures come
   from Marvin's RTX 5090 qualification (`QWEN local/harness/measured_profiles.py`). An
