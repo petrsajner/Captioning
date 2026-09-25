@@ -40,8 +40,8 @@ stops it; closing Caption Studio also stops the model it owns.
 | Profile | Model download | Measured GPU memory | Card | Use |
 |---|---:|---:|---:|---|
 | Q2 | 9.8 GB | 13.0 GiB | 16 GB | Smallest; images analyzed on the graphics card |
-| IQ3 | 12.0 GB | 13.6 GiB | 16 GB | Lower precision; images analyzed on the processor (slower) |
-| Q4 | 16.5 GB | 18.9 GiB | 24 GB | Default |
+| IQ3 | 12.0 GB | 13.6 GiB | 16 GB | Lower precision; images analyzed on the processor, about 3 minutes per 30-frame clip caption |
+| Q4 | 16.5 GB | 18.9 GiB | 24 GB | Default; about 18 s per 30-frame clip caption |
 | Q5 | 19.8 GB | — | 32 GB | Higher weight precision |
 
 All profiles use Qwen3.8-27B with a 64k context (`-c 65536`, Q8 cache, `--fit off`) and

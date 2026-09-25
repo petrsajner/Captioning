@@ -29,8 +29,21 @@ Video clips, following [VIDEO_LORA_PLAN.md](VIDEO_LORA_PLAN.md) section 5.
     `gemini-3.8-flash`): the same clips 12/12 in one pass each, 14–22 s including frame
     decoding of 4K; 4 Velmira photos × 3 models 12/12, 6–9 s. No hair color with
     `--omit identity hair_color`.
-  - Not measured: the managed runtime's own placements with a 30-frame request, because the
-    managed runtime is not installed on the development PC (Petr uses Marvin).
+  - Managed runtime, measured 2026-09-25 on the RTX 5090 with the installed 0.2.1 runtime
+    (`scripts/measure_managed_clip.py`, a 30-frame request from the 68 s clip, 32,409 prompt
+    tokens; GPU memory as the rise over what other programs used):
+
+    | Profile | After loading | Peak with 30 frames | One clip caption |
+    |---|---:|---:|---:|
+    | Q4 (projector on the GPU) | 18.65 GiB | 18.83 GiB | 17.6 s |
+    | IQ3 (projector on the CPU) | 13.58 GiB | 13.61 GiB | 178.4 s |
+
+    Both match Marvin's qualification (18.86 and 13.57 GiB). Q4 with Windows and a display is
+    about 20 GiB, within the 22.5 GB limit for 24 GB cards; IQ3 fits 16 GB cards but encodes
+    frames on the CPU, ten times slower. Q2 and Q5 were not downloaded and are not measured.
+  - llama.cpp reused nothing between the four outputs of one clip (`timings.cache_n` 0, the
+    30 frames took about 14.6 s of prompt processing each time), so "All video models" costs
+    four full requests per clip, about 70 s with Q4.
 
 ## Previous release: 0.2.0 (2026-09-25)
 
