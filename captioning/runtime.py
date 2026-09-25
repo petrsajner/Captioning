@@ -22,8 +22,15 @@ from .storage import read_json, save_json
 
 REPO = "unsloth/Qwen3.8-27B-GGUF"
 REVISION = "4ca720788d1e01f1bff70c033e0d0028fd02e502"
-RELEASE = "b10821"
+# The same llama.cpp release, model files and placements as Marvin, which measured them on an
+# RTX 5090 (QWEN local: harness/measured_profiles.py, docs/design/profile-remeasurement-2026-09-15.md).
+RELEASE = "b10935"
 FILES = {
+    "q2": (
+        "Qwen3.8-27B-UD-Q2_K_XL.gguf",
+        9828981664,
+        "fd4730dd8aad070517978752b63d530aeb1740d2283cab9fa24f1e404032ddb0",
+    ),
     "q3": (
         "Qwen3.8-27B-UD-IQ3_S.gguf",
         12040883104,
@@ -44,9 +51,9 @@ FILES = {
 ARCHIVES = {
     "cuda": [
         (
-            "llama-b10821-bin-win-cuda-13.3-x64.zip",
-            149589734,
-            "3058afb6b1f1ec232fd7b747ed684f440ad03831809af713ae8452bff0c49cda",
+            "llama-b10935-bin-win-cuda-13.3-x64.zip",
+            149707964,
+            "9ece1d33916caefe2ed1f74092dabe05cf955b112f9afdabc2de5c5e2b7285ad",
         ),
         (
             "cudart-llama-bin-win-cuda-13.3-x64.zip",
@@ -56,19 +63,23 @@ ARCHIVES = {
     ],
     "vulkan": [
         (
-            "llama-b10821-bin-win-vulkan-x64.zip",
-            35228149,
-            "23dc394e279940c6b720dca0af53ebf678e48edda7a58ebcb5b52c41c3bd07cb",
+            "llama-b10935-bin-win-vulkan-x64.zip",
+            31673582,
+            "6b6b5fd895a43d9323249995f829c20b88f60347c3d7d3981de458cb23e7c079",
         )
     ],
     "cpu": [
         (
-            "llama-b10821-bin-win-cpu-x64.zip",
-            18413173,
-            "e33b673c5d056da7128a66710fafe615a9ce35aa72f32c52b683bee56826ca12",
+            "llama-b10935-bin-win-cpu-x64.zip",
+            18426355,
+            "fe3295d94d2a701e4cc6f0e6a63da0c42e4f9f0dd470f8e589953759a4e082c2",
         )
     ],
 }
+# A 64k window holds a 30-frame clip (about 1,024 tokens per frame) plus prompt and answer.
+# Measured allocations: Q2 12.96 GiB, IQ3 13.57 GiB (projector on the CPU), Q4 18.86 GiB.
+CONTEXT = 65536
+CPU_PROJECTOR = {"q3"}
 
 
 class SetupCancelled(Exception):
@@ -258,6 +269,7 @@ class Runtime:
                     shutil.rmtree(runtime)
                 staging.rename(runtime)
                 save_json(runtime / "ready.json", {"release": RELEASE, "backend": backend})
+                self._remove_old_releases(backend)
             for k in (profile, "vision"):
                 self.checkpoint()
                 filename, size, sha = FILES[k]
@@ -281,6 +293,18 @@ class Runtime:
             )
         except Exception as e:
             self.state.update({"status": "error", "message": str(e)})
+
+    def _remove_old_releases(self, backend: str):
+        """Delete this backend's runtimes and archives from earlier releases; only files this app created."""
+        current = {name for name, _, _ in ARCHIVES[backend]}
+        for folder in self.root.glob(f"llama-*-{backend}"):
+            if folder.is_dir() and folder != self.runtime_dir(backend):
+                shutil.rmtree(folder)
+        for archive in (self.root / "downloads").glob(f"llama-*-bin-win-{backend}-*.zip"):
+            if archive.name not in current:
+                archive.unlink()
+                self.verified.pop(self._key(archive), None)
+        save_json(self.root / "verified.json", self.verified)
 
     def install(self, profile: str, backend: str):
         if self.installing:
@@ -326,7 +350,9 @@ class Runtime:
                 "--image-min-tokens",
                 "1024",
                 "-c",
-                "8192",
+                str(CONTEXT),
+                "--fit",
+                "off",
                 "-n",
                 "-1",
                 "-np",
@@ -341,7 +367,7 @@ class Runtime:
                 "-ctv",
                 "q8_0",
             ]
-            if backend == "cpu":
+            if backend == "cpu" or profile in CPU_PROJECTOR:
                 args.append("--no-mmproj-offload")
             with (self.root / "model.log").open("ab") as log:
                 self.process = subprocess.Popen(

@@ -404,6 +404,9 @@
               <label
                 ><span data-i18n="Model">Model</span
                 ><select name="model_profile">
+                  <option value="q2" data-i18n="Qwen3.8 27B · Q2 · 9.8 GB · from 16 GB VRAM*">
+                    Qwen3.8 27B · Q2 · 9.8 GB · from 16 GB VRAM*
+                  </option>
                   <option value="q3" data-i18n="Qwen3.8 27B · IQ3 · 12 GB · from 16 GB VRAM*">
                     Qwen3.8 27B · IQ3 · 12 GB · from 16 GB VRAM*
                   </option>
@@ -427,10 +430,11 @@
             </div>
             <p class="tiny muted">
               <span
-                data-i18n="* Approximate memory for a short context. The vision projector (0.93 GB) and runtime are downloaded separately. Q4 is the default balance; IQ3 has lower precision. CUDA requires a compatible, up-to-date NVIDIA driver."
-                >* Approximate memory for a short context. The vision projector (0.93 GB) and runtime are downloaded
-                separately. Q4 is the default balance; IQ3 has lower precision. CUDA requires a compatible, up-to-date
-                NVIDIA driver.</span
+                data-i18n="* Graphics memory measured on an RTX 5090 with a 64k context: Q2 13.0 GiB, IQ3 13.6 GiB, Q4 18.9 GiB. The vision projector (0.93 GB) and runtime are downloaded separately. Q4 is the default balance. IQ3 has lower precision and analyzes images on the processor, which is slower; Q2 keeps them on the graphics card. CUDA requires a compatible, up-to-date NVIDIA driver."
+                >* Graphics memory measured on an RTX 5090 with a 64k context: Q2 13.0 GiB, IQ3 13.6 GiB, Q4 18.9 GiB.
+                The vision projector (0.93 GB) and runtime are downloaded separately. Q4 is the default balance. IQ3 has
+                lower precision and analyzes images on the processor, which is slower; Q2 keeps them on the graphics
+                card. CUDA requires a compatible, up-to-date NVIDIA driver.</span
               >
             </p>
             <div class="runtime-box">

@@ -20,7 +20,7 @@ class Settings(BaseModel):
     local_model: str = MANAGED_MODEL
     cloud_url: str = "https://openrouter.ai/api/v1"
     cloud_model: str = ""
-    model_profile: Literal["q3", "q4", "q5"] = "q4"
+    model_profile: Literal["q2", "q3", "q4", "q5"] = "q4"
     backend: Literal["cuda", "vulkan", "cpu"] = "cuda"
     preset: Literal["general", "character", "object", "style"] = "general"
     format: Literal["description", "tags"] = "description"

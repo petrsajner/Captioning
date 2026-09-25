@@ -12,7 +12,7 @@ from pathlib import Path
 import httpx
 
 from captioning.paths import data_directory
-from captioning.runtime import FILES, RELEASE
+from captioning.runtime import CONTEXT, FILES, RELEASE
 
 workspace = Path(__file__).resolve().parents[1]
 runtime = data_directory() / "runtime"
@@ -34,7 +34,9 @@ args = [
     "--api-key",
     "caption-local-test-only",
     "-c",
-    "8192",
+    str(CONTEXT),
+    "--fit",
+    "off",
     "-np",
     "1",
     "-ngl",

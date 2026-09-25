@@ -395,7 +395,6 @@
     "Open {name}": "Otevřít {name}",
     "Selected {url}. Confirm with Save and continue.": "Vybráno {url}. Potvrďte tlačítkem Uložit a pokračovat.",
     "Cloud mode · selected images will be sent to {host}": "Cloudový režim · vybrané obrázky se odešlou na {host}",
-    "* Approximate memory for a short context. The vision projector (0.93 GB) and runtime are downloaded separately. Q4 is the default balance; IQ3 has lower precision. CUDA requires a compatible, up-to-date NVIDIA driver.": "* Orientační paměť pro krátký kontext. Obrazová část modelu (0,93 GB) a prostředí se stahují zvlášť. Q4 je výchozí kompromis; IQ3 má nižší přesnost. CUDA vyžaduje kompatibilní aktuální ovladač NVIDIA.",
     "Qwen3.8 27B · IQ3 · 12 GB · from 16 GB VRAM*": "Qwen3.8 27B · IQ3 · 12 GB · od 16 GB VRAM*",
     "The API returned HTTP {v0}. Check the address and API key.": "API vrátilo HTTP {v0}. Zkontrolujte adresu a přístupový klíč.",
     "Retained the complete response ({v0} words; target about {v1}). The model did not shorten it further.": "Zachována celá odpověď ({v0} slov; cíl přibližně {v1}). Model ji dále nezkrátil.",
@@ -449,7 +448,9 @@
     "Unable to load interface translations.": "Nepodařilo se načíst překlady rozhraní.",
     "The model or API address does not exist.": "Model nebo API adresa neexistuje.",
     "ON = free future change": "ON = volně měnitelné promptem",
-    "OFF = fixed in LoRA": "OFF = fixováno v LoRA"
+    "OFF = fixed in LoRA": "OFF = fixováno v LoRA",
+    "* Graphics memory measured on an RTX 5090 with a 64k context: Q2 13.0 GiB, IQ3 13.6 GiB, Q4 18.9 GiB. The vision projector (0.93 GB) and runtime are downloaded separately. Q4 is the default balance. IQ3 has lower precision and analyzes images on the processor, which is slower; Q2 keeps them on the graphics card. CUDA requires a compatible, up-to-date NVIDIA driver.": "* Paměť grafické karty změřená na RTX 5090 s kontextem 64k: Q2 13,0 GiB, IQ3 13,6 GiB, Q4 18,9 GiB. Obrazová část modelu (0,93 GB) a prostředí se stahují zvlášť. Q4 je výchozí kompromis. IQ3 má nižší přesnost a obrázky zpracovává na procesoru, což je pomalejší; Q2 je zpracovává na grafické kartě. CUDA vyžaduje kompatibilní aktuální ovladač NVIDIA.",
+    "Qwen3.8 27B · Q2 · 9.8 GB · from 16 GB VRAM*": "Qwen3.8 27B · Q2 · 9,8 GB · od 16 GB VRAM*"
   },
   "grammar": {
     "dangling_words": [

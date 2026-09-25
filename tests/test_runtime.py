@@ -118,6 +118,42 @@ def test_install_downloads_verifies_extracts_and_is_ready(tmp_path, monkeypatch,
     assert Runtime(tmp_path).ready("q4", "cpu")
 
 
+def test_install_removes_runtimes_of_earlier_releases(tmp_path, monkeypatch, tiny):
+    runtime = Runtime(tmp_path)
+    old = runtime.root / "llama-b10821-cpu" / "bin"
+    old.mkdir(parents=True)
+    (old / "llama-server.exe").write_text("old", encoding="utf-8")
+    other_backend = runtime.root / "llama-b10821-cuda"
+    other_backend.mkdir()
+    downloads = runtime.root / "downloads"
+    downloads.mkdir()
+    stale = downloads / "llama-b10821-bin-win-cpu-x64.zip"
+    stale.write_bytes(b"old")
+    cudart = downloads / "cudart-llama-bin-win-cuda-13.3-x64.zip"
+    cudart.write_bytes(b"shared")
+    serve_downloads(monkeypatch, tiny)
+    runtime._install("q4", "cpu")
+    assert runtime.state["status"] == "done" and runtime.ready("q4", "cpu")
+    assert not old.parent.exists() and not stale.exists()
+    assert other_backend.exists() and cudart.exists()  # other backends are left alone
+
+
+def test_start_uses_the_measured_placement_of_each_profile(tmp_path, monkeypatch, tiny):
+    files = runtime_module.FILES
+    monkeypatch.setattr(runtime_module, "FILES", {**files, "q2": files["q4"], "q3": files["q4"]})
+    monkeypatch.setattr(runtime_module, "ARCHIVES", {"cuda": runtime_module.ARCHIVES["cpu"]})
+    runtime = Runtime(tmp_path)
+    serve_downloads(monkeypatch, tiny)
+    runtime._install("q4", "cuda")
+    launch(monkeypatch)
+    for profile, cpu_projector in (("q2", False), ("q3", True), ("q4", False)):
+        asyncio.run(runtime.start(profile, "cuda"))
+        args = FakeProcess.instances[-1].args
+        assert args[args.index("-c") + 1] == "65536" and args[args.index("--fit") + 1] == "off"
+        assert ("--no-mmproj-offload" in args) == cpu_projector, profile
+        runtime.stop()
+
+
 def test_install_cancel_keeps_progress_for_the_next_attempt(tmp_path, monkeypatch, tiny):
     runtime = Runtime(tmp_path)
     serve_downloads(monkeypatch, tiny)
@@ -173,6 +209,7 @@ def test_start_launches_owned_server_once_and_stop_releases_it(tmp_path, monkeyp
     args = FakeProcess.instances[0].args
     assert args[args.index("--alias") + 1] == "caption-qwen" and args[args.index("--api-key") + 1] == runtime.api_key
     assert args[args.index("-n") + 1] == "-1" and "--no-mmproj-offload" in args  # no output cap; CPU projector
+    assert args[args.index("-c") + 1] == "65536" and args[args.index("--fit") + 1] == "off"
     assert runtime.state["status"] == "running" and runtime.snapshot("q4", "cpu")["running"]
     with pytest.raises(UserError, match="Stop the local model"):
         runtime.install("q4", "cpu")
