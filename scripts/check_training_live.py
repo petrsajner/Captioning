@@ -54,16 +54,16 @@ async def main():
         await studio.import_images([str(image)], "", False, False)
         await studio.start_job([studio.rows[0]["id"]], regenerate=True)
         await studio.task
-        row = studio.rows[0]
-        assert row["status"] == "saved", row["error"]
+        slot = studio.rows[0]["outputs"][output_format]
+        assert slot["status"] == "saved", slot["error"]
         suffix = ".json" if output_format == "bria_json" else ".txt"
         caption = image.with_suffix(suffix).read_text(encoding="utf-8").strip()
-        assert caption == row["caption"]
+        assert caption == slot["caption"]
         if output_format == "bria_json":
             validate_json(caption)
         assert not studio.keys.path.exists()
         report.append(
-            {"case": name, "caption": caption, "seconds": row["seconds"], "file": str(image.with_suffix(suffix))}
+            {"case": name, "caption": caption, "seconds": slot["seconds"], "file": str(image.with_suffix(suffix))}
         )
         print(name + ": saved", flush=True)
     (output / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")

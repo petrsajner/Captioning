@@ -1,6 +1,29 @@
 # Caption Studio development handoff
 
-## Current release: 0.1.13 (2026-09-23)
+## Current release: 0.2.0 (2026-09-25)
+
+Caption outputs for video character LoRAs, following [VIDEO_LORA_PLAN.md](VIDEO_LORA_PLAN.md)
+(photos; clips follow in 0.2.1).
+
+- New outputs **WAN 2.2** (`name.wan.txt`), **LTX-2.5** (`name.ltx.txt`), **MiniMax H3**
+  (`name.h3.txt`) and **All video models**. Each model has its own instructions
+  (`captioning/video.py`: `wan_prompt`, `ltx_prompt`, `h3_prompt`); they are English
+  descriptions. The model names the character once as `<character>`; the app writes
+  `{trigger}, {character_class},` there. H3 files are the official three fields; the
+  app adds the labels, `[Shot 1]` and `N/A` sound and validates them on save.
+- Every output is a separate file and they coexist. `.txt` and `.json` no longer exclude
+  each other: saving one does not archive the other, and skip-existing checks only the
+  selected output's file (Petr, 2026-09-25: LORA Train picks the file for its model).
+- Rows hold one slot per output (`row["outputs"][output]`); sessions from 0.1.13 and
+  earlier migrate once. The inspector has a tab per caption file; Regenerate creates only
+  the open tab's output; Continue resumes the exact image/output pairs of a paused batch.
+- Images that would share any caption file (`a.jpg` + `a.wan.png`) are rejected on import.
+- The managed runtime matches Marvin: llama.cpp b10935, a new Q2_K_XL profile, `-c 65536`,
+  `--fit off`, the image projector on the CPU for IQ3. Placements and memory figures come
+  from Marvin's RTX 5090 qualification (`QWEN local/harness/measured_profiles.py`). An
+  installed older runtime is replaced after the new one is downloaded.
+
+## Previous release: 0.1.13 (2026-09-23)
 
 User data now lives in a `data` folder next to `CaptionStudio.exe` (at the user's request:
 every copy self-contained and runnable from any folder or drive). `captioning/paths.py`:
@@ -24,7 +47,7 @@ Installed on the development machine over 0.1.8: the first start moved the data 
 `{app}\data` with byte-identical settings, keys and session; a reinstall left the data
 folder unchanged and the installed bundle identical to the build. Logs: `output/install-0.1.13*`.
 
-## Previous release: 0.1.12 (2026-09-23)
+## Earlier release: 0.1.12 (2026-09-23)
 
 Tests and QA from the 0.1.8 code review (phase 5).
 
@@ -71,6 +94,8 @@ writes are deliberate simplifications at that scale.
   model policy. `omitted_attributes` lists the details left out of captions (unchecked
   in the UI). Up to 0.1.9 the same list was saved as `learn_attributes`; it migrates
   on load without inversion. The model prompt still labels these LEARN_WITH_LORA.
+- `captioning/video.py`: WAN 2.2, LTX-2.5 and MiniMax H3 instructions, the `<character>`
+  replacement, H3 field wrapping and validation, trigger warnings.
 - `captioning/bria.py`: FIBO structure, validation and normalization. Uses BRIA's
   ImageAnalysis field layout, plus optional scores from its fine-tuning example.
   Main subject is first in `objects`; mapped omitted fields are cleared, and the
@@ -131,11 +156,12 @@ in `logs/generation.jsonl` omit caption text, image data, prompts and keys.
 For external llama.cpp with advertised `enable_thinking` support, caption requests
 disable reasoning per request. Global server configuration is untouched.
 
-Normal writes `.txt`; BRIA writes `.json`. Skip-existing covers either extension.
-Explicit format conversion saves validated output before archiving the opposite
-sidecar. Both fingerprints are checked. The separately developed LORA Train scanner
-has historically preferred TXT, making this retirement important. This application
-does not implement training or the official trainer's metadata CSV export.
+Normal writes `.txt`, BRIA `.json`, the video models `.wan.txt`, `.ltx.txt` and `.h3.txt`.
+Since 0.2.0 all of them coexist; a write checks and changes only its own file, and
+skip-existing checks only the selected output's file. (Up to 0.1.13 `.txt` and `.json`
+excluded each other and conversion archived the other file.) LORA Train reads `.txt` for
+its image profiles and `.json` for FIBO. This application does not implement training or
+the official trainer's metadata CSV export.
 
 ## Verification and release workflow
 

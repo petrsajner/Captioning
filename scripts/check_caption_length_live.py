@@ -59,22 +59,23 @@ async def main():
     await studio.task
     report = []
     for row in studio.rows:
+        slot = row["outputs"]["normal"]
         report.append(
             {
                 "name": row["name"],
-                "status": row["status"],
-                "words": word_count(row["caption"]),
-                "seconds": row.get("seconds"),
+                "status": slot["status"],
+                "words": word_count(slot["caption"]),
+                "seconds": slot.get("seconds"),
                 "target": 40,
                 "ceiling": word_ceiling(40),
-                "notice": row.get("notice"),
-                "error": row["error"],
+                "notice": slot.get("notice"),
+                "error": slot.get("error"),
                 "stages": [
                     {
                         k: h.get(k)
                         for k in ("stage", "word_count", "finish_reason", "completion_tokens", "reasoning_tokens")
                     }
-                    for h in row.get("generation_history", [])
+                    for h in slot.get("generation_history", [])
                 ],
             }
         )

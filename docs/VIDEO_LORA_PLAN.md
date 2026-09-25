@@ -1,7 +1,8 @@
 # Plan: captions for video character LoRAs
 
-Status: plan, not implemented. Written 2026-09-25 for releases 0.2.0 and 0.2.1. The
-decisions in section 11 were confirmed by Petr on 2026-09-25.
+Status: 0.2.0 (photos: sections 2–4, the runtime alignment of section 5 and D7) is
+implemented; 0.2.1 (clips, WAN I2V) is planned. Written 2026-09-25. The decisions in
+section 11 were confirmed by Petr on 2026-09-25.
 
 ## 1. Goal and scope
 
@@ -279,8 +280,8 @@ The inspector shows these for clips, so the user can see whether a clip suits a 
   - The user can still pick one model and run only that.
   - Normal and BRIA are not part of it.
 - **New field "Character type"** (`character_class`), shown only for model outputs:
-  - options `a woman`, `a man`, `a person` (default), and a custom text of up to 40
-    characters;
+  - a text field of up to 40 characters with the suggestions `a woman`, `a man` and
+    `a person` (default);
   - it is the class phrase in the opening (3.1) and tells the model which pronouns to use.
 - **Trigger word** keeps its field and its limits. For model outputs:
   - the placeholder becomes "e.g. Velmira";
@@ -376,8 +377,10 @@ The "preferred format" choice between `.txt` and `.json` is removed.
 
 ### 4.4 Generation, finishing and validation
 
-**`make_prompt(s, media, output)`**. Normal/BRIA text stays byte-identical, and a test
-compares it with the 0.1.13 prompt. The model-output branch contains:
+**Instructions per model.** Every video model is separate and has its own instructions
+built for what it needs (`video.wan_prompt`, `ltx_prompt`, `h3_prompt`; Petr,
+2026-09-25). The Normal and BRIA prompts are free to change as well; nothing pins them to
+an earlier version. The model instructions contain:
 - the purpose: "Describe this photo for a video-model LoRA training dataset", or for
   clips: "These N images are frames of one continuous video clip in time order (0.0 s,
   0.8 s, …). Describe the clip …";
@@ -598,7 +601,6 @@ fields integrated_multimodal_description, overall_soundscape and non_diegetic_mu
 ## 8. Tests and QA
 
 **Python:**
-- `make_prompt` for Normal/BRIA is byte-identical to 0.1.13 (golden strings);
 - model branches for each output and each media type: shape, the English rule, the
   `<character>` rule, clip details only for clips, and motion-only for WAN I2V;
 - `finish_video_caption`: placeholder replacement and punctuation, empty trigger,

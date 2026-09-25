@@ -77,7 +77,7 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
             response = client.put(base + "/api/caption/" + row["id"], json={"text": "Green image."}, headers=headers)
             assert response.status_code == 200, response.text
             assert path.with_suffix(".txt").read_bytes() == b"Green image.\n"
-            # The packaged JSON writer must validate structure and retire conflicting TXT.
+            # The packaged JSON writer must validate structure; other caption files stay untouched.
             json_image = root / "dataset" / "bria.png"
             Image.new("RGB", (60, 40), "blue").save(json_image)
             fibo = {
@@ -89,21 +89,26 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
                 "context": "",
             }
             json_image.with_suffix(".json").write_text(json.dumps(fibo), encoding="utf-8")
-            json_image.with_suffix(".txt").write_text("retire this format", encoding="utf-8")
+            json_image.with_suffix(".txt").write_text("keep this caption", encoding="utf-8")
             config = s["settings"]
             config["output_format"] = "bria_json"
             client.post(base + "/api/settings", json={"settings": config}, headers=headers).raise_for_status()
             client.post(base + "/api/import", json={"paths": [str(json_image)]}, headers=headers).raise_for_status()
             json_row = client.get(base + "/api/state").json()["rows"][0]
-            assert json_row["caption_format"] == "bria_json"
+            assert json_row["outputs"]["bria_json"]["status"] == "existing"
+            assert json_row["outputs"]["normal"]["caption"] == "keep this caption"
             endpoint = base + "/api/caption/" + json_row["id"]
-            assert client.put(endpoint, json={"text": "{}"}, headers=headers).status_code == 400
-            client.put(endpoint, json={"text": json.dumps(fibo)}, headers=headers).raise_for_status()
-            assert not json_image.with_suffix(".txt").exists()
+            bria = {"output": "bria_json"}
+            assert client.put(endpoint, json={"text": "{}", **bria}, headers=headers).status_code == 400
+            client.put(endpoint, json={"text": json.dumps(fibo), **bria}, headers=headers).raise_for_status()
+            assert json_image.with_suffix(".txt").read_text(encoding="utf-8") == "keep this caption"
             assert json.loads(json_image.with_suffix(".json").read_text())["short_description"] == "A blue image."
-            assert any(
-                p.read_bytes() == b"retire this format" for p in (json_image.parent / ".caption-backups").glob("*.bak")
-            )
+            # Video-model captions are separate files; H3 keeps its three official fields.
+            wan = "Velmira, a woman, stands in front of a blue wall."
+            client.put(endpoint, json={"text": wan, "output": "wan"}, headers=headers).raise_for_status()
+            assert json_image.with_suffix(".wan.txt").read_text(encoding="utf-8") == wan + "\n"
+            assert client.put(endpoint, json={"text": wan, "output": "h3"}, headers=headers).status_code == 400
+            assert not json_image.with_suffix(".h3.txt").exists()
             report = {
                 "exe": str(exe),
                 "version": s["version"],
@@ -112,7 +117,8 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
                 "image_preview": True,
                 "folder_preview_before_import": True,
                 "sidecar_write": True,
-                "bria_validation_and_format_conversion": True,
+                "bria_validation_with_coexisting_captions": True,
+                "video_model_caption_files": True,
                 "localization_assets_and_preference": True,
             }
             (output / "package-smoke.json").write_text(json.dumps(report, indent=2), encoding="utf-8")

@@ -35,9 +35,10 @@ with httpx.Client(follow_redirects=True, trust_env=False, timeout=240) as client
         if Path(row["path"]).parent != dataset:
             continue
         data = Path(row["path"]).with_suffix(".txt").read_bytes()
-        assert data.decode("utf-8").strip() == row["caption"]
+        slot = row["outputs"]["normal"]
+        assert data.decode("utf-8").strip() == slot["caption"]
         assert data.endswith(b"\n") and not data.startswith(b"\xef\xbb\xbf")
-        report["rows"].append({k: row[k] for k in ("name", "status", "seconds", "caption")})
+        report["rows"].append({"name": row["name"], **{k: slot[k] for k in ("status", "seconds", "caption")}})
     (workspace / "output" / "live-smoke.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
     )

@@ -83,8 +83,10 @@ GPU. Selected images are sent to the chosen provider and billed under its terms.
 3. Under **Choose what to include in the caption**, check details you want to
    change with prompts. Leave out details you want the LoRA to capture.
 4. Select images and click **Create captions**. Captions are processed one at a time.
-5. Click an image to review or edit its caption. Save with **Save caption** or Ctrl+S.
-   **Regenerate** processes that image again and allows replacing its caption.
+5. Click an image to review or edit its caption. Each caption file of the image has
+   its own tab (`.txt`, `.json`, `.wan.txt`, `.ltx.txt`, `.h3.txt`). Save with
+   **Save caption** or Ctrl+S. **Regenerate** creates the open tab's caption again
+   and allows replacing it.
 
 Checked details are described when visible; unchecked details are omitted. The
 model receives an explicit instruction for every detail in both output modes.
@@ -111,6 +113,30 @@ resumes remaining images without repeating completed work.
 **Model responses** keeps the original and revised texts available for inspection
 or reuse in the editor. Stopping during a revision retains the response received so far.
 
+### Video model captions (WAN 2.2, LTX-2.5, MiniMax H3)
+
+For character LoRAs of video models. Every model gets its own caption file next to
+the image, in the shape its prompts use:
+
+| Output | File | Shape |
+|---|---|---|
+| WAN 2.2 | `name.wan.txt` | Plain sentences: the character and action, details, setting, lighting, shot |
+| LTX-2.5 | `name.ltx.txt` | One present-tense paragraph that opens with the shot |
+| MiniMax H3 | `name.h3.txt` | The official three fields; photos are a static `[Shot 1]` with `N/A` sound |
+
+**All video models** creates the three files in one batch. The captions are English
+descriptions; caption language and tags do not apply. The model names the character
+once, and Caption Studio writes the trigger and **Character type** there, for example
+`Velmira, a woman, sits by the window…`: at the very start for WAN, after the opening
+shot for LTX and inside `[Shot 1]` for H3. An invented, readable trigger works better
+than tokens such as `sks`, which trainers also find inside other words. H3 files are
+validated for their three fields when saved. The details chosen in the recipe apply
+as usual; the character preset leaves out identity.
+
+ai-toolkit and musubi-tuner read these files with `caption_ext: "wan.txt"` or
+`caption_extension = ".wan.txt"`. See [docs/VIDEO_LORA_PLAN.md](docs/VIDEO_LORA_PLAN.md)
+for the rules and their sources.
+
 ### BRIA JSON (FIBO)
 
 BRIA mode saves structured `.json` sidecars using BRIA's published image-analysis
@@ -133,12 +159,14 @@ and [caption normalizer](https://github.com/Bria-AI/FIBO/blob/main/src/fibo_infe
 
 ## Files and privacy
 
-- **Skip existing captions** applies to both `.txt` and `.json`. To convert a caption,
-  regenerate it or turn skipping off. After the new format is saved successfully,
-  the other sidecar is archived in `.caption-backups` to avoid conflicting captions.
+- Every output has its own file next to the image: `.txt`, `.json`, `.wan.txt`,
+  `.ltx.txt` and `.h3.txt`. They coexist, and saving one never changes another; a
+  trainer picks the file for the model it trains. **Skip existing captions** checks
+  only the selected output's file.
 - Replaced captions are backed up byte for byte. Changes made outside the application
-  block an overwrite until the dataset is reloaded. Duplicate image stems, such as
-  `photo.jpg` and `photo.png` in the same folder, are reported before writing.
+  block an overwrite of that file until the dataset is reloaded. Images that would
+  share a caption file, such as `photo.jpg` and `photo.png`, or `photo.jpg` and
+  `photo.wan.png`, are reported before writing.
 - Turn off **Save captions automatically** to keep results as drafts. The current
   dataset and drafts persist across restarts. Opening a new dataset without append
   replaces the current working list.
