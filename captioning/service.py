@@ -17,11 +17,12 @@ from PIL import Image
 from . import __version__, provider
 from .bria import CaptionValidationError, normalize_json
 from .errors import ProviderUnavailableError, UserError
-from .models import OUTPUT_NAMES, OUTPUT_SUFFIX, VIDEO_OUTPUTS, Settings, outputs_for
+from .media import is_video, probe
+from .models import MEDIA_OUTPUTS, OUTPUT_NAMES, OUTPUT_SUFFIX, VIDEO_OUTPUTS, Settings, outputs_for
 from .runtime import Runtime
 from .storage import KeyStore, fingerprint, preserve_damaged, read_json, save_json, write_caption
 from .training import ATTRIBUTES
-from .video import validate_h3
+from .video import I2V_WORDS, validate_h3
 
 MAX_IMAGES = 20000
 MAX_KEY_LENGTH = 8192
@@ -59,7 +60,10 @@ class Row(TypedDict, total=False):
     id: Required[str]
     path: Required[str]
     name: Required[str]
-    # One slot per output; every output has its own caption file next to the image.
+    # "image" or "clip"; a clip also has its probed ClipInfo.
+    kind: str
+    clip: dict
+    # One slot per output that applies to the media; every output has its own caption file next to it.
     outputs: Required[dict[str, Slot]]
     # SHA-256 of each sidecar as last seen by the app; None when it did not exist.
     fingerprints: dict[str, str | None]
@@ -203,6 +207,7 @@ class Studio:
                     slot.update(
                         {"status": Status.PENDING, "error": "The previous run was interrupted. You can continue."}
                     )
+            row.setdefault("kind", "image")
             row.setdefault("width", 0)
             row.setdefault("height", 0)
             hashes = row.setdefault("fingerprints", {})
@@ -228,10 +233,12 @@ class Studio:
         if slot["notice"] in RETIRED_NOTICES:
             slot["notice"] = ""
         if slot["status"] == Status.INVALID:
-            outputs = {output: new_slot(status=Status.INVALID, error=slot["error"]) for output in OUTPUT_SUFFIX}
+            outputs = {
+                output: new_slot(status=Status.INVALID, error=slot["error"]) for output in MEDIA_OUTPUTS["image"]
+            }
         else:
             outputs = {}
-            for output in OUTPUT_SUFFIX:
+            for output in MEDIA_OUTPUTS["image"]:
                 try:
                     outputs[output] = read_slot(image, output) if image.is_file() else new_slot()
                 except OSError:
@@ -245,6 +252,7 @@ class Studio:
             "id": old["id"],
             "path": old["path"],
             "name": old["name"],
+            "kind": "image",
             "outputs": outputs,
             "fingerprints": hashes,
             "width": old.get("width", 0),
@@ -289,6 +297,7 @@ class Studio:
             "training_attributes": ATTRIBUTES,
             "caption_outputs": {o: {"suffix": OUTPUT_SUFFIX[o], "name": OUTPUT_NAMES[o]} for o in OUTPUT_SUFFIX},
             "video_outputs": VIDEO_OUTPUTS,
+            "media_outputs": MEDIA_OUTPUTS,
             "has_key": self.keys.has(self.settings.cloud_url),
             "has_local_key": self.keys.has("local:" + self.settings.local_url),
             "rows": self.rows,
@@ -337,7 +346,7 @@ class Studio:
             if p.suffix.lower() in provider.EXTENSIONS and p.is_file()
         }
         if not unique:
-            raise UserError("The selection contains no supported images.")
+            raise UserError("The selection contains no supported images or video clips.")
         if len(unique) > MAX_IMAGES:
             raise UserError(f"Open no more than {MAX_IMAGES} images in one dataset.")
         rows = list(self.rows) if append else []
@@ -354,10 +363,12 @@ class Studio:
         for path in sorted(unique.values(), key=lambda p: str(p).casefold()):
             if str(path).casefold() in known:
                 continue
+            kind = "clip" if is_video(path) else "image"
             row: Row = {
                 "id": uuid.uuid4().hex,
                 "path": str(path),
                 "name": path.name,
+                "kind": kind,
                 "outputs": {},
                 "width": 0,
                 "height": 0,
@@ -366,17 +377,23 @@ class Studio:
                 shared = {name for name in sidecar_names(path) if claims[path.parent][name] > 1}
                 if shared:
                     raise UserError(shared_sidecar(shared))
-                with Image.open(path) as im:
-                    row.update({"width": im.width, "height": im.height})
-                    if getattr(im, "n_frames", 1) > 1:
-                        raise UserError("Multi-frame images are not supported. Select a single frame.")
-                    im.verify()
+                if kind == "clip":
+                    info = probe(path)
+                    row.update({"width": info["width"], "height": info["height"], "clip": dict(info)})
+                else:
+                    with Image.open(path) as im:
+                        row.update({"width": im.width, "height": im.height})
+                        if getattr(im, "n_frames", 1) > 1:
+                            raise UserError("Multi-frame images are not supported. Select a single frame.")
+                        im.verify()
                 row["fingerprints"] = {
                     suffix: fingerprint(path.with_suffix(suffix)) for suffix in OUTPUT_SUFFIX.values()
                 }
-                row["outputs"] = {output: read_slot(path, output) for output in OUTPUT_SUFFIX}
+                row["outputs"] = {output: read_slot(path, output) for output in MEDIA_OUTPUTS[kind]}
             except Exception as e:
-                row["outputs"] = {output: new_slot(status=Status.INVALID, error=str(e)) for output in OUTPUT_SUFFIX}
+                row["outputs"] = {
+                    output: new_slot(status=Status.INVALID, error=str(e)) for output in MEDIA_OUTPUTS[kind]
+                }
             rows.append(row)
         return rows
 
@@ -521,6 +538,9 @@ class Studio:
                 self.job["message"] = self._task_name(row, output)
                 started = time.monotonic()
                 task_settings = settings.model_copy(update={"output_format": output})
+                if output == "wan_i2v":
+                    # WAN's image-to-video prompts are short; the recipe's target only applies up to that length.
+                    task_settings.words = min(settings.words, I2V_WORDS)
                 try:
                     self.collision(image)
                     # Check for external edits before spending time or cloud credits.

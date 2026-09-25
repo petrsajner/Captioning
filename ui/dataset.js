@@ -27,11 +27,19 @@ const phaseLabels = {
   retry_caption: 'Requesting a response…',
 };
 // Short model names for the per-model dots on a card.
-const SHORT = { wan: 'WAN', ltx: 'LTX', h3: 'H3' };
+const SHORT = { wan: 'WAN', wan_i2v: 'I2V', ltx: 'LTX', h3: 'H3' };
+// What each video model trains on, shown for clips.
+const modelNotes = {
+  wan: 'WAN 2.2 (A14B) trains at 16 fps with up to 81 frames, about 5 s.',
+  wan_i2v: 'WAN 2.2 I2V (A14B) trains at 16 fps with up to 81 frames, about 5 s; the first frame is the start image.',
+  ltx: 'LTX-2.5 trains at 24–25 fps with up to 121 frames, about 5 s.',
+  h3: 'MiniMax H3 trains at 24 fps on clips of 5–15 s.',
+};
 let page = 0,
   lastGrid = '',
   lastCaptionHistory = '',
-  lastFormat = null;
+  lastFormat = null,
+  lastStrip = '';
 
 // Grid and history markup is cached by content; drop the cache when the language changes.
 export function invalidateRenderCache() {
@@ -111,8 +119,14 @@ export function renderGrid() {
   if (signature !== lastGrid) {
     $('grid').innerHTML = visible
       .map((r) => {
-        const view = captionView(r, current) || { status: 'pending' };
-        return `<article class="image-card ${view.status} ${r.id === ui.active ? 'active' : ''}" data-id="${r.id}" tabindex="0" aria-label="${esc(r.name)}"><input class="card-select" type="checkbox" ${selected.has(r.id) ? 'checked' : ''} aria-label="${esc(t('Select {name}', { name: r.name }))}"><img class="thumb" loading="lazy" src="/api/image/${r.id}" alt="${esc(r.name)}"><div class="card-info"><div class="card-name" title="${esc(r.path)}">${esc(r.name)}</div><div class="card-bottom"><span>${r.width} × ${r.height}</span><span class="status-label ${view.status}">${esc(statusLabel(view))}</span></div>${modelDots(r, current)}</div></article>`;
+        // An output that does not apply to this file, such as Normal for a clip.
+        const view = captionView(r, current) || { status: 'unused' },
+          label =
+            view.status === 'unused' ? t(r.kind === 'clip' ? 'Video models only' : 'Clips only') : statusLabel(view),
+          size =
+            (r.kind === 'clip' ? `<span class="clip-badge">▶ ${r.clip?.duration ?? '?'} s</span> · ` : '') +
+            `${r.width} × ${r.height}`;
+        return `<article class="image-card ${view.status} ${r.id === ui.active ? 'active' : ''}" data-id="${r.id}" tabindex="0" aria-label="${esc(r.name)}"><input class="card-select" type="checkbox" ${selected.has(r.id) ? 'checked' : ''} aria-label="${esc(t('Select {name}', { name: r.name }))}"><img class="thumb" loading="lazy" src="/api/image/${r.id}" alt="${esc(r.name)}"><div class="card-info"><div class="card-name" title="${esc(r.path)}">${esc(r.name)}</div><div class="card-bottom"><span>${size}</span><span class="status-label ${view.status}">${esc(label)}</span></div>${modelDots(r, current)}</div></article>`;
       })
       .join('');
     lastGrid = signature;
@@ -189,10 +203,27 @@ export function renderInspector() {
   if (!row) return;
   renderTabs(row);
   const slot = activeSlot();
-  const src = '/api/image/' + row.id + '?full=true';
-  if ($('preview-image').getAttribute('src') !== src) $('preview-image').src = src;
+  const clip = row.kind === 'clip';
+  $('preview-image').hidden = clip;
+  $('preview-video').hidden = !clip;
+  if (clip) {
+    const media = '/api/media/' + row.id;
+    if ($('preview-video').getAttribute('src') !== media) $('preview-video').src = media;
+  } else {
+    const src = '/api/image/' + row.id + '?full=true';
+    if ($('preview-image').getAttribute('src') !== src) $('preview-image').src = src;
+    if ($('preview-video').getAttribute('src')) {
+      $('preview-video').pause();
+      $('preview-video').removeAttribute('src');
+      $('preview-video').load();
+    }
+  }
+  renderClip(row);
   $('image-name').textContent = row.name;
-  $('image-meta').textContent = `${row.width} × ${row.height} px${slot.seconds ? ' · ' + slot.seconds + ' s' : ''}`;
+  $('image-meta').textContent = clip
+    ? t('{width} × {height} px · {duration} s · {fps} fps · {frames} frames', { ...row.clip }) +
+      (row.clip.has_audio ? ' · ' + t('audio') : '')
+    : `${row.width} × ${row.height} px${slot.seconds ? ' · ' + slot.seconds + ' s' : ''}`;
   $('image-path').textContent = row.path;
   $('image-path').title = row.path;
   if (!ui.dirty && $('caption-editor').value !== slot.caption) $('caption-editor').value = slot.caption;
@@ -232,6 +263,31 @@ export function renderInspector() {
     showCaptionHistory();
   }
   $('use-caption-history').disabled = hasBusy() || !$('caption-history-text').textContent.trim();
+}
+
+// The model note of the open tab and the strip of frames the model receives.
+function renderClip(row) {
+  const clip = row.kind === 'clip';
+  $('clip-note').hidden = !clip;
+  $('frame-strip').hidden = !clip;
+  if (!clip) return;
+  $('clip-note').textContent = modelNotes[ui.tab] ? t(modelNotes[ui.tab]) : '';
+  const key = row.id + ':' + ui.state.settings.clip_interval;
+  if (key === lastStrip) return;
+  lastStrip = key;
+  $('frame-strip').innerHTML = '';
+  api('/clip-frames/' + row.id)
+    .then(({ times }) => {
+      if (lastStrip !== key) return;
+      $('frame-strip').innerHTML = times
+        .map(
+          (time) =>
+            `<figure><img loading="lazy" src="/api/frame/${row.id}?t=${time}" alt=""><figcaption>${time.toFixed(2)} s</figcaption></figure>`,
+        )
+        .join('');
+      $('frame-strip').title = t('{count} frames sent to the model', { count: times.length });
+    })
+    .catch(() => (lastStrip = ''));
 }
 
 function showCaptionHistory() {

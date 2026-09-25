@@ -65,10 +65,13 @@
               <option value="normal" data-i18n="Normal · .txt">Normal · .txt</option>
               <option value="bria_json" data-i18n="BRIA JSON (FIBO) · .json">BRIA JSON (FIBO) · .json</option>
               <option value="wan">WAN 2.2 · .wan.txt</option>
+              <option value="wan_i2v" data-i18n="WAN 2.2 I2V · .wan-i2v.txt (clips)">
+                WAN 2.2 I2V · .wan-i2v.txt (clips)
+              </option>
               <option value="ltx">LTX-2.5 · .ltx.txt</option>
               <option value="h3">MiniMax H3 · .h3.txt</option>
-              <option value="video_all" data-i18n="All video models · .wan / .ltx / .h3">
-                All video models · .wan / .ltx / .h3
+              <option value="video_all" data-i18n="All video models · .wan / .wan-i2v / .ltx / .h3">
+                All video models · .wan / .wan-i2v / .ltx / .h3
               </option>
             </select></label
           >
@@ -283,7 +286,7 @@
               >Set the recipe once and process the whole dataset.</span
             >
           </p>
-          <span class="file-types">JPG · PNG · WEBP · BMP · TIFF</span>
+          <span class="file-types">JPG · PNG · WEBP · BMP · TIFF · MP4 · MOV · WEBM · MKV</span>
         </div>
         <div id="grid" class="image-grid" aria-label="Dataset images" data-i18n-aria-label="Dataset images"></div>
         <div id="pagebar" class="pagebar" hidden>
@@ -306,10 +309,23 @@
         </div>
         <div id="inspector-content" hidden>
           <div class="preview-wrap">
-            <img id="preview-image" alt="Selected image preview" data-i18n-alt="Selected image preview" />
+            <img id="preview-image" alt="Selected image preview" data-i18n-alt="Selected image preview" /><video
+              id="preview-video"
+              controls
+              preload="metadata"
+              hidden
+            ></video>
           </div>
           <h3 id="image-name"></h3>
           <div id="image-meta" class="tiny muted"></div>
+          <div id="clip-note" class="tiny muted" hidden></div>
+          <div
+            id="frame-strip"
+            class="frame-strip"
+            hidden
+            aria-label="Frames sent to the model"
+            data-i18n-aria-label="Frames sent to the model"
+          ></div>
           <div id="image-path" class="path tiny" title=""></div>
           <div
             id="caption-tabs"
@@ -610,6 +626,20 @@
               ><input name="timeout" type="number" min="30" max="900"
             /></label>
           </div>
+          <label
+            ><span data-i18n="Clip frames for analysis">Clip frames for analysis</span
+            ><select name="clip_interval" data-number>
+              <option value="0.25" data-i18n="Every 0.25 s">Every 0.25 s</option>
+              <option value="0.5" data-i18n="Every 0.5 s">Every 0.5 s</option>
+              <option value="1" data-i18n="Every 1 s">Every 1 s</option>
+            </select></label
+          >
+          <small class="muted"
+            ><span
+              data-i18n="At most 30 frames per clip, about one megapixel each; longer clips get 30 frames spread evenly."
+              >At most 30 frames per clip, about one megapixel each; longer clips get 30 frames spread evenly.</span
+            ></small
+          >
           <small class="muted"
             ><span data-i18n="Originals are unchanged. The model receives a resized copy without EXIF metadata."
               >Originals are unchanged. The model receives a resized copy without EXIF metadata.</span

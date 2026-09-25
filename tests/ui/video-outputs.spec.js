@@ -24,8 +24,9 @@ test('video model outputs write their own caption files and open the character o
   await card(page, 'blue.png').locator('.card-select').check();
   await expect(page.locator('#generate')).toContainText('Create WAN 2.2 captions (1)');
   await page.locator('#generate').click();
-  // The previous test's batch message may still show; wait for this batch's own count.
-  await expect(page.locator('#job-count')).toHaveText('1 / 1 · 1 saved', { timeout: 20_000 });
+  // An earlier test's batch count may still show; wait for this batch's own file.
+  await expect.poll(() => existsSync(path.join(env.dataset, 'blue.wan.txt')), { timeout: 20_000 }).toBe(true);
+  await expect(page.locator('#job-count')).toHaveText('1 / 1 · 1 saved');
   await expect(page.locator('#job-title')).toHaveText('Batch completed');
   expect(read('blue.wan.txt')).toBe('Velmira, a woman, stands in front of a plain colored wall. The light is even.\n');
   expect(existsSync(path.join(env.dataset, 'blue.txt'))).toBe(false);

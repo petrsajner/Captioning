@@ -51,7 +51,7 @@ def ui_message_ids():
         for call in re.finditer(r"(?<![\w.$])t\(", source):
             argument = re.sub(r"[=!]==?\s*(['\"])[^'\"]*\1", "", first_argument(source, call.end()))
             ids |= {match[1] for match in re.findall(r"(['\"])((?:(?!\1).)*)\1", argument)}
-        for table in re.findall(r"(?:labels|phaseLabels)\s*=\s*\{([^}]*)\}", source):
+        for table in re.findall(r"(?:labels|phaseLabels|modelNotes)\s*=\s*\{([^}]*)\}", source):
             ids |= set(re.findall(r":\s*'([^']*)'", table))
     return ids | {attribute[key] for attribute in ATTRIBUTES for key in ("label", "detail")}
 

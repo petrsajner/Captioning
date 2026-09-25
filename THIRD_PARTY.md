@@ -6,14 +6,15 @@ code and weights are not bundled.
 
 The frozen Windows package includes Python (PSF license), FastAPI (MIT), Starlette
 (BSD-3-Clause), Pydantic (MIT), Uvicorn (BSD-3-Clause), HTTPX/HTTPCore (BSD-3-Clause),
-Pillow (MIT-CMU), pywebview (BSD-3-Clause), Python.NET (MIT), and their dependencies.
+Pillow (MIT-CMU), pywebview (BSD-3-Clause), Python.NET (MIT), PyAV (BSD-3-Clause) with the
+FFmpeg libraries shipped in its wheel (used to read video clips), and their dependencies.
 The `licenses` folder in the installed application contains the license files and
 package metadata collected from the build environment. Microsoft's system
 WebView2 component is used when installed; it is not bundled in this package.
 
 Downloaded separately on user request:
 
-- llama.cpp b10821: MIT; https://github.com/ggml-org/llama.cpp/tree/b10821
+- llama.cpp b10935: MIT; https://github.com/ggml-org/llama.cpp/tree/b10935
 - CUDA runtime libraries from the official llama.cpp release: NVIDIA license
   terms apply; https://docs.nvidia.com/cuda/eula/index.html
 - Qwen3.8-27B GGUF by Unsloth: Apache-2.0 model card;

@@ -653,10 +653,38 @@ h3 {
   justify-content: center;
   overflow: hidden;
 }
-.preview-wrap img {
+.preview-wrap img,
+.preview-wrap video {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+/* The frames a clip sends to the model, with their times. */
+.frame-strip {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  margin: 8px 0 4px;
+  padding-bottom: 4px;
+}
+.frame-strip figure {
+  margin: 0;
+  flex: 0 0 auto;
+  font-size: 9px;
+  color: var(--muted);
+  text-align: center;
+}
+.frame-strip img {
+  display: block;
+  height: 54px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+}
+.clip-badge {
+  color: var(--accent);
+}
+.image-card.unused {
+  opacity: 0.45;
 }
 #image-name {
   word-break: break-word;

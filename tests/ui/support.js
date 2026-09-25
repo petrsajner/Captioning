@@ -21,7 +21,7 @@ export async function state(page) {
 
 // Remove captions and backups written by earlier tests and restore the fixture texts.
 function restoreFixtures() {
-  for (const folder of [env.dataset, path.join(env.dataset, 'sub'), env.bria]) {
+  for (const folder of [env.dataset, path.join(env.dataset, 'sub'), env.bria, env.clips]) {
     for (const entry of readdirSync(folder, { withFileTypes: true })) {
       const file = path.join(folder, entry.name);
       if (entry.isDirectory() && entry.name === '.caption-backups') rmSync(file, { recursive: true, force: true });

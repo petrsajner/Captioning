@@ -8,6 +8,7 @@ import json
 import sys
 from pathlib import Path
 
+import av
 from PIL import Image
 
 
@@ -16,10 +17,25 @@ def picture(path: Path, color: str, size=(96, 64)):
     Image.new("RGB", size, color).save(path)
 
 
+def video(path: Path, seconds=2, fps=24, size=(96, 64)):
+    """An H.264 clip, so the inspector's player can show it; the square moves left to right."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with av.open(str(path), "w") as container:
+        stream = container.add_stream("libx264", rate=fps)
+        stream.width, stream.height, stream.pix_fmt = size[0], size[1], "yuv420p"
+        for n in range(seconds * fps):
+            image = Image.new("RGB", size, "navy")
+            image.paste(
+                "yellow", (n * (size[0] - 16) // (seconds * fps), 24, n * (size[0] - 16) // (seconds * fps) + 16, 40)
+            )
+            container.mux(stream.encode(av.VideoFrame.from_image(image)))
+        container.mux(stream.encode(None))
+
+
 def main():
     root = Path(sys.argv[1]).resolve()
     model_url = sys.argv[2]
-    dataset, navigation, bria = root / "dataset", root / "navigation", root / "bria"
+    dataset, navigation, bria, clips = root / "dataset", root / "navigation", root / "bria", root / "clips"
     picture(dataset / "Waiting.png", "gray")
     picture(dataset / "second.png", "teal")
     picture(dataset / "red.png", "red")
@@ -30,6 +46,8 @@ def main():
     picture(navigation / "Collection A" / "Set Two" / "dog.jpg", "brown")
     picture(navigation / "Collection B" / "Other Set" / "other.png", "purple")
     picture(bria / "dog.jpg", "brown")
+    video(clips / "walk.mp4")
+    picture(clips / "still.png", "olive")
     fibo = {
         "short_description": "testdog, A brown dog sitting on grass.",
         "objects": [{"description": "dog", "location": "center", "relationship": "sitting on grass"}],
@@ -58,6 +76,7 @@ def main():
                 "dataset": str(dataset),
                 "navigation": str(navigation),
                 "bria": str(bria),
+                "clips": str(clips),
                 "profile": str(root / "profile"),
                 "settings": settings,
             }

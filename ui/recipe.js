@@ -46,7 +46,7 @@ export function fillTrainingControls(settings) {
   $('training-controls').innerHTML = ui.state.training_attributes
     .map(
       (a) =>
-        `<label class="caption-detail"><span><input type="checkbox" name="include_${a.id}" data-attribute="${a.id}" ${omitted.has(a.id) ? '' : 'checked'}><span class="detail-name">${esc(t(a.label))}</span><span class="detail-state" aria-hidden="true"><span class="state-on">ON</span><span class="state-off">OFF</span></span></span><small>${esc(t(a.detail))}</small></label>`,
+        `<label class="caption-detail" data-media="${a.media || ''}"><span><input type="checkbox" name="include_${a.id}" data-attribute="${a.id}" ${omitted.has(a.id) ? '' : 'checked'}><span class="detail-name">${esc(t(a.label))}</span><span class="detail-state" aria-hidden="true"><span class="state-on">ON</span><span class="state-off">OFF</span></span></span><small>${esc(t(a.detail))}</small></label>`,
     )
     .join('');
 }
@@ -59,16 +59,18 @@ export function loadRecipe(settings) {
 
 function renderTrainingPlan() {
   const s = liveSettings(),
-    omitted = new Set(s.omitted_attributes),
-    attrs = ui.state.training_attributes;
-  $('training-plan').textContent = t('{included} of {total} details included in caption', {
-    included: attrs.length - omitted.size,
-    total: attrs.length,
-  });
-  const format = s.output_format,
+    format = s.output_format,
     json = format === 'bria_json',
     video = format === 'video_all' || ui.state.video_outputs.includes(format),
     blocked = hasBusy() || ui.state.runtime.installing || ui.state.runtime.status === 'loading';
+  // Motion and camera movement exist only in clips, which only the video models caption.
+  for (const label of $('training-controls').querySelectorAll('[data-media=clip]')) label.hidden = !video;
+  const attrs = ui.state.training_attributes.filter((a) => video || a.media !== 'clip'),
+    omitted = s.omitted_attributes.filter((id) => attrs.some((a) => a.id === id));
+  $('training-plan').textContent = t('{included} of {total} details included in caption', {
+    included: attrs.length - omitted.length,
+    total: attrs.length,
+  });
   // Video models get English descriptions; the trigger is the character's name, so no subject name.
   recipe.elements.format.disabled = json || video || blocked;
   recipe.elements.language.disabled = video || blocked;

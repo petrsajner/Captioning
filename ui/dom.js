@@ -14,7 +14,7 @@ export function formValues(form, base) {
       out[el.name] =
         el.type === 'checkbox'
           ? el.checked
-          : ['number', 'range'].includes(el.type) || el.name === 'image_size'
+          : ['number', 'range'].includes(el.type) || el.name === 'image_size' || 'number' in el.dataset
             ? Number(el.value)
             : el.value;
   return out;

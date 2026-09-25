@@ -15,6 +15,12 @@ from .training import policy_prompt
 
 CHARACTER = "<character>"
 STILL = "This is a single still image: do not describe motion over time or camera movement."
+CLIP = (
+    "The images are frames of one continuous video clip in time order, each labeled with its time in seconds. "
+    "Describe the clip as one continuous shot, including how the character moves and how the camera moves."
+)
+# WAN's image-to-video prompts are short: its rewriter keeps them to about 100 words.
+I2V_WORDS = 100
 # Notices finishing can add to a caption; each is a UI message with a translation.
 MISSING_H3 = "Put the character name into [Shot 1] manually."
 ADDED_AT_START = "The character name was added at the start."
@@ -62,7 +68,11 @@ def _character(s: Settings) -> str:
     )
 
 
-def _recipe(s: Settings) -> list[str]:
+def _media(media: str) -> str:
+    return CLIP if media == "clip" else STILL
+
+
+def _recipe(s: Settings, media: str, only: tuple[str, ...] | None = None) -> list[str]:
     """The dataset recipe: preset, readable text, the user's instructions and the detail policy."""
     parts = [
         "The caption policy below decides which details are described. A detail marked LEARN_WITH_LORA must not "
@@ -74,28 +84,49 @@ def _recipe(s: Settings) -> list[str]:
     ]
     if s.instructions.strip():
         parts.append("Additional dataset instructions: " + s.instructions.strip())
-    return [*parts, policy_prompt(s)]
+    return [*parts, policy_prompt(s, media, only)]
 
 
-def wan_prompt(s: Settings) -> list[str]:
+def wan_prompt(s: Settings, media: str) -> list[str]:
     # Wan's own T2V prompt rewriter: subject, action, background, camera (Wan2.2 utils/system_prompt.py).
+    action = "what they do over the clip, in time order" if media == "clip" else "what they are doing"
+    camera = "the shot size, camera angle and camera movement" if media == "clip" else "the shot size and camera angle"
     return [
         "Write a training caption for a WAN 2.2 text-to-video character LoRA. The LoRA learns only the main "
         "character's appearance; everything the caption describes stays controllable by prompts.",
         *_facts(),
         "Write in English, in plain sentences, the way a WAN text-to-video prompt is written.",
         length_line(s.words),
-        "Use one paragraph in this order: <character> and what they are doing; then the details the caption policy "
-        "asks to describe; then the setting; then the lighting; then the shot size and camera angle. Skip every part "
-        "the policy omits. Begin the caption with <character>.",
+        f"Use one paragraph in this order: <character> and {action}; then the details the caption policy asks to "
+        f"describe; then the setting; then the lighting; then {camera}. Skip every part the policy omits. Begin the "
+        "caption with <character>.",
         _character(s),
-        STILL,
-        *_recipe(s),
+        _media(media),
+        *_recipe(s, media),
     ]
 
 
-def ltx_prompt(s: Settings) -> list[str]:
+def wan_i2v_prompt(s: Settings, media: str) -> list[str]:
+    # Wan's I2V rewriter keeps motion and camera movement and drops what the first frame shows.
+    return [
+        "Write a training caption for a WAN 2.2 image-to-video character LoRA. The video model receives the clip's "
+        "first frame, so the caption describes only what happens after it.",
+        *_facts(),
+        "Write in English, in plain sentences, the way a WAN image-to-video prompt is written.",
+        length_line(min(s.words, I2V_WORDS)),
+        "Begin with <character>, then describe the character's movement and actions from the start to the end of the "
+        "clip in time order, then the camera movement. Do not describe the setting, clothing, hair, lighting, "
+        "framing or anything else the first frame already shows.",
+        _character(s),
+        _media(media),
+        *_recipe(s, media, only=("identity", "motion", "camera_motion")),
+    ]
+
+
+def ltx_prompt(s: Settings, media: str) -> list[str]:
     # LTX prompt guide: one flowing present-tense paragraph that opens with the shot.
+    action = "what they do over the clip, in time order" if media == "clip" else "what they are doing"
+    camera = ", and how the camera moves" if media == "clip" else ""
     return [
         "Write a training caption for an LTX-2.5 character LoRA. The LoRA learns only the main character's "
         "appearance; everything the caption describes stays controllable by prompts.",
@@ -104,18 +135,21 @@ def ltx_prompt(s: Settings) -> list[str]:
         "prompt is written.",
         length_line(s.words),
         "Begin with the shot, its shot size and camera angle, and name the character in that first sentence, for "
-        "example: A medium close-up at eye level frames <character> as .... Then describe what they are doing, the "
-        "details the caption policy asks to describe, the setting and the lighting. Skip every part the policy omits.",
+        f"example: A medium close-up at eye level frames <character> as .... Then describe {action}, the details "
+        f"the caption policy asks to describe, the setting and the lighting{camera}. Skip every part the policy omits.",
         "Do not describe sound or music.",
         _character(s),
-        STILL,
-        *_recipe(s),
+        _media(media),
+        *_recipe(s, media),
     ]
 
 
-def h3_prompt(s: Settings) -> list[str]:
+def h3_prompt(s: Settings, media: str) -> list[str]:
     # Official H3 prompt skill: [Shot 1] opens with style and composition; the app adds the three fields.
-    return [
+    action = (
+        "what the character does over the clip, in time order" if media == "clip" else "what the character is doing"
+    )
+    parts = [
         "Write a training caption for a MiniMax H3 character LoRA. The LoRA learns only the main character's "
         "appearance; everything the caption describes stays controllable by prompts.",
         *_facts(),
@@ -123,22 +157,29 @@ def h3_prompt(s: Settings) -> list[str]:
         "the sound fields.",
         length_line(s.words),
         "Begin with the visual style and the initial composition, for example: Live-action, photographic, a medium "
-        "close-up at eye level frames <character> ... Then describe what the character is doing, the details the "
-        "caption policy asks to describe, the setting and the lighting. Skip every part the policy omits.",
+        f"close-up at eye level frames <character> ... Then describe {action}, the details the caption policy asks "
+        "to describe, the setting and the lighting. Skip every part the policy omits.",
         "Do not write field labels, timestamps, sound or music.",
         _character(s),
-        STILL + " End the description with: " + H3_STATIC,
-        *_recipe(s),
     ]
+    if media == "clip":
+        parts.append(
+            CLIP + " Write the camera movement as natural English with its type, amplitude and speed, for example: "
+            "The camera pushes in with small amplitude at slow speed. If the camera does not move, end with: "
+            + H3_STATIC
+        )
+    else:
+        parts.append(STILL + " End the description with: " + H3_STATIC)
+    return [*parts, *_recipe(s, media)]
 
 
-PROMPTS = {"wan": wan_prompt, "ltx": ltx_prompt, "h3": h3_prompt}
+PROMPTS = {"wan": wan_prompt, "wan_i2v": wan_i2v_prompt, "ltx": ltx_prompt, "h3": h3_prompt}
 
 
-def model_prompt(s: Settings) -> str:
-    """Each video model has its own instructions; "All video models" previews the first one."""
+def model_prompt(s: Settings, media: str = "image") -> str:
+    """Each video model has its own instructions, for photos and for clips; "All video models" previews WAN."""
     output = s.output_format if s.output_format in PROMPTS else "wan"
-    return "\n".join(PROMPTS[output](s))
+    return "\n".join(PROMPTS[output](s, media))
 
 
 def opening(trigger: str, character_class: str) -> str:
@@ -183,7 +224,9 @@ def _capitalize_sentences(text: str, phrase: str) -> str:
     return re.sub(pattern, lambda m: m.group(1) + phrase[0].upper() + phrase[1:], text)
 
 
-def finish_video_caption(draft: str, output: str, trigger: str, character_class: str) -> tuple[str, list[str], bool]:
+def finish_video_caption(
+    draft: str, output: str, trigger: str, character_class: str, media: str = "image"
+) -> tuple[str, list[str], bool]:
     """Turn the model's text into the caption file content.
 
     Returns the caption, notices for the user and whether it needs manual review.
@@ -227,7 +270,8 @@ def finish_video_caption(draft: str, output: str, trigger: str, character_class:
         body = head + first + tail
     body = _capitalize_sentences(_capitalize_sentences(_tidy(body), first), later)
     if output == "h3":
-        if "static" not in body.lower():
+        # A still is a static shot; a clip describes its own camera movement.
+        if media == "image" and "static" not in body.lower():
             body = body.rstrip() + " " + H3_STATIC
         text = h3_caption(body)
     else:

@@ -13,12 +13,16 @@ from PIL import Image, ImageOps
 
 from .bria import normalize_json, schema_prompt
 from .errors import ProviderUnavailableError, UserError
+from .media import VIDEO_EXTENSIONS, encode, frame_times, frames_at, is_video, probe
 from .models import VIDEO_OUTPUTS, Settings, make_prompt
 from .quality import unfinished, word_ceiling, word_count
 from .training import policy_prompt
 from .video import finish_video_caption
 
-EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
+EXTENSIONS = IMAGE_EXTENSIONS | VIDEO_EXTENSIONS
+# Some providers limit a request to 20 MB (Gemini's inline data); clip frames are compressed to stay below this.
+MAX_IMAGE_BYTES = 18_000_000
 INVALID_RESPONSE = "The API returned an invalid response format."
 RETRY_DELAYS = (2, 4)  # Seconds before the second and third attempt at a busy server.
 RETRYABLE = {429, 502, 503, 504}
@@ -108,20 +112,15 @@ async def list_models(s: Settings, key: str = "") -> list[str]:
     return sorted(str(m["id"]) for m in data if isinstance(m, dict) and m.get("id"))
 
 
-def build_payload(s: Settings, model: str, encoded_image: str) -> dict:
-    payload: dict = {
-        "model": model,
-        "stream": False,
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + encoded_image}},
-                    {"type": "text", "text": make_prompt(s)},
-                ],
-            }
-        ],
-    }
+def build_payload(s: Settings, model: str, images: list[tuple[str, str]], media: str = "image") -> dict:
+    """One user message: the images (clip frames each after a time label), then the instructions."""
+    content: list[dict] = []
+    for label, encoded in images:
+        if label:
+            content.append({"type": "text", "text": label})
+        content.append({"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + encoded}})
+    content.append({"type": "text", "text": make_prompt(s, media)})
+    payload: dict = {"model": model, "stream": False, "messages": [{"role": "user", "content": content}]}
     if s.mode == "local":
         payload.update(temperature=0.6, top_p=0.95)
         if s.local_source == "managed":
@@ -155,7 +154,7 @@ def http_error(status: int) -> UserError:
     return error_type(f"HTTP {status}: " + HTTP_HINTS.get(status, "The model server is not ready. Try again."))
 
 
-def read_response(body: dict, s: Settings, stage: str) -> dict:
+def read_response(body: dict, s: Settings, stage: str, media: str = "image") -> dict:
     """Turn a successful completion into a response record for history, diagnostics and decisions."""
     if body.get("error"):
         raise UserError("The provider returned a generation error. Check the model and account credit.")
@@ -189,7 +188,7 @@ def read_response(body: dict, s: Settings, stage: str) -> dict:
         elif s.output_format in VIDEO_OUTPUTS:
             # Revision and word counts use the model's own text; the file gets the finished caption.
             draft = clean_caption(content, "")
-            text, notices, review = finish_video_caption(draft, s.output_format, s.trigger, s.character_class)
+            text, notices, review = finish_video_caption(draft, s.output_format, s.trigger, s.character_class, media)
             video = {"draft": draft, "finish_notices": notices, "finish_review": review}
             complete = not unfinished(draft, "description", finish)
         else:
@@ -254,9 +253,18 @@ def revision_instruction(s: Settings, draft: str, too_long: bool) -> str:
 class CaptionSession:
     """The request sequence for one image: caption, then a retry, JSON repair or text revision."""
 
-    def __init__(self, client: httpx.AsyncClient, s: Settings, base: str, headers: dict, payload: dict, on_progress):
+    def __init__(
+        self,
+        client: httpx.AsyncClient,
+        s: Settings,
+        base: str,
+        headers: dict,
+        payload: dict,
+        on_progress,
+        media: str = "image",
+    ):
         self.client, self.s, self.base, self.headers, self.payload = client, s, base, headers, payload
-        self.on_progress = on_progress
+        self.on_progress, self.media = on_progress, media
         self.history: list[dict] = []
 
     def emit(self, event: dict):
@@ -296,7 +304,7 @@ class CaptionSession:
                 status = response.status_code
                 self.emit({"kind": "request_error", "stage": stage, "http_status": status, "app_token_limit": None})
                 raise http_error(status)
-            trace = read_response(response_json(response), self.s, stage)
+            trace = read_response(response_json(response), self.s, stage, self.media)
         except httpx.TimeoutException:
             self.emit({"kind": "request_error", "stage": stage, "error_type": "timeout", "app_token_limit": None})
             raise ProviderUnavailableError("The model connection timed out. Try processing again.") from None
@@ -404,6 +412,17 @@ class CaptionSession:
         )
 
 
+def clip_frames(path: Path, interval: float) -> list[tuple[str, str]]:
+    """Labeled clip frames, compressed further only when the request would be too large for some providers."""
+    times = frame_times(probe(path)["duration"], interval)
+    images = frames_at(path, times)
+    for quality in (90, 80, 70, 60):
+        encoded = [base64.b64encode(encode(image, quality=quality)).decode() for image in images]
+        if sum(map(len, encoded)) <= MAX_IMAGE_BYTES:
+            break
+    return [(f"Frame {i + 1} at {t:.2f} s:", data) for i, (t, data) in enumerate(zip(times, encoded, strict=True))]
+
+
 async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> CaptionResult:
     base = s.local_endpoint if s.mode == "local" else s.cloud_url
     model = s.local_model_id if s.mode == "local" else s.cloud_model
@@ -411,10 +430,14 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
         raise UserError("Select or enter an image-capable model ID in Settings.")
     if s.mode == "cloud" and not key:
         raise UserError("No API key is configured for this provider address.")
-    encoded = base64.b64encode(await asyncio.to_thread(image_bytes, path, s.image_size)).decode()
-    payload = build_payload(s, model, encoded)
+    media = "clip" if is_video(path) else "image"
+    if media == "clip":
+        images = await asyncio.to_thread(clip_frames, path, s.clip_interval)
+    else:
+        images = [("", base64.b64encode(await asyncio.to_thread(image_bytes, path, s.image_size)).decode())]
+    payload = build_payload(s, model, images, media)
     headers = {"Authorization": f"Bearer {key}"} if key else {}
     async with httpx.AsyncClient(timeout=httpx.Timeout(s.timeout, connect=15), trust_env=False) as client:
         if s.mode == "local" and s.local_source == "external":
             await disable_external_thinking(client, base, headers, payload)
-        return await CaptionSession(client, s, base, headers, payload, on_progress).run()
+        return await CaptionSession(client, s, base, headers, payload, on_progress, media).run()

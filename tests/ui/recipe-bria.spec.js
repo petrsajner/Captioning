@@ -44,7 +44,8 @@ test('detail choices reach the prompt and BRIA JSON captions are validated on sa
   expect(JSON.parse(readFileSync(sidecar, 'utf8')).short_description).toBe(JSON.parse(original).short_description);
 
   await page.reload();
-  await expect(page.locator('[data-attribute]')).toHaveCount(11);
+  await expect(page.locator('[data-attribute]')).toHaveCount(13); // motion and camera movement are clip-only
+  await expect(page.locator('[data-attribute]:visible')).toHaveCount(11);
   await expect(recipe.locator('[data-attribute=clothing]')).not.toBeChecked();
   await expect(recipe.locator('[name=output_format]')).toHaveValue('bria_json');
 });

@@ -3,3 +3,4 @@ uvicorn==0.52.4
 httpx==0.28.1
 Pillow==12.3.0
 pywebview==6.2.1
+av==18.1.0

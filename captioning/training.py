@@ -14,6 +14,8 @@ Attribute = Literal[
     "lighting",
     "composition",
     "style",
+    "motion",
+    "camera_motion",
 ]
 ATTRIBUTES = [
     {
@@ -83,10 +85,26 @@ ATTRIBUTES = [
         "detail": "Medium, drawing or photography, rendering technique and overall palette.",
         "instruction": "visual style, medium, rendering technique and overall artistic color palette",
     },
+    # Only for video clips ("media": "clip"); photos never get these instructions.
+    {
+        "id": "motion",
+        "label": "Motion over time",
+        "detail": "What the main subject does from the start to the end of the clip.",
+        "instruction": "movement and actions of the main subject over the clip, in time order",
+        "media": "clip",
+    },
+    {
+        "id": "camera_motion",
+        "label": "Camera movement",
+        "detail": "Pans, pushes, tracking and other camera moves.",
+        "instruction": "camera movement over the clip with its type, amplitude and speed",
+        "media": "clip",
+    },
 ]
 
 
-def policy_prompt(settings):
+def policy_prompt(settings, media: str = "image", only: tuple[str, ...] | None = None):
+    """The detail policy; clip-only details appear for clips, and `only` limits it to some details."""
     # The model-facing labels are unchanged: omitted details are the ones the LoRA should learn.
     omitted = set(settings.omitted_attributes)
     lines = [
@@ -96,6 +114,8 @@ def policy_prompt(settings):
         "For CONTROL_WITH_PROMPT: explicitly describe the visible attribute so it can be conditioned separately. Do not invent absent or uncertain details.",
     ]
     for a in ATTRIBUTES:
+        if a.get("media", media) != media or (only is not None and a["id"] not in only):
+            continue
         lines.append(
             (
                 "LEARN_WITH_LORA — DO NOT DESCRIBE: "

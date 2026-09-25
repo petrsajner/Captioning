@@ -6,6 +6,7 @@ import mimetypes
 import secrets
 import sys
 import uuid
+from collections import OrderedDict
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
@@ -18,6 +19,7 @@ from pydantic import BaseModel, Field, ValidationError
 from .discovery import CANDIDATES, discover
 from .errors import UserError
 from .folders import FolderBrowser
+from .media import frame_times, is_video, thumbnail
 from .models import MANAGED_URL, Settings, make_prompt
 from .provider import image_bytes, list_models
 from .service import MAX_IMAGES, MAX_KEY_LENGTH, Studio
@@ -25,6 +27,15 @@ from .service import MAX_IMAGES, MAX_KEY_LENGTH, Studio
 # Windows registry entries can map .js/.css to other types; the UI's module scripts need these.
 mimetypes.add_type("text/javascript", ".js")
 mimetypes.add_type("text/css", ".css")
+for _type, _suffix in (
+    ("video/mp4", ".mp4"),
+    ("video/mp4", ".m4v"),
+    ("video/quicktime", ".mov"),
+    ("video/webm", ".webm"),
+    ("video/x-matroska", ".mkv"),
+    ("video/x-msvideo", ".avi"),
+):
+    mimetypes.add_type(_type, _suffix)
 
 
 class ImportRequest(BaseModel):
@@ -48,6 +59,11 @@ class LanguageRequest(BaseModel):
 
 class DiscoveryRequest(BaseModel):
     url: str = ""
+
+
+def preview(path: Path, size: int, quality: int) -> bytes:
+    """A JPEG preview of an image, or of a clip's middle frame."""
+    return thumbnail(path, size, quality=quality) if is_video(path) else image_bytes(path, size, quality)
 
 
 class JobRequest(BaseModel):
@@ -78,6 +94,8 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     origin = f"http://127.0.0.1:{port}"
     folder_browser = FolderBrowser()
+    # Frame-strip thumbnails decode video; keep recent ones.
+    frames: OrderedDict[tuple[str, float], bytes] = OrderedDict()
 
     @app.middleware("http")
     async def local_session(request: Request, call_next):
@@ -150,8 +168,8 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
         return {"ok": True}
 
     @app.post("/api/prompt")
-    async def prompt(body: Settings):
-        return {"prompt": make_prompt(body), "output_format": body.output_format}
+    async def prompt(body: Settings, media: Literal["image", "clip"] = "image"):
+        return {"prompt": make_prompt(body, media), "output_format": body.output_format}
 
     @app.post("/api/models")
     async def models(body: Settings):
@@ -209,7 +227,7 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
     @app.get("/api/folder-image/{image_id}")
     async def folder_image(image_id: str):
         path = folder_browser.image(image_id)
-        data = await asyncio.to_thread(image_bytes, path, 240, 85)
+        data = await asyncio.to_thread(preview, path, 240, 85)
         return Response(data, media_type="image/jpeg")
 
     @app.post("/api/folder-tree")
@@ -219,8 +237,35 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
     @app.get("/api/image/{image_id}")
     async def image(image_id: str, full: bool = False):
         row = studio.row(image_id)
-        data = await asyncio.to_thread(image_bytes, Path(row["path"]), 2048 if full else 360, 88)
+        data = await asyncio.to_thread(preview, Path(row["path"]), 2048 if full else 360, 88)
         return Response(data, media_type="image/jpeg")
+
+    def clip_row(image_id: str):
+        row = studio.row(image_id)
+        if row.get("kind") != "clip" or "clip" not in row:
+            raise UserError("This file is not a video clip.")
+        return row
+
+    @app.get("/api/media/{image_id}")
+    async def media_file(image_id: str):
+        # The original clip for the inspector's player; FileResponse answers range requests.
+        row = clip_row(image_id)
+        return FileResponse(row["path"], media_type=mimetypes.guess_type(row["path"])[0] or "video/mp4")
+
+    @app.get("/api/clip-frames/{image_id}")
+    async def clip_frames(image_id: str):
+        row = clip_row(image_id)
+        return {"times": frame_times(row["clip"]["duration"], studio.settings.clip_interval)}
+
+    @app.get("/api/frame/{image_id}")
+    async def clip_frame(image_id: str, t: float):
+        row = clip_row(image_id)
+        key = (row["path"], round(t, 3))
+        if key not in frames:
+            frames[key] = await asyncio.to_thread(thumbnail, Path(row["path"]), 200, t, 80)
+            while len(frames) > 512:
+                frames.popitem(last=False)
+        return Response(frames[key], media_type="image/jpeg")
 
     @app.put("/api/caption/{image_id}")
     async def caption(image_id: str, body: CaptionRequest):

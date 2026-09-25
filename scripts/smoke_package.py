@@ -8,6 +8,7 @@ import tempfile
 import time
 from pathlib import Path
 
+import av
 import httpx
 from PIL import Image
 
@@ -109,6 +110,25 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
             assert json_image.with_suffix(".wan.txt").read_text(encoding="utf-8") == wan + "\n"
             assert client.put(endpoint, json={"text": wan, "output": "h3"}, headers=headers).status_code == 400
             assert not json_image.with_suffix(".h3.txt").exists()
+            # The packaged PyAV decodes clips: import, thumbnail, frames and a WAN I2V caption file.
+            clip_path = root / "dataset" / "walk.mp4"
+            with av.open(str(clip_path), "w") as container:
+                stream = container.add_stream("libx264", rate=24)
+                stream.width, stream.height, stream.pix_fmt = 96, 64, "yuv420p"
+                for n in range(48):
+                    frame = av.VideoFrame.from_image(Image.new("RGB", (96, 64), (5 * n, 40, 90)))
+                    container.mux(stream.encode(frame))
+                container.mux(stream.encode(None))
+            client.post(base + "/api/import", json={"paths": [str(clip_path)]}, headers=headers).raise_for_status()
+            clip_row = client.get(base + "/api/state").json()["rows"][0]
+            assert clip_row["kind"] == "clip" and clip_row["clip"]["frames"] == 48, clip_row
+            assert client.get(base + "/api/image/" + clip_row["id"]).headers["content-type"] == "image/jpeg"
+            assert client.get(base + "/api/clip-frames/" + clip_row["id"]).json()["times"] == [0.25, 0.75, 1.25, 1.75]
+            i2v = "Velmira, a woman, turns toward the camera."
+            client.put(
+                base + "/api/caption/" + clip_row["id"], json={"text": i2v, "output": "wan_i2v"}, headers=headers
+            ).raise_for_status()
+            assert clip_path.with_suffix(".wan-i2v.txt").read_text(encoding="utf-8") == i2v + "\n"
             report = {
                 "exe": str(exe),
                 "version": s["version"],
@@ -119,6 +139,7 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
                 "sidecar_write": True,
                 "bria_validation_with_coexisting_captions": True,
                 "video_model_caption_files": True,
+                "clip_decoding_and_captions": True,
                 "localization_assets_and_preference": True,
             }
             (output / "package-smoke.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
