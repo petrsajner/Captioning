@@ -468,7 +468,8 @@
     "Video model captions are English descriptions. Each model gets its own caption file; the others are not changed.": "Popisky pro video modely jsou anglické popisy. Každý model má vlastní soubor popisku; ostatní se nemění.",
     "Written in English after the trigger, for example “Velmira, a woman, …”. It also tells the model which pronouns to use.": "Píše se anglicky za trigger, například „Velmira, a woman, …“. Model podle toho volí i zájmena.",
     "Written once where the character is first named: “{trigger}, {cls}, …”.": "Zapíše se jednou tam, kde je postava poprvé zmíněna: „{trigger}, {cls}, …“.",
-    "e.g. Velmira": "např. Velmira"
+    "e.g. Velmira": "např. Velmira",
+    "The character name was placed at the first mention of the character type.": "Jméno postavy bylo doplněno k první zmínce typu postavy."
   },
   "grammar": {
     "dangling_words": [

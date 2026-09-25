@@ -43,7 +43,8 @@ def test_video_prompts_are_english_descriptions_with_the_character_token(output)
     prompt = make_prompt(s)
     assert "Write in English" in prompt and "Czech" not in prompt
     assert "comma-separated" not in prompt and "Mira" not in prompt and "Velmira" not in prompt
-    assert "<character>" in prompt and "'a woman'" in prompt
+    assert "<character>" in prompt and "'a woman'" in prompt and "'the woman'" in prompt
+    assert "not even in passing" in prompt and "hair" not in prompt.split("MANDATORY CAPTION POLICY")[0]
     assert "do not describe motion over time or camera movement" in prompt
     assert "LEARN_WITH_LORA — DO NOT DESCRIBE: stable visual identity" in prompt
     assert ("The camera holds a static shot." in prompt) == (output == "h3")
@@ -75,7 +76,7 @@ def test_video_prompts_are_english_descriptions_with_the_character_token(output)
         (
             "wan",
             "<character> waves. Later <character> smiles.",
-            "Velmira, a woman, waves. Later a woman smiles.",
+            "Velmira, a woman, waves. Later the woman smiles.",
         ),
     ],
 )
@@ -83,6 +84,25 @@ def test_the_character_token_becomes_the_trigger_and_class_once(output, draft, e
     text, notices, review = finish_video_caption(draft, output, "Velmira", "a woman")
     assert text == expected and not review
     assert text.count("Velmira") == 1
+
+
+def test_later_mentions_and_a_missing_token_read_naturally():
+    text, notices, _ = finish_video_caption(
+        "<character> smiles. <character> wears a grey coat.", "wan", "Velmira", "a woman"
+    )
+    assert text == "Velmira, a woman, smiles. The woman wears a grey coat."
+    # The model wrote the class instead of the token: the name goes to its first mention.
+    draft = "Live-action, photographic, a medium close-up frames a woman seated by a window."
+    text, notices, review = finish_video_caption(draft, "h3", "Velmira", "a woman")
+    assert not review and notices == ["The character name was placed at the first mention of the character type."]
+    assert h3_body(text).startswith("Live-action, photographic, a medium close-up frames Velmira, a woman, seated")
+    text, _, _ = finish_video_caption("A woman sits by a window.", "ltx", "Velmira", "a woman")
+    assert text == "Velmira, a woman, sits by a window."
+    # Seen with Qwen3.8 27B: an article before the token, and the class said again after it.
+    text, _, _ = finish_video_caption("A close-up frames a <character>.", "ltx", "Velmira", "a woman")
+    assert text == "A close-up frames Velmira, a woman."
+    text, _, _ = finish_video_caption("<character> is a woman with long hair.", "wan", "Velmira", "a woman")
+    assert text == "Velmira, a woman, has long hair."
 
 
 def test_without_a_trigger_the_class_opens_the_caption():
@@ -101,7 +121,7 @@ def test_h3_body_is_wrapped_in_the_official_fields_with_a_static_shot():
     validate_h3(text)
     assert h3_body(text).startswith("Live-action") and "overall_soundscape" not in h3_body(text)
     # The character must be inside [Shot 1]; H3 never gets a name glued in front of its field label.
-    text, notices, review = finish_video_caption("Live-action, a woman sits.", "h3", "Velmira", "a woman")
+    text, notices, review = finish_video_caption("Live-action, someone sits.", "h3", "Velmira", "a woman")
     assert review and notices == ["Put the character name into [Shot 1] manually."]
     assert text.startswith("integrated_multimodal_description: [Shot 1] Live-action")
 
