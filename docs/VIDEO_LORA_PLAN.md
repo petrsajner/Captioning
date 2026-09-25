@@ -484,38 +484,85 @@ fields integrated_multimodal_description, overall_soundscape and non_diegetic_mu
   cannot play the format, the frame strip is still shown.
 - **Frames sent to the model:** the payload holds several `image_url` parts followed by
   the text, and the prompt lists their timestamps.
-  - Frames are 768 px on the long side.
-  - A new setting **Frames per clip** (4–12, default 8) sits under Analysis settings.
+  - **Interval:** one frame every 0.5 s by default. A new setting **Frame interval**
+    (0.25 / 0.5 / 1 s) sits under Analysis settings. A 10 s clip gets 20 frames.
+  - **Cap:** at most 30 frames, which covers H3's longest clip (15 s) at 0.5 s. Longer
+    clips get 30 frames spread evenly, and the inspector says so.
+  - **Timestamps:** frames are taken at the interval midpoints (0.25 s, 0.75 s, …).
+  - **Frame size:** about 1 megapixel (for example 1344 × 768 for 16:9), never larger
+    than the source.
+    - Reason: the vision encoder uses 16 px patches with 2 × 2 merging, so one token is
+      32 × 32 px (`mmproj-F16.gguf`: `patch_size 16`, `spatial_merge_size 2`).
+    - The managed runtime's `--image-min-tokens 1024` would upscale smaller frames to
+      1,024 tokens anyway. About 1 MP spends those tokens on real pixels.
 - **Context of the managed runtime** (D4). Today it starts with `-c 8192` and
   `--image-min-tokens 1024` (`runtime.py:326-329`), so each frame costs at least 1,024
   tokens.
-  - `-c` becomes per profile: IQ3 8192, Q4 16384, Q5 16384.
-  - Q4 must still run on a 24 GB card. Before release, measure the peak VRAM of Q4 with
-    `-c 16384` and an 8-frame clip request on the development GPU (llama-server's buffer
-    report in `model.log` plus `nvidia-smi`).
-  - Acceptance: at most 22.5 GB, which leaves room for Windows and the display on a 24 GB
-    card. If it does not fit, use `-c 12288` for Q4 and cap its frames at 6.
-  - With IQ3 (8192), the app caps frames per clip at 5 and says so under the setting.
-  - The published VRAM guidance texts do not change unless the measurement requires it.
-  - `usage.prompt_tokens` of the measured request is recorded in `docs/HANDOFF.md`.
-- **External and cloud servers:** the frames setting applies as chosen. Clip requests use
-  the existing timeout setting, and the notice suggests raising it if clips time out.
+  - Model facts, read from the GGUF header of `Qwen3.8-27B-UD-Q4_K_M.gguf`:
+    - native context 262,144;
+    - hybrid layers: 65 blocks with full attention every 4th block (4 KV heads × 256);
+      the others have a fixed-size state;
+    - so the KV cache grows by only about 35 KB per token at `q8_0`, about 1.7 GB for
+      48k tokens.
+  - 30 frames × ~1,024 tokens + prompt + answer ≈ 34k tokens.
+  - **Priority when VRAM is short (Petr, 2026-09-25):** recommend a smaller model profile
+    rather than fewer frames. The frame interval and cap never shrink automatically.
+  - **Measured placements, from Marvin.** Marvin (`C:\Users\Petr\Documents\QWEN local`)
+    runs the same `unsloth/Qwen3.8-27B-GGUF` revision `4ca7207…` and the same
+    `mmproj-F16.gguf`. Its 2026-09-15 qualification on the RTX 5090
+    (`docs/design/profile-remeasurement-2026-09-15.md`, `harness/measured_profiles.py`)
+    reports the GPU memory each model placement allocates, not counting other programs.
+    Each placement passed functional checks including two OCR images and long inputs:
+
+    | Profile | Context (q8_0 cache) | Image projector | Measured GiB | Card class |
+    |---|---|---|---|---|
+    | IQ3 | 64k | CPU | 13.57 | 16 GB |
+    | IQ3 | 96k | GPU | 16.15 | 24 GB |
+    | Q4 | 64k | GPU | 18.86 | 24 GB |
+    | Q4 | 96k | GPU | 19.93 | 24 GB |
+    | Q5 | 64k | CPU | 20.72 | 24 GB |
+    | Q5 | 128k | GPU | 24.19 | 32 GB |
+    | Q2_K_XL | 64k | GPU | 12.96 | 16 GB |
+
+  - **New managed placements:** `-c 65536` for every profile, which leaves room above
+    34k. The placements are Marvin's approved ones:
+    - Q4 (24 GB) and Q5 (32 GB): projector on the GPU.
+    - IQ3 (16 GB): projector on the CPU, which Marvin approved for 16 GB cards. A
+      30-frame clip then encodes its frames on the CPU, which is slow. The Q2 alternative
+      is decision D7.
+  - **Confirm before release:** the measurements used llama.cpp build b10935, while
+    Caption Studio pins b10821. Repeat each managed placement once with a 30-frame
+    request (llama-server's buffer report in `model.log` plus `nvidia-smi`). Record the
+    peak and `usage.prompt_tokens` in `docs/HANDOFF.md`, and update the VRAM guidance
+    texts if they change.
+- **External and cloud servers:** the same interval and cap apply. Every major provider
+  accepts far more images per request than 30 (verified 2026-09-25):
+  - Gemini: 3,600 images per request, 258 tokens per 768 × 768 tile. Inline requests are
+    limited to 20 MB, so frames are JPEG quality 90 and the app warns when a request
+    would exceed 18 MB.
+  - OpenAI: 1,500 images and 512 MB per request.
+  - Claude (for example via OpenRouter): 600 images per request (100 for 200k-context
+    models). Above 20 images each image must be at most 2000 px, which 1 MP frames meet.
+  - Gemini's native video input is not available through its OpenAI-compatible endpoint,
+    which is the API Caption Studio uses, so frames are sent as images everywhere.
+  - Clip requests use the existing timeout setting, and the notice suggests raising it
+    if clips time out.
 
 ## 6. Implementation by file
 
 | File | Change |
 |---|---|
-| `captioning/models.py` | `output_format` adds `"wan"`, `"wan_i2v"`, `"ltx"`, `"h3"`, `"video_all"`. New `character_class: str = Field("a person", max_length=40)`. New `clip_frames: int = Field(8, ge=4, le=12)`. `make_prompt(s, media="image", output=None)`. `OUTPUT_SUFFIX = {"normal": ".txt", "bria_json": ".json", "wan": ".wan.txt", "wan_i2v": ".wan-i2v.txt", "ltx": ".ltx.txt", "h3": ".h3.txt"}`. `VIDEO_OUTPUTS = ("wan", "wan_i2v", "ltx", "h3")`. `outputs_for(s, kind)` returns the outputs a batch creates. |
+| `captioning/models.py` | `output_format` adds `"wan"`, `"wan_i2v"`, `"ltx"`, `"h3"`, `"video_all"`. New `character_class: str = Field("a person", max_length=40)`. New `clip_interval: Literal[0.25, 0.5, 1.0] = 0.5` (seconds between clip frames; at most 30 frames). `make_prompt(s, media="image", output=None)`. `OUTPUT_SUFFIX = {"normal": ".txt", "bria_json": ".json", "wan": ".wan.txt", "wan_i2v": ".wan-i2v.txt", "ltx": ".ltx.txt", "h3": ".h3.txt"}`. `VIDEO_OUTPUTS = ("wan", "wan_i2v", "ltx", "h3")`. `outputs_for(s, kind)` returns the outputs a batch creates. |
 | `captioning/training.py` | Add `motion` and `camera_motion` with a `media` flag. `policy_prompt(settings, media="image", output=None)` leaves clip-only details out for images; for `wan_i2v` it describes only the clip details. |
 | `captioning/video.py` (new) | Per-output shape text, `finish_video_caption`, `h3_body`, `validate_h3`, trigger warnings. |
 | `captioning/media.py` (new) | PyAV probe, frames and thumbnails (section 5). |
 | `captioning/provider.py` | Split the extension sets. `generate(path, s, output, media, …)` builds multi-frame payloads for clips. `read_response` finishes with `finish_video_caption` for model outputs. `revision_instruction` gets the model-output wording. |
 | `captioning/storage.py` | `write_caption` accepts the suffixes in `OUTPUT_SUFFIX`, rejecting anything else as today. `archive_sidecar` is removed. |
-| `captioning/runtime.py` | `-c` per profile (section 5). A constant `CONTEXT` is exposed so the frames cap can use it. |
+| `captioning/runtime.py` | Managed placements from section 5: `-c 65536` for every profile; `--no-mmproj-offload` for IQ3 (and CPU backend as today). |
 | `captioning/service.py` | Media rows with slots; session migration; generalized collision rule; `_scan` reads all sidecars and probes clips; per-slot write without archiving; job over media × outputs; H3 validation on save; removed format-preference notices. |
 | `captioning/api.py` | `PUT /api/caption/{id}` takes `output`. `/api/image/{id}` serves clip thumbnails. New `GET /api/media/{id}`. `/api/prompt` takes `media` and `output`. |
 | `captioning/folders.py` | List clips with middle-frame previews. |
-| `ui/index.html` | Output options, Character type and notes, Frames per clip, caption file tabs, video element, frame strip, file types text. |
+| `ui/index.html` | Output options, Character type and notes, Frame interval, caption file tabs, video element, frame strip, file types text. |
 | `ui/recipe.js` | Show/hide and disable controls per output; clip-only details; output notes. |
 | `ui/dataset.js` | Slot view for grid, counters, filters, inspector tabs, save, regenerate and history; aggregate status and model dots; clip badge, player and meta; H3 word counting. |
 | `ui/main.js` | Counters and the run button follow the selected output ("Create WAN captions", "Create captions for all video models"). |
@@ -575,7 +622,7 @@ fields integrated_multimodal_description, overall_soundscape and non_diegetic_mu
 - `bria.py` ignores `motion`/`camera_motion`;
 - `media.py` against small generated clips (created with PyAV in the test): probe values,
   rotation, frame timestamps, unreadable file;
-- runtime arguments: `-c` per profile and the frames cap;
+- runtime arguments: `-c 65536` and the projector placement per profile;
 - API: `/api/media` range response, clip thumbnails, `PUT /api/caption` with `output`.
 
 **UI suite (Playwright):**
@@ -607,7 +654,7 @@ files in a temporary profile.
      three models with the character opening in the right place.
 2. **0.2.1, clips.**
    - Includes: section 5, WAN I2V, the two clip details, the inspector clip view, the
-     runtime context per profile and the PyAV packaging.
+     managed placements from section 5 and the PyAV packaging.
    - Done when the tests pass, the packaged build decodes clips, and the D4 measurement is
      recorded and meets the acceptance limit.
 3. **LORA Train handoff:** `docs/LORA_TRAIN_HANDOFF.md` (section 10), written after 0.2.1.
@@ -639,11 +686,21 @@ leaves next to the media:
 - **D2** H3 sound fields are always `N/A`.
 - **D3** Clips also get a WAN I2V caption, `name.wan-i2v.txt`. LTX and H3 use their normal
   files for clips (3.1 rule 9).
-- **D4** The managed context is raised (Q4/Q5 to 16384) while Q4 must still fit a 24 GB
-  card (section 5).
+- **D4** The managed context is raised while Q4 must still fit a 24 GB card. When memory
+  is short, a smaller model profile is preferred to fewer frames. Frames are taken every
+  0.5 s, up to 30 (section 5).
 - **D5** One output per batch stays, plus a new option "All video models".
 - **D6** `.txt` and `.json` coexist; no more archiving of the other format. LORA Train
   chooses the file for the model it trains.
+
+Open:
+
+- **D7** 16 GB cards: add a managed Q2_K_XL profile, or keep IQ3 with its projector on
+  the CPU?
+  - Q2_K_XL: Marvin measured 12.96 GiB at 64k with the projector on the GPU. It is the
+    same file and revision Marvin uses. This follows the rule "smaller model rather than
+    fewer frames".
+  - IQ3 with the projector on the CPU encodes a 30-frame clip slowly.
 
 ## 12. Research basis
 
