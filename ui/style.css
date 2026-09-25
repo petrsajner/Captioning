@@ -548,6 +548,63 @@ h3 {
 .image-card.processing .thumb {
   opacity: 0.6;
 }
+/* One dot per video model when a batch creates all of them. */
+.model-dots {
+  display: flex;
+  gap: 4px;
+  margin-top: 5px;
+}
+.model-dot {
+  font-style: normal;
+  font-size: 8px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.model-dot.saved,
+.model-dot.existing {
+  border-color: #4f6b3c;
+  color: var(--accent);
+}
+.model-dot.draft,
+.model-dot.review,
+.model-dot.processing,
+.model-dot.queued {
+  border-color: #6b5f36;
+  color: #e9d08a;
+}
+.model-dot.error,
+.model-dot.invalid {
+  border-color: #6b3a36;
+  color: var(--error);
+}
+/* Caption files of the selected image in the inspector. */
+.caption-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 18px;
+}
+.caption-tab {
+  padding: 4px 8px;
+  font-size: 11px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.caption-tab[aria-selected='true'] {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--elevated);
+}
+.caption-tab.error,
+.caption-tab.invalid {
+  color: var(--error);
+}
 .pagebar {
   display: flex;
   justify-content: space-between;

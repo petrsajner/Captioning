@@ -17,7 +17,7 @@ from PIL import Image
 from . import __version__, provider
 from .bria import CaptionValidationError, normalize_json
 from .errors import ProviderUnavailableError, UserError
-from .models import OUTPUT_NAMES, OUTPUT_SUFFIX, Settings, outputs_for
+from .models import OUTPUT_NAMES, OUTPUT_SUFFIX, VIDEO_OUTPUTS, Settings, outputs_for
 from .runtime import Runtime
 from .storage import KeyStore, fingerprint, preserve_damaged, read_json, save_json, write_caption
 from .training import ATTRIBUTES
@@ -287,6 +287,8 @@ class Studio:
             "version": __version__,
             "settings": self.settings.model_dump(),
             "training_attributes": ATTRIBUTES,
+            "caption_outputs": {o: {"suffix": OUTPUT_SUFFIX[o], "name": OUTPUT_NAMES[o]} for o in OUTPUT_SUFFIX},
+            "video_outputs": VIDEO_OUTPUTS,
             "has_key": self.keys.has(self.settings.cloud_url),
             "has_local_key": self.keys.has("local:" + self.settings.local_url),
             "rows": self.rows,
@@ -422,8 +424,11 @@ class Studio:
             {"caption": text.strip(), "exists": True, "status": Status.SAVED, "error": "", "notice": ""}
         )
 
-    async def start_job(self, ids: list[str], regenerate=False, resume=False):
+    async def start_job(self, ids: list[str], regenerate=False, resume=False, output: str | None = None):
+        """Create the recipe's outputs for the images, or only `output` (Regenerate in the inspector)."""
         self.idle()
+        if output is not None and output not in OUTPUT_SUFFIX:
+            raise UserError("Unknown caption output.")
         settings = self.settings.model_copy(deep=True)
         if resume and self.job.get("paused"):
             # Continue exactly the image and output pairs the paused batch had left.
@@ -431,7 +436,7 @@ class Studio:
             pairs = [(i, o) for i, o in self.job.get("remaining_tasks", []) if i in wanted and i in present]
             tasks = [(self.row(i), o) for i, o in pairs]
         else:
-            outputs = outputs_for(settings.output_format)
+            outputs = (output,) if output else outputs_for(settings.output_format)
             rows = [self.row(i) for i in dict.fromkeys(ids)]
             tasks = [(row, o) for row in rows for o in outputs if o in row["outputs"]]
         if not tasks:
@@ -454,11 +459,11 @@ class Studio:
             "skipped": 0,
             "message": "Starting batch…",
             "id": uuid.uuid4().hex,
-            "output_format": settings.output_format,
+            "output_format": output or settings.output_format,
         }
-        for row, output in tasks:
-            if row["outputs"][output]["status"] != Status.INVALID:
-                row["outputs"][output]["status"] = Status.QUEUED
+        for row, task_output in tasks:
+            if row["outputs"][task_output]["status"] != Status.INVALID:
+                row["outputs"][task_output]["status"] = Status.QUEUED
         self.persist()
         self.task = asyncio.create_task(self._run(tasks, settings, key, regenerate))
 

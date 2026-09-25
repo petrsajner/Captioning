@@ -64,6 +64,12 @@
             ><select name="output_format">
               <option value="normal" data-i18n="Normal · .txt">Normal · .txt</option>
               <option value="bria_json" data-i18n="BRIA JSON (FIBO) · .json">BRIA JSON (FIBO) · .json</option>
+              <option value="wan">WAN 2.2 · .wan.txt</option>
+              <option value="ltx">LTX-2.5 · .ltx.txt</option>
+              <option value="h3">MiniMax H3 · .h3.txt</option>
+              <option value="video_all" data-i18n="All video models · .wan / .ltx / .h3">
+                All video models · .wan / .ltx / .h3
+              </option>
             </select></label
           >
           <label
@@ -79,7 +85,23 @@
               ></small
             ></label
           >
-          <label
+          <label id="character-class-field" hidden
+            ><span data-i18n="Character type">Character type</span
+            ><input name="character_class" list="character-classes" maxlength="40" placeholder="a person" /><datalist
+              id="character-classes"
+            >
+              <option value="a woman"></option>
+              <option value="a man"></option>
+              <option value="a person"></option></datalist
+            ><small
+              ><span
+                data-i18n="Written in English after the trigger, for example “Velmira, a woman, …”. It also tells the model which pronouns to use."
+                >Written in English after the trigger, for example “Velmira, a woman, …”. It also tells the model which
+                pronouns to use.</span
+              ></small
+            ></label
+          >
+          <label id="subject-field"
             ><span data-i18n="Main subject name">Main subject name</span
             ><input
               name="subject"
@@ -107,6 +129,13 @@
             <span><output id="word-output">100</output> <span data-i18n="words">words</span></span
             ><input name="words" type="range" min="20" max="300" step="10"
           /></label>
+          <p id="video-format-note" class="tiny muted" hidden>
+            <span
+              data-i18n="Video model captions are English descriptions. Each model gets its own caption file; the others are not changed."
+              >Video model captions are English descriptions. Each model gets its own caption file; the others are not
+              changed.</span
+            >
+          </p>
           <p id="json-format-note" class="tiny muted" hidden>
             <span
               data-i18n="FIBO JSON uses a fixed structure instead of tags or a word target. Responses are not capped; incomplete JSON is repaired automatically when possible."
@@ -282,6 +311,13 @@
           <h3 id="image-name"></h3>
           <div id="image-meta" class="tiny muted"></div>
           <div id="image-path" class="path tiny" title=""></div>
+          <div
+            id="caption-tabs"
+            class="caption-tabs"
+            role="tablist"
+            aria-label="Caption files"
+            data-i18n-aria-label="Caption files"
+          ></div>
           <div class="editor-heading">
             <label for="caption-editor"><span data-i18n="Caption">Caption</span></label
             ><span id="caption-words" class="tiny muted"><span data-i18n="0 words">0 words</span></span>

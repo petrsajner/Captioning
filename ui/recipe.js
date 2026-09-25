@@ -2,7 +2,7 @@
 import { action, api } from './api.js';
 import { $, esc, fillForm, formValues } from './dom.js';
 import { t } from './i18n.js';
-import { hasBusy, ui } from './store.js';
+import { hasBusy, outputsFor, ui } from './store.js';
 
 const recipe = $('recipe-form');
 let recipeTimer,
@@ -65,17 +65,33 @@ function renderTrainingPlan() {
     included: attrs.length - omitted.size,
     total: attrs.length,
   });
-  const json = s.output_format === 'bria_json',
+  const format = s.output_format,
+    json = format === 'bria_json',
+    video = format === 'video_all' || ui.state.video_outputs.includes(format),
     blocked = hasBusy() || ui.state.runtime.installing || ui.state.runtime.status === 'loading';
-  recipe.elements.format.disabled = json || blocked;
+  // Video models get English descriptions; the trigger is the character's name, so no subject name.
+  recipe.elements.format.disabled = json || video || blocked;
+  recipe.elements.language.disabled = video || blocked;
   recipe.elements.words.disabled = json || blocked;
   $('json-format-note').hidden = !json;
   $('length-policy-note').hidden = json;
+  $('video-format-note').hidden = !video;
+  $('character-class-field').hidden = !video;
+  $('subject-field').hidden = video;
+  recipe.elements.trigger.placeholder = video ? t('e.g. Velmira') : t('e.g. ohwx person');
   $('trigger-note').textContent = json
     ? t('Inserted into short_description so the JSON remains valid.')
-    : t('Added exactly at the start of each caption.');
+    : video
+      ? t('Written once where the character is first named: “{trigger}, {cls}, …”.', {
+          trigger: s.trigger.trim() || 'Velmira',
+          cls: s.character_class.trim() || 'a person',
+        })
+      : t('Added exactly at the start of each caption.');
+  const files = outputsFor(format)
+    .map((output) => 'image' + ui.state.caption_outputs[output].suffix)
+    .join(', ');
   $('output-note').innerHTML =
-    `<b>image.jpg → image.${json ? 'json' : 'txt'}</b><br>${esc(t('Same folder, UTF-8. Skipping applies to both formats. Replaced captions are backed up; the other format is archived so the trainer cannot select it accidentally.'))}`;
+    `<b>image.jpg → ${esc(files)}</b><br>${esc(t('Same folder, UTF-8. Every output has its own file; saving one never changes the others. Replaced captions are backed up.'))}`;
 }
 
 export function renderRecipe() {
@@ -104,7 +120,15 @@ $('apply-training-preset').onclick = () => {
 
 $('preview-prompt').onclick = () =>
   action(async () => {
-    const result = await api('/prompt', liveSettings());
-    $('prompt-text').textContent = result.prompt;
+    const settings = liveSettings(),
+      outputs = outputsFor(settings.output_format);
+    // Every video model has its own instructions; show each of them for "All video models".
+    const prompts = await Promise.all(outputs.map((output) => api('/prompt', { ...settings, output_format: output })));
+    $('prompt-text').textContent =
+      outputs.length > 1
+        ? prompts
+            .map((result, i) => `=== ${ui.state.caption_outputs[outputs[i]].name} ===\n${result.prompt}`)
+            .join('\n\n')
+        : prompts[0].prompt;
     $('prompt-dialog').showModal();
   });

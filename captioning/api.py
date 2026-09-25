@@ -55,6 +55,8 @@ class JobRequest(BaseModel):
     regenerate: bool = False
     # Continue the image and output pairs a paused batch had left.
     resume: bool = False
+    # Only this output (Regenerate in the inspector); otherwise the recipe's outputs.
+    output: str | None = None
 
 
 class CaptionRequest(BaseModel):
@@ -227,7 +229,7 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
 
     @app.post("/api/jobs")
     async def jobs(body: JobRequest):
-        await studio.start_job(body.ids, body.regenerate, body.resume)
+        await studio.start_job(body.ids, body.regenerate, body.resume, body.output)
         return {"ok": True}
 
     @app.post("/api/jobs/stop")

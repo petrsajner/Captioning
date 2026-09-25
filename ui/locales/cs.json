@@ -379,7 +379,6 @@
     "Local · ": "Lokální · ",
     " skipped": " přeskočeno",
     "Inserted into short_description so the JSON remains valid.": "Vloží se dovnitř pole short_description, aby JSON zůstal platný.",
-    "Same folder, UTF-8. Skipping applies to both formats. Replaced captions are backed up; the other format is archived so the trainer cannot select it accidentally.": "Stejná složka, UTF‑8. Přeskočení platí pro oba formáty. Při nahrazení se starý popisek zazálohuje; druhý formát se přesune do zálohy, aby jej trenér nepoužil omylem.",
     "Choose what to include in the caption": "Zvolte, co přidat do popisu",
     "Include details you want to change with prompts. Leave out details you want the LoRA to capture.": "Přidejte do popisu detaily, které chcete měnit promptem. Vynechte detaily, které má převzít LoRA.",
     "Apply defaults for this LoRA type": "Použít výchozí volby pro tento typ LoRA",
@@ -459,7 +458,17 @@
     "The character was named more than once; later mentions now use the class.": "Postava byla pojmenována víckrát; další zmínky teď používají třídu.",
     "The trigger appears more than once in this caption.": "Trigger je v tomto popisku víckrát.",
     "The trigger is part of another word here; trainers may miss it. Choose a more distinct name.": "Trigger je tu součástí jiného slova a trenér ho může přehlédnout. Zvolte výraznější jméno.",
-    "The trigger contains a space; a single invented word works best.": "Trigger obsahuje mezeru; nejlépe funguje jedno vymyšlené slovo."
+    "The trigger contains a space; a single invented word works best.": "Trigger obsahuje mezeru; nejlépe funguje jedno vymyšlené slovo.",
+    "All video models · .wan / .ltx / .h3": "Všechny video modely · .wan / .ltx / .h3",
+    "Caption files": "Soubory popisků",
+    "Character type": "Typ postavy",
+    "Create captions for all video models": "Vytvořit popisky pro všechny video modely",
+    "Create {model} captions": "Vytvořit popisky {model}",
+    "Same folder, UTF-8. Every output has its own file; saving one never changes the others. Replaced captions are backed up.": "Stejná složka, UTF-8. Každý výstup má vlastní soubor; uložení jednoho nikdy nemění ostatní. Nahrazené popisky se zálohují.",
+    "Video model captions are English descriptions. Each model gets its own caption file; the others are not changed.": "Popisky pro video modely jsou anglické popisy. Každý model má vlastní soubor popisku; ostatní se nemění.",
+    "Written in English after the trigger, for example “Velmira, a woman, …”. It also tells the model which pronouns to use.": "Píše se anglicky za trigger, například „Velmira, a woman, …“. Model podle toho volí i zájmena.",
+    "Written once where the character is first named: “{trigger}, {cls}, …”.": "Zapíše se jednou tam, kde je postava poprvé zmíněna: „{trigger}, {cls}, …“.",
+    "e.g. Velmira": "např. Velmira"
   },
   "grammar": {
     "dangling_words": [

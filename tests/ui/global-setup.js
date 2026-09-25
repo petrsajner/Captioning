@@ -9,11 +9,28 @@ import { fileURLToPath } from 'node:url';
 const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const python = process.env.CAPTION_STUDIO_PYTHON || path.join(workspace, '.venv', 'Scripts', 'python.exe');
 export const CAPTION = 'A plain colored rectangle fills the frame. The surface is even and matte.';
+// Video-model answers name the character with the <character> token, as their instructions ask.
+export const VIDEO_CAPTIONS = {
+  'WAN 2.2': '<character> stands in front of a plain colored wall. The light is even.',
+  'LTX-2.5': 'A medium shot at eye level. <character> stands in front of a plain colored wall.',
+  'MiniMax H3':
+    'Live-action, photographic, a medium shot at eye level frames <character> in front of a plain colored wall. The camera holds a static shot.',
+};
 const MODEL_DELAY_MS = 1200; // long enough to observe and stop a running batch
+
+function answer(body) {
+  const content = JSON.parse(body || '{}').messages?.[0]?.content;
+  const prompt = Array.isArray(content) ? content.map((part) => part.text || '').join('\n') : String(content || '');
+  const model = Object.keys(VIDEO_CAPTIONS).find(
+    (name) => prompt.includes(`for a ${name} `) || prompt.includes(`an ${name} `),
+  );
+  return model ? VIDEO_CAPTIONS[model] : CAPTION;
+}
 
 function startModelServer() {
   const server = http.createServer((request, response) => {
-    request.resume();
+    let body = '';
+    request.on('data', (chunk) => (body += chunk));
     request.on('end', () => {
       const reply = (status, data) => {
         response.writeHead(status, { 'Content-Type': 'application/json' });
@@ -23,7 +40,7 @@ function startModelServer() {
         return reply(200, { data: [{ id: 'fake-vision' }] });
       if (request.method === 'POST' && request.url === '/v1/chat/completions')
         return setTimeout(
-          () => reply(200, { choices: [{ finish_reason: 'stop', message: { content: CAPTION } }] }),
+          () => reply(200, { choices: [{ finish_reason: 'stop', message: { content: answer(body) } }] }),
           MODEL_DELAY_MS,
         );
       reply(404, {});

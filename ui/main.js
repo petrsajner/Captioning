@@ -1,12 +1,12 @@
 // Entry point: renders the shared header and run bar, polls the application state and wires the modules.
 import { api, toast } from './api.js';
 import { doImport, invalidateRenderCache, renderGrid, renderInspector } from './dataset.js';
-import { $ } from './dom.js';
+import { $, esc } from './dom.js';
 import { FolderPicker } from './folder-browser.js';
 import { diagnostic, loadTranslations, setLanguage, t } from './i18n.js';
 import { hasUnsavedRecipe, liveSettings, loadRecipe, renderRecipe } from './recipe.js';
 import { openSettings, renderRuntime } from './settings.js';
-import { hasBusy, resumeIds, ui } from './store.js';
+import { captionView, hasBusy, resumeIds, ui } from './store.js';
 
 const folderPicker = new FolderPicker(doImport);
 let pollBusy = false;
@@ -19,12 +19,15 @@ function render() {
     document.title = 'Caption Studio ' + version;
   }
   $('total-badge').textContent = state.rows.length;
-  $('pending-count').textContent = state.rows.filter(
-    (r) => !r.exists && !['invalid', 'error', 'review'].includes(r.status),
+  // Counts follow the selected Caption output; "All video models" counts an image once.
+  const format = liveSettings().output_format,
+    views = state.rows.map((r) => captionView(r, format)).filter(Boolean);
+  $('pending-count').textContent = views.filter(
+    (v) => !v.exists && !['invalid', 'error', 'review'].includes(v.status),
   ).length;
-  $('saved-count').textContent = state.rows.filter((r) => r.exists).length;
-  $('error-count').textContent = state.rows.filter((r) => ['invalid', 'error'].includes(r.status)).length;
-  $('review-count').textContent = state.rows.filter((r) => r.status === 'review').length;
+  $('saved-count').textContent = views.filter((v) => v.exists).length;
+  $('error-count').textContent = views.filter((v) => ['invalid', 'error'].includes(v.status)).length;
+  $('review-count').textContent = views.filter((v) => v.status === 'review').length;
   const j = state.job;
   $('job-title').textContent = ui.busy ? t('Working…') : diagnostic(j.message);
   $('job-count').textContent = j.total
@@ -41,8 +44,16 @@ function render() {
   const pending = resumeIds(),
     runCount = pending.length || ui.selected.size;
   $('generate').disabled = hasBusy() || !runCount;
-  $('generate').innerHTML =
-    `${pending.length ? t('Continue') : liveSettings().output_format === 'bria_json' ? t('Create BRIA JSON') : t('Create captions')}${runCount ? ' (' + runCount + ')' : ''} <span>→</span>`;
+  const label = pending.length
+    ? t('Continue')
+    : format === 'bria_json'
+      ? t('Create BRIA JSON')
+      : format === 'video_all'
+        ? t('Create captions for all video models')
+        : state.video_outputs.includes(format)
+          ? t('Create {model} captions', { model: state.caption_outputs[format].name })
+          : t('Create captions');
+  $('generate').innerHTML = `${esc(label)}${runCount ? ' (' + runCount + ')' : ''} <span>→</span>`;
   $('model-chip').querySelector('span').textContent =
     state.settings.mode === 'local'
       ? state.settings.local_source === 'external'

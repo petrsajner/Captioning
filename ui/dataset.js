@@ -2,9 +2,9 @@
 import { action, api, toast } from './api.js';
 import { $, esc } from './dom.js';
 import { diagnostic, t } from './i18n.js';
-import { saveRecipe } from './recipe.js';
+import { liveSettings, saveRecipe } from './recipe.js';
 import { openSettings } from './settings.js';
-import { hasBusy, resumeIds, ui } from './store.js';
+import { captionView, hasBusy, outputsFor, resumeIds, ui } from './store.js';
 
 const PAGE_SIZE = 60;
 const labels = {
@@ -26,9 +26,12 @@ const phaseLabels = {
   repair_json: 'Repairing JSON…',
   retry_caption: 'Requesting a response…',
 };
+// Short model names for the per-model dots on a card.
+const SHORT = { wan: 'WAN', ltx: 'LTX', h3: 'H3' };
 let page = 0,
   lastGrid = '',
-  lastCaptionHistory = '';
+  lastCaptionHistory = '',
+  lastFormat = null;
 
 // Grid and history markup is cached by content; drop the cache when the language changes.
 export function invalidateRenderCache() {
@@ -40,6 +43,15 @@ function activeRow() {
   return ui.state.rows.find((r) => r.id === ui.active);
 }
 
+function format() {
+  return liveSettings().output_format;
+}
+
+// The caption output open in the inspector.
+function activeSlot() {
+  return activeRow()?.outputs[ui.tab] || null;
+}
+
 function allowDiscard() {
   return !ui.dirty || window.confirm(t('The caption has unsaved edits. Discard these edits?'));
 }
@@ -47,33 +59,61 @@ function allowDiscard() {
 function filteredRows() {
   if (!ui.state) return [];
   const query = $('search').value.toLowerCase(),
-    filter = $('filter').value;
-  return ui.state.rows.filter(
-    (r) =>
+    filter = $('filter').value,
+    current = format();
+  return ui.state.rows.filter((r) => {
+    const view = captionView(r, current);
+    return (
       r.name.toLowerCase().includes(query) &&
       (filter === 'all' ||
-        (filter === 'saved' && r.exists) ||
-        (filter === 'pending' && !r.exists) ||
-        (filter === 'review' && r.status === 'review') ||
-        (filter === 'error' && ['error', 'invalid'].includes(r.status))),
+        (view &&
+          ((filter === 'saved' && view.exists) ||
+            (filter === 'pending' && !view.exists) ||
+            (filter === 'review' && view.status === 'review') ||
+            (filter === 'error' && ['error', 'invalid'].includes(view.status)))))
+    );
+  });
+}
+
+function statusLabel(view) {
+  return t(
+    view.status === 'processing' ? phaseLabels[view.phase] || labels.processing : labels[view.status] || view.status,
   );
+}
+
+function modelDots(row, current) {
+  const outputs = outputsFor(current);
+  if (outputs.length < 2) return '';
+  return `<span class="model-dots">${outputs
+    .filter((output) => row.outputs[output])
+    .map((output) => {
+      const slot = row.outputs[output];
+      return `<i class="model-dot ${slot.status}" title="${esc(ui.state.caption_outputs[output].name + ': ' + statusLabel(slot))}">${SHORT[output]}</i>`;
+    })
+    .join('')}</span>`;
 }
 
 export function renderGrid() {
   const { selected } = ui;
-  const rows = filteredRows();
+  const rows = filteredRows(),
+    current = format();
   page = Math.min(page, Math.max(0, Math.ceil(rows.length / PAGE_SIZE) - 1));
   const visible = rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const signature = JSON.stringify([
-    visible.map((r) => [r.id, r.status, r.phase, r.exists, selected.has(r.id)]),
+    current,
+    visible.map((r) => [
+      r.id,
+      outputsFor(current).map((o) => [r.outputs[o]?.status, r.outputs[o]?.phase, r.outputs[o]?.exists]),
+      selected.has(r.id),
+    ]),
     ui.active,
   ]);
   if (signature !== lastGrid) {
     $('grid').innerHTML = visible
-      .map(
-        (r) =>
-          `<article class="image-card ${r.status} ${r.id === ui.active ? 'active' : ''}" data-id="${r.id}" tabindex="0" aria-label="${esc(r.name)}"><input class="card-select" type="checkbox" ${selected.has(r.id) ? 'checked' : ''} aria-label="${esc(t('Select {name}', { name: r.name }))}"><img class="thumb" loading="lazy" src="/api/image/${r.id}" alt="${esc(r.name)}"><div class="card-info"><div class="card-name" title="${esc(r.path)}">${esc(r.name)}</div><div class="card-bottom"><span>${r.width} × ${r.height}</span><span class="status-label ${r.status}">${esc(t(r.status === 'processing' ? phaseLabels[r.phase] || labels.processing : labels[r.status] || r.status))}</span></div></div></article>`,
-      )
+      .map((r) => {
+        const view = captionView(r, current) || { status: 'pending' };
+        return `<article class="image-card ${view.status} ${r.id === ui.active ? 'active' : ''}" data-id="${r.id}" tabindex="0" aria-label="${esc(r.name)}"><input class="card-select" type="checkbox" ${selected.has(r.id) ? 'checked' : ''} aria-label="${esc(t('Select {name}', { name: r.name }))}"><img class="thumb" loading="lazy" src="/api/image/${r.id}" alt="${esc(r.name)}"><div class="card-info"><div class="card-name" title="${esc(r.path)}">${esc(r.name)}</div><div class="card-bottom"><span>${r.width} × ${r.height}</span><span class="status-label ${view.status}">${esc(statusLabel(view))}</span></div>${modelDots(r, current)}</div></article>`;
+      })
       .join('');
     lastGrid = signature;
   }
@@ -94,16 +134,52 @@ export function renderGrid() {
   $('select-all').indeterminate = rows.some((r) => selected.has(r.id)) && !$('select-all').checked;
 }
 
+// Words of an H3 caption are counted in its [Shot 1] description only, as the backend does.
+function h3Body(text) {
+  const match = text.match(
+    /^integrated_multimodal_description: \[Shot 1\] ([\s\S]+?)\n\noverall_soundscape: [\s\S]+\n\nnon_diegetic_music: [\s\S]+$/,
+  );
+  return match ? match[1] : text;
+}
+
 function updateWords() {
   const text = $('caption-editor').value.trim();
-  if (activeRow()?.caption_format === 'bria_json') {
+  if (ui.tab === 'bria_json') {
     try {
       JSON.parse(text);
       $('caption-words').textContent = t('JSON object');
     } catch {
       $('caption-words').textContent = t('Invalid JSON');
     }
-  } else $('caption-words').textContent = (text ? text.split(/\s+/).length : 0) + t(' words');
+  } else {
+    const words = ui.tab === 'h3' ? h3Body(text).trim() : text;
+    $('caption-words').textContent = (words ? words.split(/\s+/).length : 0) + t(' words');
+  }
+}
+
+// Tab marks: saved file, unsaved draft, or a problem.
+function tabMark(slot) {
+  if (['error', 'invalid'].includes(slot.status)) return '!';
+  if (['draft', 'review'].includes(slot.status)) return '●';
+  return slot.exists ? '✓' : '';
+}
+
+function renderTabs(row) {
+  const current = format();
+  if (current !== lastFormat) {
+    // A new Caption output choice opens its first file, unless an edit is in progress.
+    lastFormat = current;
+    if (!ui.dirty) ui.tab = null;
+  }
+  if (!row.outputs[ui.tab]) ui.tab = outputsFor(current).find((o) => row.outputs[o]) || Object.keys(row.outputs)[0];
+  $('caption-tabs').innerHTML = Object.keys(ui.state.caption_outputs)
+    .filter((output) => row.outputs[output])
+    .map((output) => {
+      const slot = row.outputs[output],
+        mark = tabMark(slot);
+      return `<button type="button" role="tab" class="caption-tab ${slot.status}" data-output="${output}" aria-selected="${output === ui.tab}" title="${esc(ui.state.caption_outputs[output].name)}">${esc(ui.state.caption_outputs[output].suffix)}${mark ? ` <span aria-hidden="true">${mark}</span>` : ''}</button>`;
+    })
+    .join('');
 }
 
 export function renderInspector() {
@@ -111,34 +187,39 @@ export function renderInspector() {
   $('inspector-empty').hidden = !!row;
   $('inspector-content').hidden = !row;
   if (!row) return;
+  renderTabs(row);
+  const slot = activeSlot();
   const src = '/api/image/' + row.id + '?full=true';
   if ($('preview-image').getAttribute('src') !== src) $('preview-image').src = src;
   $('image-name').textContent = row.name;
-  $('image-meta').textContent = `${row.width} × ${row.height} px${row.seconds ? ' · ' + row.seconds + ' s' : ''}`;
+  $('image-meta').textContent = `${row.width} × ${row.height} px${slot.seconds ? ' · ' + slot.seconds + ' s' : ''}`;
   $('image-path').textContent = row.path;
   $('image-path').title = row.path;
-  if (!ui.dirty && $('caption-editor').value !== row.caption) $('caption-editor').value = row.caption;
-  $('image-error').hidden = !row.error;
-  $('image-error').textContent = diagnostic(row.error);
+  if (!ui.dirty && $('caption-editor').value !== slot.caption) $('caption-editor').value = slot.caption;
+  $('image-error').hidden = !slot.error;
+  $('image-error').textContent = diagnostic(slot.error);
   $('caption-state').textContent = ui.dirty
     ? t('● Unsaved edits')
-    : row.status === 'draft'
+    : slot.status === 'draft'
       ? t('● Generated, not saved yet')
-      : t(labels[row.status]);
-  const json = row.caption_format === 'bria_json';
-  $('caption-output-path').textContent = t('File: ') + row.name.replace(/\.[^.]+$/, json ? '.json' : '.txt');
-  $('caption-notice').hidden = !row.notice;
-  $('caption-notice').textContent = diagnostic(row.notice || '');
+      : t(labels[slot.status]);
+  const json = ui.tab === 'bria_json';
+  $('caption-output-path').textContent =
+    t('File: ') + row.name.replace(/\.[^.]+$/, ui.state.caption_outputs[ui.tab].suffix);
+  // Several notices are stored one per line so each one is translated.
+  const notices = (slot.notice || '').split('\n').filter(Boolean);
+  $('caption-notice').hidden = !notices.length;
+  $('caption-notice').textContent = notices.map((n) => diagnostic(n)).join(' ');
   $('format-json').hidden = !json;
   $('format-json').disabled = hasBusy();
   $('caption-editor').classList.toggle('json-editor', json);
-  $('caption-editor').disabled = hasBusy() || row.status === 'invalid';
-  $('save-caption').disabled = hasBusy() || row.status === 'invalid' || !$('caption-editor').value.trim();
-  $('regenerate').disabled = hasBusy() || row.status === 'invalid';
+  $('caption-editor').disabled = hasBusy() || slot.status === 'invalid';
+  $('save-caption').disabled = hasBusy() || slot.status === 'invalid' || !$('caption-editor').value.trim();
+  $('regenerate').disabled = hasBusy() || slot.status === 'invalid';
   updateWords();
-  const history = row.generation_history || [];
+  const history = slot.generation_history || [];
   $('caption-history').hidden = !history.length;
-  const historyKey = row.id + ':' + JSON.stringify(history);
+  const historyKey = row.id + ':' + ui.tab + ':' + JSON.stringify(history);
   if (lastCaptionHistory !== historyKey) {
     lastCaptionHistory = historyKey;
     $('caption-history-title').textContent = t('Model responses ({count})', { count: history.length });
@@ -155,7 +236,7 @@ export function renderInspector() {
 
 function showCaptionHistory() {
   $('caption-history-text').textContent =
-    activeRow()?.generation_history?.[Number($('caption-history-select').value)]?.text || '';
+    activeSlot()?.generation_history?.[Number($('caption-history-select').value)]?.text || '';
   $('use-caption-history').disabled = hasBusy() || !$('caption-history-text').textContent.trim();
 }
 
@@ -167,9 +248,16 @@ function selectImage(id) {
   renderInspector();
 }
 
+function selectTab(output) {
+  if (output === ui.tab || !allowDiscard()) return;
+  ui.dirty = false;
+  ui.tab = output;
+  renderInspector();
+}
+
 async function saveCaption() {
   if (!ui.active || hasBusy()) return;
-  await api('/caption/' + ui.active, { text: $('caption-editor').value }, 'PUT');
+  await api('/caption/' + ui.active, { text: $('caption-editor').value, output: ui.tab }, 'PUT');
   ui.dirty = false;
   await ui.refresh();
   toast(t('Caption saved next to the image.'));
@@ -204,7 +292,8 @@ async function pickFiles() {
   if (result.paths.length) await doImport(result.paths);
 }
 
-async function generate(ids, regenerate = false) {
+// `output` limits the batch to one caption file (Regenerate); `resume` continues a paused batch.
+async function generate(ids, regenerate = false, { output = null, resume = false } = {}) {
   if (hasBusy() || !allowDiscard()) return;
   await saveRecipe();
   ui.dirty = false;
@@ -225,10 +314,14 @@ async function generate(ids, regenerate = false) {
       await ui.refresh();
     }
   }
-  await api('/jobs', { ids, regenerate });
+  await api('/jobs', { ids, regenerate, output, resume });
   await ui.refresh();
 }
 
+$('caption-tabs').addEventListener('click', (e) => {
+  const tab = e.target.closest('.caption-tab');
+  if (tab) selectTab(tab.dataset.output);
+});
 $('caption-history-select').onchange = showCaptionHistory;
 $('use-caption-history').onclick = () => {
   if (hasBusy()) return;
@@ -299,12 +392,11 @@ $('folder-path').addEventListener('keydown', (e) => {
 $('generate').onclick = () =>
   action(() => {
     const pending = resumeIds();
-    return generate(
-      pending.length ? pending : [...ui.selected],
-      pending.length ? !!ui.state.job.resume_regenerate : false,
-    );
+    return pending.length
+      ? generate(pending, !!ui.state.job.resume_regenerate, { resume: true })
+      : generate([...ui.selected], false);
   });
-$('regenerate').onclick = () => action(() => generate([ui.active], true));
+$('regenerate').onclick = () => action(() => generate([ui.active], true, { output: ui.tab }));
 $('stop-job').onclick = () =>
   action(async () => {
     await api('/jobs/stop', {});
