@@ -17,10 +17,11 @@ from PIL import Image
 from . import __version__, provider
 from .bria import CaptionValidationError, normalize_json
 from .errors import ProviderUnavailableError, UserError
-from .models import Settings
+from .models import OUTPUT_NAMES, OUTPUT_SUFFIX, Settings, outputs_for
 from .runtime import Runtime
-from .storage import KeyStore, archive_sidecar, fingerprint, preserve_damaged, read_json, save_json, write_caption
+from .storage import KeyStore, fingerprint, preserve_damaged, read_json, save_json, write_caption
 from .training import ATTRIBUTES
+from .video import validate_h3
 
 MAX_IMAGES = 20000
 MAX_KEY_LENGTH = 8192
@@ -39,25 +40,31 @@ class Status(StrEnum):
     INVALID = "invalid"
 
 
+class Slot(TypedDict, total=False):
+    """The caption of one output (Normal, BRIA JSON, WAN 2.2, ...) for one image."""
+
+    caption: Required[str]
+    status: Required[str]
+    error: str
+    notice: str
+    exists: bool
+    seconds: float | None
+    phase: str
+    generation_history: list[dict]
+
+
 class Row(TypedDict, total=False):
     """One dataset image as stored in session.json and shown in the UI."""
 
     id: Required[str]
     path: Required[str]
     name: Required[str]
-    caption: Required[str]
-    status: Required[str]
-    caption_format: str
+    # One slot per output; every output has its own caption file next to the image.
+    outputs: Required[dict[str, Slot]]
     # SHA-256 of each sidecar as last seen by the app; None when it did not exist.
     fingerprints: dict[str, str | None]
-    error: str
-    notice: str
     width: int
     height: int
-    exists: bool
-    seconds: float | None
-    phase: str
-    generation_history: list[dict]
 
 
 class Job(TypedDict, total=False):
@@ -73,18 +80,19 @@ class Job(TypedDict, total=False):
     output_format: str
     paused: bool
     remaining_ids: list[str]
+    # [image id, output] pairs a paused batch still has to create.
+    remaining_tasks: list[list[str]]
     resume_regenerate: bool
 
 
 STATUSES = frozenset(Status)
-ROW_DEFAULTS = {
-    "error": "",
-    "notice": "",
-    "width": 0,
-    "height": 0,
-    "exists": False,
-    "seconds": None,
-    "caption_format": "normal",
+SLOT_KEYS = ("caption", "status", "error", "notice", "exists", "seconds", "phase", "generation_history")
+SLOT_DEFAULTS = {"error": "", "notice": "", "exists": False, "seconds": None}
+LEGACY_ENCODING = "The existing caption is not UTF-8 text. Save it as UTF-8 or remove it, then load the dataset again."
+# Notices from the time .txt and .json excluded each other (before 0.2.0).
+RETIRED_NOTICES = {
+    "Both .txt and .json exist. LoRA Studio currently prefers .txt. Saving or regenerating keeps the selected format and backs up the other one.",
+    "The existing caption uses another format. Use Regenerate or turn off Skip existing captions to convert it.",
 }
 STAGE_LABELS = {
     "caption": "Captioning",
@@ -95,12 +103,53 @@ STAGE_LABELS = {
 }
 
 
+def valid_slot(slot) -> bool:
+    return isinstance(slot, dict) and slot.get("status") in STATUSES and isinstance(slot.get("caption"), str)
+
+
 def valid_row(row) -> bool:
-    return (
-        isinstance(row, dict)
-        and row.get("status") in STATUSES
-        and all(isinstance(row.get(key), str) for key in ("id", "path", "name", "caption"))
-    )
+    if not isinstance(row, dict) or not all(isinstance(row.get(key), str) for key in ("id", "path", "name")):
+        return False
+    if "outputs" in row:
+        outputs = row["outputs"]
+        return isinstance(outputs, dict) and all(k in OUTPUT_SUFFIX and valid_slot(v) for k, v in outputs.items())
+    return valid_slot(row)  # Sessions before 0.2.0 kept one caption on the row itself.
+
+
+def new_slot(**values) -> Slot:
+    slot: Slot = {"caption": "", "status": Status.PENDING, "error": "", "notice": "", "exists": False, "seconds": None}
+    slot.update(values)  # type: ignore[typeddict-item]
+    return slot
+
+
+def sidecar_names(image: Path) -> set[str]:
+    """Every caption file name an image can have, for detecting two images that would share one."""
+    return {(image.stem + suffix).casefold() for suffix in OUTPUT_SUFFIX.values()}
+
+
+def shared_sidecar(names: set[str]) -> str:
+    return f"Two files would share the caption file {min(names)}. Rename one of them."
+
+
+def read_slot(image: Path, output: str) -> Slot:
+    """The saved caption of one output, validated like a manual save."""
+    target = image.with_suffix(OUTPUT_SUFFIX[output])
+    if not target.exists():
+        return new_slot()
+    try:
+        text = target.read_text(encoding="utf-8-sig").strip()
+    except UnicodeDecodeError:
+        # Older tools often saved captions in a legacy code page; never guess and overwrite.
+        return new_slot(status=Status.INVALID, error=LEGACY_ENCODING)
+    slot = new_slot(caption=text, exists=True, status=Status.EXISTING)
+    try:
+        if output == "bria_json":
+            slot["caption"] = normalize_json(text)
+        elif output == "h3":
+            validate_h3(text)
+    except (CaptionValidationError, UserError) as exc:
+        slot.update({"status": Status.ERROR, "error": str(exc)})
+    return slot
 
 
 class Studio:
@@ -141,26 +190,66 @@ class Studio:
         path = self.root / "session.json"
         saved = read_json(path, [], self.recovered)
         rows: list[Row] = []
+        migrated = False
         for row in saved if isinstance(saved, list) else []:
             if not valid_row(row):
                 continue
-            for key, value in ROW_DEFAULTS.items():
-                row.setdefault(key, value)
-            # Sessions from before 0.1.5 kept a single .txt hash.
-            legacy_txt = row.pop("fingerprint", None)
-            if not isinstance(row.get("fingerprints"), dict):
-                try:
-                    json_hash = fingerprint(Path(row["path"]).with_suffix(".json"))
-                except (UserError, OSError):
-                    json_hash = None
-                row["fingerprints"] = {".txt": legacy_txt, ".json": json_hash}
-            if row["status"] in (Status.PROCESSING, Status.QUEUED):
-                row.update({"status": Status.PENDING, "error": "The previous run was interrupted. You can continue."})
+            if "outputs" not in row:
+                row, migrated = self._migrate_row(row), True
+            for slot in row["outputs"].values():
+                for key, value in SLOT_DEFAULTS.items():
+                    slot.setdefault(key, value)  # type: ignore[misc]
+                if slot["status"] in (Status.PROCESSING, Status.QUEUED):
+                    slot.update(
+                        {"status": Status.PENDING, "error": "The previous run was interrupted. You can continue."}
+                    )
+            row.setdefault("width", 0)
+            row.setdefault("height", 0)
+            hashes = row.setdefault("fingerprints", {})
+            for suffix in OUTPUT_SUFFIX.values():
+                if suffix not in hashes:
+                    try:
+                        hashes[suffix] = fingerprint(Path(row["path"]).with_suffix(suffix))
+                    except (UserError, OSError):
+                        hashes[suffix] = None
             rows.append(row)
         if path.exists() and (not isinstance(saved, list) or len(rows) != len(saved)):
             self.recovered.append(preserve_damaged(path).name)
             save_json(path, rows)
+        elif migrated:
+            save_json(path, rows)
         return rows
+
+    @staticmethod
+    def _migrate_row(old: dict) -> Row:
+        """A row from before 0.2.0: its one caption becomes the slot of its format, the rest come from disk."""
+        image = Path(old["path"])
+        slot = new_slot(**{key: old[key] for key in SLOT_KEYS if key in old})
+        if slot["notice"] in RETIRED_NOTICES:
+            slot["notice"] = ""
+        if slot["status"] == Status.INVALID:
+            outputs = {output: new_slot(status=Status.INVALID, error=slot["error"]) for output in OUTPUT_SUFFIX}
+        else:
+            outputs = {}
+            for output in OUTPUT_SUFFIX:
+                try:
+                    outputs[output] = read_slot(image, output) if image.is_file() else new_slot()
+                except OSError:
+                    outputs[output] = new_slot()
+            outputs["bria_json" if old.get("caption_format") == "bria_json" else "normal"] = slot
+        hashes = old.get("fingerprints")
+        if not isinstance(hashes, dict):
+            # Sessions before 0.1.5 kept a single .txt hash.
+            hashes = {".txt": old.get("fingerprint")}
+        return {
+            "id": old["id"],
+            "path": old["path"],
+            "name": old["name"],
+            "outputs": outputs,
+            "fingerprints": hashes,
+            "width": old.get("width", 0),
+            "height": old.get("height", 0),
+        }
 
     def idle(self):
         if self.job["running"] or self.importing:
@@ -214,7 +303,7 @@ class Studio:
             return self.runtime.api_key if self.runtime.process else ""
         return self.keys.get("local:" + settings.local_url)
 
-    def row(self, image_id: str):
+    def row(self, image_id: str) -> Row:
         row = next((r for r in self.rows if r["id"] == image_id), None)
         if not row:
             raise UserError("The image is not in the open dataset.")
@@ -222,13 +311,12 @@ class Studio:
 
     @staticmethod
     def collision(image: Path):
-        matches = [
-            p.name
-            for p in image.parent.iterdir()
-            if p.is_file() and p.suffix.lower() in provider.EXTENSIONS and p.stem.casefold() == image.stem.casefold()
-        ]
-        if len(matches) > 1:
-            raise UserError("Duplicate filename stem: " + ", ".join(matches) + ". Rename the files first.")
+        names = sidecar_names(image)
+        for other in image.parent.iterdir():
+            if other.name.casefold() != image.name.casefold() and other.suffix.lower() in provider.EXTENSIONS:
+                shared = names & sidecar_names(other)
+                if shared and other.is_file():
+                    raise UserError(shared_sidecar(shared))
 
     def _scan(self, paths: list[str], folder: str, recursive: bool, append: bool) -> list[Row]:
         files: list[Path] = []
@@ -253,10 +341,13 @@ class Studio:
         rows = list(self.rows) if append else []
         known = {r["path"].casefold() for r in rows}
         # Index each directory once; thousands of images must not trigger an O(n²) scan.
-        stem_counts: dict[Path, Counter[str]] = {}
+        claims: dict[Path, Counter[str]] = {}
         for parent in {p.parent for p in unique.values()}:
-            stem_counts[parent] = Counter(
-                p.stem.casefold() for p in parent.iterdir() if p.is_file() and p.suffix.lower() in provider.EXTENSIONS
+            claims[parent] = Counter(
+                name
+                for p in parent.iterdir()
+                if p.is_file() and p.suffix.lower() in provider.EXTENSIONS
+                for name in sidecar_names(p)
             )
         for path in sorted(unique.values(), key=lambda p: str(p).casefold()):
             if str(path).casefold() in known:
@@ -265,54 +356,25 @@ class Studio:
                 "id": uuid.uuid4().hex,
                 "path": str(path),
                 "name": path.name,
-                "caption": "",
-                "status": Status.PENDING,
-                "error": "",
+                "outputs": {},
                 "width": 0,
                 "height": 0,
-                "exists": False,
-                "seconds": None,
             }
             try:
-                if stem_counts[path.parent][path.stem.casefold()] > 1:
-                    raise UserError("Duplicate filename stem: " + path.stem + ". Rename the files first.")
+                shared = {name for name in sidecar_names(path) if claims[path.parent][name] > 1}
+                if shared:
+                    raise UserError(shared_sidecar(shared))
                 with Image.open(path) as im:
                     row.update({"width": im.width, "height": im.height})
                     if getattr(im, "n_frames", 1) > 1:
                         raise UserError("Multi-frame images are not supported. Select a single frame.")
                     im.verify()
-                row["fingerprints"] = {suffix: fingerprint(path.with_suffix(suffix)) for suffix in (".txt", ".json")}
-                preferred = ".json" if self.settings.output_format == "bria_json" else ".txt"
-                other = ".txt" if preferred == ".json" else ".json"
-                suffix = (
-                    preferred
-                    if path.with_suffix(preferred).exists()
-                    else other
-                    if path.with_suffix(other).exists()
-                    else preferred
-                )
-                target = path.with_suffix(suffix)
-                row["caption_format"] = "bria_json" if suffix == ".json" else "normal"
-                if target.exists():
-                    try:
-                        existing = target.read_text(encoding="utf-8-sig").strip()
-                    except UnicodeDecodeError:
-                        # Older tools often saved captions in a legacy code page; never guess and overwrite.
-                        raise UserError(
-                            "The existing caption is not UTF-8 text. Save it as UTF-8 or remove it, then load the dataset again."
-                        ) from None
-                    row.update({"caption": existing, "exists": True, "status": Status.EXISTING})
-                    if suffix == ".json":
-                        try:
-                            row["caption"] = normalize_json(row["caption"])
-                        except CaptionValidationError as exc:
-                            row.update({"status": Status.ERROR, "error": str(exc)})
-                if all(row["fingerprints"].values()):
-                    row["notice"] = (
-                        "Both .txt and .json exist. LoRA Studio currently prefers .txt. Saving or regenerating keeps the selected format and backs up the other one."
-                    )
+                row["fingerprints"] = {
+                    suffix: fingerprint(path.with_suffix(suffix)) for suffix in OUTPUT_SUFFIX.values()
+                }
+                row["outputs"] = {output: read_slot(path, output) for output in OUTPUT_SUFFIX}
             except Exception as e:
-                row.update({"status": Status.INVALID, "error": str(e)})
+                row["outputs"] = {output: new_slot(status=Status.INVALID, error=str(e)) for output in OUTPUT_SUFFIX}
             rows.append(row)
         return rows
 
@@ -326,60 +388,54 @@ class Studio:
         finally:
             self.importing = False
 
-    def save_row(self, image_id: str, text: str):
+    def save_row(self, image_id: str, text: str, output: str = "normal"):
         self.idle()
+        if output not in OUTPUT_SUFFIX:
+            raise UserError("Unknown caption output.")
         row = self.row(image_id)
-        if row["status"] == Status.INVALID:
-            raise UserError(row["error"])
+        slot = row["outputs"][output]
+        if slot["status"] == Status.INVALID:
+            raise UserError(slot.get("error", ""))
         image = Path(row["path"])
         if not image.is_file():
             raise UserError("The original image no longer exists.")
         self.collision(image)
-        if row.get("caption_format") == "bria_json":
-            text = normalize_json(text)
-        self._write_row(row, text, row.get("caption_format", "normal"), overwrite=True)
+        self._write_row(row, output, text, overwrite=True)
         self.persist()
 
     @staticmethod
-    def _check_sidecars(row):
-        image = Path(row["path"])
-        hashes = row["fingerprints"]
-        for suffix in (".txt", ".json"):
-            if fingerprint(image.with_suffix(suffix)) != hashes.get(suffix):
-                raise UserError("The caption was changed outside the app. Reload the dataset.")
+    def _check_sidecar(row: Row, suffix: str):
+        if fingerprint(Path(row["path"]).with_suffix(suffix)) != row["fingerprints"].get(suffix):
+            raise UserError("The caption was changed outside the app. Reload the dataset.")
 
-    def _write_row(self, row, text, output_format, overwrite):
-        if output_format == "bria_json":
+    def _write_row(self, row: Row, output: str, text: str, overwrite: bool):
+        """Write one output's caption file; the other caption files are never touched."""
+        if output == "bria_json":
             text = normalize_json(text)
-        self._check_sidecars(row)
-        suffix = ".json" if output_format == "bria_json" else ".txt"
-        other = ".txt" if suffix == ".json" else ".json"
-        image = Path(row["path"])
+        elif output == "h3":
+            validate_h3(text)
+        suffix = OUTPUT_SUFFIX[output]
+        self._check_sidecar(row, suffix)
         hashes = row["fingerprints"]
-        if hashes.get(other) is not None and not overwrite:
-            raise FileExistsError("The caption already exists in another format.")
-        digest = write_caption(image, text, hashes.get(suffix), overwrite=overwrite, suffix=suffix)
-        hashes[suffix] = digest
-        if hashes.get(other) is not None:
-            archive_sidecar(image.with_suffix(other), hashes[other])
-            hashes[other] = None
-        row.update(
-            {
-                "caption": text.strip(),
-                "caption_format": output_format,
-                "exists": True,
-                "status": Status.SAVED,
-                "error": "",
-                "notice": "",
-            }
+        hashes[suffix] = write_caption(Path(row["path"]), text, hashes.get(suffix), overwrite=overwrite, suffix=suffix)
+        row["outputs"][output].update(
+            {"caption": text.strip(), "exists": True, "status": Status.SAVED, "error": "", "notice": ""}
         )
 
-    async def start_job(self, ids: list[str], regenerate=False):
+    async def start_job(self, ids: list[str], regenerate=False, resume=False):
         self.idle()
-        selected = [self.row(i) for i in dict.fromkeys(ids)]
-        if not selected:
-            raise UserError("Select at least one image.")
         settings = self.settings.model_copy(deep=True)
+        if resume and self.job.get("paused"):
+            # Continue exactly the image and output pairs the paused batch had left.
+            wanted, present = set(ids), {r["id"] for r in self.rows}
+            pairs = [(i, o) for i, o in self.job.get("remaining_tasks", []) if i in wanted and i in present]
+            tasks = [(self.row(i), o) for i, o in pairs]
+        else:
+            outputs = outputs_for(settings.output_format)
+            rows = [self.row(i) for i in dict.fromkeys(ids)]
+            tasks = [(row, o) for row in rows for o in outputs if o in row["outputs"]]
+        if not tasks:
+            raise UserError("Select at least one image.")
         if settings.mode == "cloud":
             if not settings.cloud_model.strip():
                 raise UserError("Select a cloud model with image support in Settings.")
@@ -390,7 +446,7 @@ class Studio:
             key = self.local_key(settings)
         self.job = {
             "running": True,
-            "total": len(selected),
+            "total": len(tasks),
             "completed": 0,
             "saved": 0,
             "errors": 0,
@@ -400,32 +456,38 @@ class Studio:
             "id": uuid.uuid4().hex,
             "output_format": settings.output_format,
         }
-        for row in selected:
-            if row["status"] != Status.INVALID:
-                row["status"] = Status.QUEUED
+        for row, output in tasks:
+            if row["outputs"][output]["status"] != Status.INVALID:
+                row["outputs"][output]["status"] = Status.QUEUED
         self.persist()
-        self.task = asyncio.create_task(self._run(selected, settings, key, regenerate))
+        self.task = asyncio.create_task(self._run(tasks, settings, key, regenerate))
 
-    def _progress(self, row, settings, event):
+    def _task_name(self, row: Row, output: str) -> str:
+        """The image name, plus the model when one batch creates several outputs."""
+        return row["name"] if self.job.get("output_format") == output else row["name"] + " · " + OUTPUT_NAMES[output]
+
+    def _progress(self, row: Row, output: str, settings: Settings, event):
+        slot = row["outputs"][output]
         stage = event.get("stage", "caption")
-        row["phase"] = stage
-        self.job["message"] = STAGE_LABELS.get(stage, "Processing") + " · " + row["name"]
+        slot["phase"] = stage
+        self.job["message"] = STAGE_LABELS.get(stage, "Processing") + " · " + self._task_name(row, output)
         if event.get("kind") == "response":
-            row["generation_history"].append({k: v for k, v in event.items() if k != "kind"})
+            slot.setdefault("generation_history", []).append({k: v for k, v in event.items() if k != "kind"})
             self.persist()
         if event.get("kind") in ("response", "request_error"):
-            self._log_generation(row, settings, event)
+            self._log_generation(row, output, settings, event)
 
-    def _log_generation(self, row, settings, event):
+    def _log_generation(self, row: Row, output: str, settings: Settings, event):
         """Operational evidence without images, captions, prompts or credentials."""
         diagnostic = {
             "time": datetime.now(UTC).isoformat(),
             "job": self.job.get("id"),
             "image": row["id"],
+            "output": output,
             "mode": settings.mode,
             "model": settings.cloud_model if settings.mode == "cloud" else settings.local_model_id,
             "target_words": settings.words,
-            **{k: v for k, v in event.items() if k not in ("kind", "text")},
+            **{k: v for k, v in event.items() if k not in ("kind", "text", "draft")},
         }
         log = self.root / "logs" / "generation.jsonl"
         try:
@@ -435,64 +497,55 @@ class Studio:
         except OSError:
             pass  # Diagnostic logging must not turn a valid caption into a failure.
 
-    async def _run(self, selected, settings, key, regenerate):
+    async def _run(self, tasks: list[tuple[Row, str]], settings: Settings, key: str, regenerate: bool):
         try:
-            for row in selected:
-                if row["status"] == Status.INVALID:
+            for row, output in tasks:
+                slot = row["outputs"][output]
+                if slot["status"] == Status.INVALID:
                     self.job["errors"] += 1
                     self.job["completed"] += 1
                     continue
                 image = Path(row["path"])
-                if (
-                    settings.skip_existing
-                    and not regenerate
-                    and any(image.with_suffix(s).exists() for s in (".txt", ".json"))
-                ):
-                    row.update({"status": Status.SKIPPED, "error": ""})
-                    if row.get("caption_format", "normal") != settings.output_format:
-                        row["notice"] = (
-                            "The existing caption uses another format. Use Regenerate or turn off Skip existing captions to convert it."
-                        )
+                suffix = OUTPUT_SUFFIX[output]
+                if settings.skip_existing and not regenerate and image.with_suffix(suffix).exists():
+                    slot.update({"status": Status.SKIPPED, "error": ""})
                     self.job["skipped"] += 1
                     self.job["completed"] += 1
                     continue
-                row.update({"status": Status.PROCESSING, "error": "", "phase": "caption", "generation_history": []})
-                self.job["message"] = row["name"]
+                slot.update({"status": Status.PROCESSING, "error": "", "phase": "caption", "generation_history": []})
+                self.job["message"] = self._task_name(row, output)
                 started = time.monotonic()
+                task_settings = settings.model_copy(update={"output_format": output})
                 try:
                     self.collision(image)
                     # Check for external edits before spending time or cloud credits.
-                    self._check_sidecars(row)
-                    progress = functools.partial(self._progress, row, settings)
-                    result = await provider.generate(image, settings, key, on_progress=progress)
-                    row.update(
+                    self._check_sidecar(row, suffix)
+                    progress = functools.partial(self._progress, row, output, task_settings)
+                    result = await provider.generate(image, task_settings, key, on_progress=progress)
+                    slot.update(
                         {
                             "caption": result.text,
-                            "caption_format": settings.output_format,
                             "status": Status.DRAFT,
                             "notice": "",
                             "seconds": round(time.monotonic() - started, 1),
                         }
                     )
                     if result.needs_review:
-                        row["status"] = Status.REVIEW
+                        slot["status"] = Status.REVIEW
                         self.job["review"] += 1
                     elif settings.auto_save:
                         self.collision(image)
-                        self._write_row(
-                            row, result.text, settings.output_format, overwrite=regenerate or not settings.skip_existing
-                        )
+                        self._write_row(row, output, result.text, overwrite=regenerate or not settings.skip_existing)
                         self.job["saved"] += 1
-                    row["notice"] = result.notice
-                    row["phase"] = ""
+                    slot["notice"] = result.notice
+                    slot["phase"] = ""
                 except asyncio.CancelledError:
-                    received = [h for h in row.get("generation_history", []) if h.get("text")]
+                    received = [h for h in slot.get("generation_history", []) if h.get("text")]
                     if received:
                         best = next((h for h in reversed(received) if h.get("complete")), received[0])
-                        row.update(
+                        slot.update(
                             {
                                 "caption": best["text"],
-                                "caption_format": settings.output_format,
                                 "status": Status.DRAFT if best.get("complete") else Status.REVIEW,
                                 "error": "",
                                 "notice": "Batch stopped. The received response has been kept as a draft.",
@@ -500,10 +553,10 @@ class Studio:
                             }
                         )
                     else:
-                        row.update({"status": Status.PENDING, "error": "Processing was stopped.", "phase": ""})
+                        slot.update({"status": Status.PENDING, "error": "Processing was stopped.", "phase": ""})
                     raise
                 except ProviderUnavailableError as e:
-                    row.update(
+                    slot.update(
                         {
                             "status": Status.PENDING,
                             "error": "",
@@ -511,21 +564,21 @@ class Studio:
                             "notice": "Waiting for the model connection to be restored.",
                         }
                     )
+                    waiting = [(r, o) for r, o in tasks if r["outputs"][o]["status"] in (Status.QUEUED, Status.PENDING)]
                     self.job.update(
                         {
                             "paused": True,
                             "message": "Batch paused: " + str(e),
-                            "remaining_ids": [
-                                r["id"] for r in selected if r["status"] in (Status.QUEUED, Status.PENDING)
-                            ],
+                            "remaining_ids": list(dict.fromkeys(r["id"] for r, _ in waiting)),
+                            "remaining_tasks": [[r["id"], o] for r, o in waiting],
                             "resume_regenerate": regenerate,
                         }
                     )
                     return
                 except Exception as e:
-                    row.update({"status": Status.ERROR, "error": str(e)})
+                    slot.update({"status": Status.ERROR, "error": str(e)})
                     if isinstance(e, CaptionValidationError):
-                        row.update({"caption": e.draft, "caption_format": "bria_json"})
+                        slot["caption"] = e.draft
                     self.job["errors"] += 1
                 self.job["completed"] += 1
                 self.persist()
@@ -537,9 +590,9 @@ class Studio:
         except asyncio.CancelledError:
             self.job["message"] = "Batch stopped; saved captions have been preserved"
         finally:
-            for row in selected:
-                if row["status"] in (Status.QUEUED, Status.PROCESSING):
-                    row["status"] = Status.PENDING
+            for row, output in tasks:
+                if row["outputs"][output]["status"] in (Status.QUEUED, Status.PROCESSING):
+                    row["outputs"][output]["status"] = Status.PENDING
             self.job["running"] = False
             self.persist()
 
@@ -552,8 +605,9 @@ class Studio:
                 pass
             # Also handles cancellation before the task's coroutine first runs.
             for row in self.rows:
-                if row["status"] in (Status.QUEUED, Status.PROCESSING):
-                    row["status"] = Status.PENDING
+                for slot in row["outputs"].values():
+                    if slot["status"] in (Status.QUEUED, Status.PROCESSING):
+                        slot["status"] = Status.PENDING
             self.job.update({"running": False, "message": "Batch stopped; saved captions have been preserved"})
             self.persist()
 

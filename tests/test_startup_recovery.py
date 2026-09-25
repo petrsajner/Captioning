@@ -70,9 +70,9 @@ def test_session_rows_this_version_cannot_use_are_dropped_and_kept(tmp_path):
     assert [r["id"] for r in studio.rows] == ["1"]
     row = studio.rows[0]
     assert "fingerprint" not in row  # the pre-0.1.5 single hash moved into fingerprints
-    assert (
-        row["status"] == "pending" and row["exists"] is False and row["fingerprints"] == {".txt": "abc", ".json": None}
-    )
+    slot = row["outputs"]["normal"]
+    assert slot["status"] == "pending" and slot["exists"] is False and slot["caption"] == "A caption."
+    assert row["fingerprints"] == {".txt": "abc", ".json": None, ".wan.txt": None, ".ltx.txt": None, ".h3.txt": None}
     assert json.loads(damaged(tmp_path, "session.json")[0].read_text(encoding="utf-8")) == rows
     assert [r["id"] for r in json.loads((tmp_path / "session.json").read_text(encoding="utf-8"))] == ["1"]
     assert "recovered" in studio.snapshot() and len(studio.recovered) == 1

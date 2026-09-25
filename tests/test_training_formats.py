@@ -135,7 +135,7 @@ def test_job_freezes_caption_policy_and_output_format(tmp_path, monkeypatch):
     asyncio.run(run())
 
 
-def test_conversion_archives_old_format_and_round_trips(tmp_path, monkeypatch):
+def test_text_and_json_captions_coexist_and_round_trip(tmp_path, monkeypatch):
     async def run():
         path = tmp_path / "dataset" / "image.png"
         path.parent.mkdir()
@@ -145,26 +145,26 @@ def test_conversion_archives_old_format_and_round_trips(tmp_path, monkeypatch):
         studio = Studio(tmp_path / "app")
         await studio.import_images([str(path)], "", False, False)
         row = studio.rows[0]
+        assert row["outputs"]["normal"]["status"] == "existing" and row["outputs"]["bria_json"]["status"] == "pending"
         studio.settings.output_format = "bria_json"
 
         async def bria(*_, **kwargs):
             return CaptionResult(normalize_json(json.dumps(example())))
 
         monkeypatch.setattr("captioning.provider.generate", bria)
+        # Skipping looks only at the selected output's file, so the existing .txt does not block BRIA.
         await studio.start_job([row["id"]])
         await studio.task
-        assert row["status"] == "skipped" and not path.with_suffix(".json").exists()
-        assert "another format" in row["notice"]
-        await studio.start_job([row["id"]], regenerate=True)
-        await studio.task
-        assert row["status"] == "saved"
-        assert not path.with_suffix(".txt").exists()
+        assert row["outputs"]["bria_json"]["status"] == "saved"
+        assert path.with_suffix(".txt").read_bytes() == original
         validate_json(path.with_suffix(".json").read_text(encoding="utf-8"))
-        backups = list((path.parent / ".caption-backups").glob("*.bak"))
-        assert any(p.read_bytes() == original for p in backups)
+        assert not (path.parent / ".caption-backups").exists()
+        await studio.start_job([row["id"]])
+        await studio.task
+        assert row["outputs"]["bria_json"]["status"] == "skipped"
         previous = path.with_suffix(".json").read_bytes()
         with pytest.raises(CaptionValidationError):
-            studio.save_row(row["id"], '{"not":"FIBO"}')
+            studio.save_row(row["id"], '{"not":"FIBO"}', "bria_json")
         assert path.with_suffix(".json").read_bytes() == previous
         studio.settings.output_format = "normal"
 
@@ -174,9 +174,10 @@ def test_conversion_archives_old_format_and_round_trips(tmp_path, monkeypatch):
         monkeypatch.setattr("captioning.provider.generate", normal)
         await studio.start_job([row["id"]], regenerate=True)
         await studio.task
-        assert row["status"] == "saved" and not path.with_suffix(".json").exists()
+        assert row["outputs"]["normal"]["status"] == "saved"
         assert path.with_suffix(".txt").read_text() == "New text caption\n"
-        assert any(p.read_bytes() == previous for p in (path.parent / ".caption-backups").glob("*.bak"))
+        assert path.with_suffix(".json").read_bytes() == previous
+        assert [p.read_bytes() for p in (path.parent / ".caption-backups").glob("*.bak")] == [original]
 
     asyncio.run(run())
 
@@ -198,12 +199,18 @@ def test_bria_draft_preserves_txt_until_manual_save_and_detects_external_edit(tm
         row = studio.rows[0]
         await studio.start_job([row["id"]], regenerate=True)
         await studio.task
-        assert row["status"] == "draft" and row["caption_format"] == "bria_json"
+        slot = row["outputs"]["bria_json"]
+        assert slot["status"] == "draft" and row["outputs"]["normal"]["caption"] == "old"
         assert path.with_suffix(".txt").read_text() == "old" and not path.with_suffix(".json").exists()
-        path.with_suffix(".txt").write_text("user edit", encoding="utf-8")
+        path.with_suffix(".json").write_text('{"made": "elsewhere"}', encoding="utf-8")
         with pytest.raises(UserError, match="outside the app"):
-            studio.save_row(row["id"], row["caption"])
-        assert not path.with_suffix(".json").exists() and path.with_suffix(".txt").read_text() == "user edit"
+            studio.save_row(row["id"], slot["caption"], "bria_json")
+        assert path.with_suffix(".json").read_text() == '{"made": "elsewhere"}'
+        # An edit of the .txt does not block the BRIA file; the two files are independent.
+        path.with_suffix(".json").unlink()
+        path.with_suffix(".txt").write_text("user edit", encoding="utf-8")
+        studio.save_row(row["id"], slot["caption"], "bria_json")
+        assert path.with_suffix(".json").exists() and path.with_suffix(".txt").read_text() == "user edit"
 
     asyncio.run(run())
 
@@ -243,7 +250,8 @@ def test_bad_generated_json_keeps_original_and_exposes_repairable_draft(tmp_path
         row = studio.rows[0]
         await studio.start_job([row["id"]], regenerate=True)
         await studio.task
-        assert row["status"] == "error" and "wrong shape" in row["caption"]
+        slot = row["outputs"]["bria_json"]
+        assert slot["status"] == "error" and "wrong shape" in slot["caption"]
         assert path.with_suffix(".txt").read_text() == "keep this" and not path.with_suffix(".json").exists()
 
     asyncio.run(run())

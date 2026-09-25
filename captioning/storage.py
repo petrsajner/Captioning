@@ -13,6 +13,7 @@ from ctypes import wintypes
 from pathlib import Path
 
 from .errors import UserError
+from .models import OUTPUT_SUFFIX
 
 
 def atomic_bytes(path: Path, content: bytes) -> None:
@@ -60,7 +61,7 @@ def fingerprint(path: Path) -> str | None:
 
 def write_caption(image: Path, text: str, expected: str | None, overwrite: bool, suffix=".txt") -> str:
     """UTF-8 sidecar; preserve existing bytes and detect external modifications."""
-    if suffix not in (".txt", ".json"):
+    if suffix not in OUTPUT_SUFFIX.values():
         raise UserError("Invalid caption extension.")
     text = text.strip()
     if not text:
@@ -98,18 +99,6 @@ def write_caption(image: Path, text: str, expected: str | None, overwrite: bool,
                 raise UserError("The caption was changed outside the app.")
             atomic_bytes(path, data)
     return hashlib.sha256(data).hexdigest()
-
-
-def archive_sidecar(path: Path, expected: str):
-    """Retire the other caption format after a successful format conversion."""
-    if fingerprint(path) != expected:
-        raise UserError(
-            "The original caption changed outside the app. The old format was not moved; reload the dataset."
-        )
-    backup_dir = path.parent / ".caption-backups"
-    backup_dir.mkdir(exist_ok=True)
-    target = backup_dir / (path.name + "." + uuid.uuid4().hex + ".bak")
-    path.rename(target)
 
 
 class Blob(ctypes.Structure):

@@ -53,10 +53,13 @@ class DiscoveryRequest(BaseModel):
 class JobRequest(BaseModel):
     ids: list[str] = Field(max_length=MAX_IMAGES)
     regenerate: bool = False
+    # Continue the image and output pairs a paused batch had left.
+    resume: bool = False
 
 
 class CaptionRequest(BaseModel):
     text: str
+    output: str = "normal"
 
 
 class FolderRequest(BaseModel):
@@ -219,12 +222,12 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
 
     @app.put("/api/caption/{image_id}")
     async def caption(image_id: str, body: CaptionRequest):
-        studio.save_row(image_id, body.text)
+        studio.save_row(image_id, body.text, body.output)
         return {"ok": True}
 
     @app.post("/api/jobs")
     async def jobs(body: JobRequest):
-        await studio.start_job(body.ids, body.regenerate)
+        await studio.start_job(body.ids, body.regenerate, body.resume)
         return {"ok": True}
 
     @app.post("/api/jobs/stop")

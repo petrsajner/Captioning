@@ -139,7 +139,8 @@ def test_review_draft_preserves_existing_file_and_is_not_counted_as_failure(tmp_
         monkeypatch.setattr("captioning.provider.generate", fake)
         await studio.start_job([studio.rows[0]["id"]], regenerate=True)
         await studio.task
-        assert studio.rows[0]["status"] == "review" and studio.rows[0]["caption"] == "Partial answer with a"
+        slot = studio.rows[0]["outputs"]["normal"]
+        assert slot["status"] == "review" and slot["caption"] == "Partial answer with a"
         assert studio.job["errors"] == 0 and studio.job["review"] == 1 and studio.job["saved"] == 0
         assert target.read_text() == "original"
 
@@ -172,7 +173,8 @@ def test_cancel_during_rewrite_retains_received_caption(tmp_path, monkeypatch):
         await studio.start_job([studio.rows[0]["id"]])
         await waiting.wait()
         await studio.cancel_job()
-        assert studio.rows[0]["status"] == "draft" and studio.rows[0]["caption"] == caption(60)
+        slot = studio.rows[0]["outputs"]["normal"]
+        assert slot["status"] == "draft" and slot["caption"] == caption(60)
         assert not path.with_suffix(".txt").exists()
         log = (studio.root / "logs/generation.jsonl").read_text(encoding="utf-8")
         assert "finish_reason" in log and caption(60) not in log
@@ -246,7 +248,7 @@ def test_server_disappearance_pauses_batch_instead_of_failing_all_images(tmp_pat
         await studio.start_job([r["id"] for r in studio.rows])
         await studio.task
         assert calls == ["0.png", "1.png"]
-        assert [r["status"] for r in studio.rows] == ["saved", "pending", "pending"]
+        assert [r["outputs"]["normal"]["status"] for r in studio.rows] == ["saved", "pending", "pending"]
         assert studio.job["paused"] and studio.job["errors"] == 0 and studio.job["saved"] == 1
         assert (folder / "0.txt").read_text() == "A complete caption.\n"
         pending = studio.job["remaining_ids"]

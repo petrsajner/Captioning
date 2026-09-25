@@ -450,7 +450,16 @@
     "ON = free future change": "ON = volně měnitelné promptem",
     "OFF = fixed in LoRA": "OFF = fixováno v LoRA",
     "* Graphics memory measured on an RTX 5090 with a 64k context: Q2 13.0 GiB, IQ3 13.6 GiB, Q4 18.9 GiB. The vision projector (0.93 GB) and runtime are downloaded separately. Q4 is the default balance. IQ3 has lower precision and analyzes images on the processor, which is slower; Q2 keeps them on the graphics card. CUDA requires a compatible, up-to-date NVIDIA driver.": "* Paměť grafické karty změřená na RTX 5090 s kontextem 64k: Q2 13,0 GiB, IQ3 13,6 GiB, Q4 18,9 GiB. Obrazová část modelu (0,93 GB) a prostředí se stahují zvlášť. Q4 je výchozí kompromis. IQ3 má nižší přesnost a obrázky zpracovává na procesoru, což je pomalejší; Q2 je zpracovává na grafické kartě. CUDA vyžaduje kompatibilní aktuální ovladač NVIDIA.",
-    "Qwen3.8 27B · Q2 · 9.8 GB · from 16 GB VRAM*": "Qwen3.8 27B · Q2 · 9,8 GB · od 16 GB VRAM*"
+    "Qwen3.8 27B · Q2 · 9.8 GB · from 16 GB VRAM*": "Qwen3.8 27B · Q2 · 9,8 GB · od 16 GB VRAM*",
+    "Unknown caption output.": "Neznámý výstup popisků.",
+    "Two files would share the caption file {name}. Rename one of them.": "Dva soubory by sdílely soubor popisku {name}. Jeden z nich přejmenujte.",
+    "H3 captions need the three fields integrated_multimodal_description, overall_soundscape and non_diegetic_music, with [Shot 1] first.": "Popisky pro H3 potřebují tři pole integrated_multimodal_description, overall_soundscape a non_diegetic_music a na začátku [Shot 1].",
+    "Put the character name into [Shot 1] manually.": "Doplňte jméno postavy do [Shot 1] ručně.",
+    "The character name was added at the start.": "Jméno postavy bylo doplněno na začátek.",
+    "The character was named more than once; later mentions now use the class.": "Postava byla pojmenována víckrát; další zmínky teď používají třídu.",
+    "The trigger appears more than once in this caption.": "Trigger je v tomto popisku víckrát.",
+    "The trigger is part of another word here; trainers may miss it. Choose a more distinct name.": "Trigger je tu součástí jiného slova a trenér ho může přehlédnout. Zvolte výraznější jméno.",
+    "The trigger contains a space; a single invented word works best.": "Trigger obsahuje mezeru; nejlépe funguje jedno vymyšlené slovo."
   },
   "grammar": {
     "dangling_words": [

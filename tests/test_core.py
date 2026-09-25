@@ -64,12 +64,12 @@ def test_import_recursion_conflicts_append_corruption(tmp_path):
     studio = Studio(tmp_path / "app")
     asyncio.run(studio.import_images([], str(data), False, False))
     assert len(studio.rows) == 3
-    assert all(r["status"] == "invalid" for r in studio.rows)
+    assert all(slot["status"] == "invalid" for r in studio.rows for slot in r["outputs"].values())
     asyncio.run(studio.import_images([], str(data), True, True))
     assert len(studio.rows) == 4
-    assert next(r for r in studio.rows if r["name"] == "valid.webp")["status"] == "pending"
+    assert next(r for r in studio.rows if r["name"] == "valid.webp")["outputs"]["normal"]["status"] == "pending"
     asyncio.run(studio.import_images([str(data / "same.png")], "", False, False))
-    assert studio.rows[0]["status"] == "invalid"  # collision even outside selection
+    assert studio.rows[0]["outputs"]["normal"]["status"] == "invalid"  # collision even outside selection
 
 
 def test_batch_failure_skip_draft_and_resume(tmp_path, monkeypatch):
@@ -96,11 +96,11 @@ def test_batch_failure_skip_draft_and_resume(tmp_path, monkeypatch):
         assert studio.job["errors"] == 1 and studio.job["saved"] == 1 and studio.job["skipped"] == 1
         assert first.with_suffix(".txt").read_text() == "keep"
         reloaded = Studio(tmp_path / "app")
-        assert reloaded.rows[2]["caption"] == "A red image."
+        assert reloaded.rows[2]["outputs"]["normal"]["caption"] == "A red image."
         reloaded.settings.auto_save = False
         await reloaded.start_job([reloaded.rows[2]["id"]], regenerate=True)
         await reloaded.task
-        assert reloaded.rows[2]["status"] == "draft"
+        assert reloaded.rows[2]["outputs"]["normal"]["status"] == "draft"
 
     asyncio.run(run())
 
@@ -125,7 +125,7 @@ def test_cancel_does_not_save(tmp_path, monkeypatch, before_first_tick):
         await studio.cancel_job()
         assert not image.with_suffix(".txt").exists()
         assert not studio.job["running"]
-        assert studio.rows[0]["status"] == "pending"
+        assert studio.rows[0]["outputs"]["normal"]["status"] == "pending"
 
     asyncio.run(run())
 
@@ -309,8 +309,8 @@ def test_external_change_during_inference_keeps_user_caption(tmp_path, monkeypat
         await studio.start_job([studio.rows[0]["id"]])
         await studio.task
         assert image.with_suffix(".txt").read_text() == "External caption"
-        assert studio.rows[0]["status"] == "error"
-        assert studio.rows[0]["caption"] == "New generated draft"
+        assert studio.rows[0]["outputs"]["normal"]["status"] == "error"
+        assert studio.rows[0]["outputs"]["normal"]["caption"] == "New generated draft"
 
     asyncio.run(run())
 
@@ -409,7 +409,12 @@ def test_legacy_encoded_caption_is_reported_and_never_overwritten(tmp_path):
     studio = Studio(tmp_path / "app")
     asyncio.run(studio.import_images([str(image)], "", False, False))
     row = studio.rows[0]
-    assert row["status"] == "invalid" and "not UTF-8" in row["error"]
+    slot = row["outputs"]["normal"]
+    assert slot["status"] == "invalid" and "not UTF-8" in slot["error"]
     with pytest.raises(UserError, match="not UTF-8"):
         studio.save_row(row["id"], "New caption")
+    assert image.with_suffix(".txt").read_bytes() == legacy
+    # Only that caption file is blocked; the image's other outputs stay usable.
+    studio.save_row(row["id"], "Velmira, a woman, stands in a garden.", "wan")
+    assert image.with_suffix(".wan.txt").read_text(encoding="utf-8") == "Velmira, a woman, stands in a garden.\n"
     assert image.with_suffix(".txt").read_bytes() == legacy
