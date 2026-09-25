@@ -211,12 +211,15 @@ in `logs/generation.jsonl` omit caption text, image data, prompts and keys.
 For external llama.cpp with advertised `enable_thinking` support, caption requests
 disable reasoning per request. Global server configuration is untouched.
 
-Normal writes `.txt`, BRIA `.json`, the video models `.wan.txt`, `.ltx.txt` and `.h3.txt`.
+Normal writes `.txt`, BRIA `.json`, the video models `.wan.txt`, `.wan-i2v.txt` (clips),
+`.ltx.txt` and `.h3.txt`.
 Since 0.2.0 all of them coexist; a write checks and changes only its own file, and
 skip-existing checks only the selected output's file. (Up to 0.1.13 `.txt` and `.json`
 excluded each other and conversion archived the other file.) LORA Train reads `.txt` for
 its image profiles and `.json` for FIBO. This application does not implement training or
-the official trainer's metadata CSV export.
+the official trainer's metadata CSV export. What LORA Train needs to read the video model
+files, the bridge fix and the per-model training notes are in
+[LORA_TRAIN_HANDOFF.md](LORA_TRAIN_HANDOFF.md).
 
 ## Verification and release workflow
 
