@@ -669,7 +669,7 @@ Live runs on 2026-09-25 with copies of Petr's material:
 ## 11. Sources
 
 Code read locally on 2026-09-25:
-- Caption Studio `b94ae34`/`ef3f155`: `captioning/video.py`, `service.py`, `storage.py`,
+- Caption Studio `dd6cd17`/`eb193a7`: `captioning/video.py`, `service.py`, `storage.py`,
   `media.py`, `paths.py`;
 - LORA Train `513881b`: `backend/trainer/cache.py`, `dataset.py`, `next_flow.py`, `profiles.py`,
   `backend/caption_studio_bridge.py`;
