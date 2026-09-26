@@ -159,7 +159,12 @@ def test_h3_clip_captions_keep_their_own_camera_movement(tmp_path, monkeypatch):
     video = clip(tmp_path / "walk.mp4")
     capture(monkeypatch, "Live-action, a medium shot frames <character> walking. The camera pans right slowly.")
     s = Settings(
-        mode="cloud", cloud_model="m", output_format="h3", preset="character", trigger="Velmira", subject_class="a woman"
+        mode="cloud",
+        cloud_model="m",
+        output_format="h3",
+        preset="character",
+        trigger="Velmira",
+        subject_class="a woman",
     )
     text = asyncio.run(generate(video, s, "not-a-real-key")).text
     assert "The camera pans right slowly." in text and "static" not in text

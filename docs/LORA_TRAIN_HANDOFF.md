@@ -45,7 +45,7 @@ Labels used below:
 
 Rules [V]:
 - **Name.** The caption path is `Path(media).with_suffix(suffix)`, so only the last extension is
-  replaced: `velmira.v2.jpg` gets `velmira.v2.wan.txt`. Suffixes are always lowercase.
+  replaced: `photo.v2.jpg` gets `photo.v2.wan.txt`. Suffixes are always lowercase.
 - **Media types.** Photos: `.jpg .jpeg .png .webp .bmp .tif .tiff`, the same set as LORA Train's
   `IMAGE_SUFFIXES`. Clips: `.mp4 .mov .webm .mkv .m4v .avi`.
 - **All files coexist.** Writing one never changes another. This holds since 0.2.0; earlier
@@ -657,7 +657,7 @@ Live runs on 2026-09-25 with copies of Petr's material:
 
 | Captioning model | Material | Result |
 |---|---|---|
-| Qwen3.8 27B Q5 via Marvin | 4 "Velmira" photos × 3 models | 12/12 saved; opening and trigger correct after the 0.2.0 fixes |
+| Qwen3.8 27B Q5 via Marvin | 4 character photos × 3 models | 12/12 saved; opening and trigger correct after the 0.2.0 fixes |
 | Qwen3.8 27B Q5 via Marvin | 3 of Petr's clips (6 s, 12 s, 68 s) × 4 models | 12/12 saved, 16–31 s each; motion and a static camera described |
 | Gemini 3.8 Flash (cloud) | the same clips × 4 models | 12/12 in one pass, 14–22 s |
 | Gemini 3.8 Flash (cloud) | 4 photos × 3 models | 12/12, 6–9 s; no hair color leaked |

@@ -67,7 +67,7 @@ captions describe only the content, style trigger at the start, style defaults o
 - `scripts/check_video_captions_live.py` takes `--preset`, `--class` and `--outputs`.
 - Live check on Marvin (Qwen3.8 27B Q5), copies, outputs Normal plus all video models, 16
   captions per type, 2–5 s each, all saved with the trigger exactly once:
-  - character: 4 "Young Velmira" photos, trigger `Velmira`, `a woman`: no hair color or facial
+  - character: 4 photos from Petr's character dataset, `a woman`: no hair color or facial
     features; hairstyle, clothing, expression, setting, light and shot described;
   - style: 4 prints from Hiroshige's "One Hundred Famous Views of Edo" (public domain, Wikimedia
     Commons), trigger `Zorvak`: every caption starts `Zorvak style, …`, none names the medium
@@ -105,7 +105,7 @@ Video clips, following [VIDEO_LORA_PLAN.md](VIDEO_LORA_PLAN.md) section 5.
     64k window fits) and 7.5 MB of frames; Marvin's preallocated VRAM did not grow.
   - Gemini 3.8 Flash (`https://generativelanguage.googleapis.com/v1beta/openai`,
     `gemini-3.8-flash`): the same clips 12/12 in one pass each, 14–22 s including frame
-    decoding of 4K; 4 Velmira photos × 3 models 12/12, 6–9 s. No hair color with
+    decoding of 4K; 4 character photos × 3 models 12/12, 6–9 s. No hair color with
     `--omit identity hair_color`.
   - Managed runtime, measured 2026-09-25 on the RTX 5090 with the installed 0.2.1 runtime
     (`scripts/measure_managed_clip.py`, a 30-frame request from the 68 s clip, 32,409 prompt
@@ -145,7 +145,7 @@ Caption outputs for video character LoRAs, following [VIDEO_LORA_PLAN.md](VIDEO_
   (`hairstyle`) (Petr, 2026-09-25). Saved recipes that omitted `hair` omit both. The character
   defaults omit identity and hair color. Versions before 0.2.0 reject the new IDs and would
   drop the saved detail choices when downgraded.
-- Checked live on Marvin (Qwen3.8 27B Q5) with copies of four photos of Petr's "Young Velmira"
+- Checked live on Marvin (Qwen3.8 27B Q5) with copies of four photos from Petr's character
   set (`scripts/check_video_captions_live.py`): 12/12 captions saved, the trigger once in
   each, hairstyles described and no hair color with `--omit identity hair_color`. Fixes came
   from these runs: no attribute names in the model shapes (the recipe decides), "the woman"
