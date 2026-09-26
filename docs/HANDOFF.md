@@ -19,7 +19,12 @@ captions describe only the content, style trigger at the start, style defaults o
   that the trigger then repeated. `character_class` became `subject_class` (empty means `a
   person` or `an object`); old recipes migrate, and the old default `a person` becomes empty.
 - For objects the identity detail is shown as **Object appearance**, and person details refer
-  to people who hold, wear or use the object.
+  to people who hold, wear or use the object. With it omitted the prompt says outright never to
+  describe the object's shape, parts, material, colors, markings or logo, and to call it only by
+  its type.
+- If the model forgets the token and writes the type with adjectives ("A 3x3 puzzle cube sits"),
+  the name replaces that phrase; a type said again after the token ("<object>, the puzzle cube,")
+  is removed.
 - Video prompts follow the type as well (0.2.0 and 0.2.1 always wrote character prompts).
 - After a style or general trigger the first letter is lowercased (`ohwx, a woman sits`), except
   "I" and words with more capitals.
@@ -30,6 +35,18 @@ captions describe only the content, style trigger at the start, style defaults o
   in [LORA_TRAIN_HANDOFF.md](LORA_TRAIN_HANDOFF.md) section 6, checked against the app for every
   type and output.
 - `scripts/check_video_captions_live.py` takes `--preset`, `--class` and `--outputs`.
+- Live check on Marvin (Qwen3.8 27B Q5), copies, outputs Normal plus all video models, 16
+  captions per type, 2–5 s each, all saved with the trigger exactly once:
+  - character: 4 "Young Velmira" photos, trigger `Velmira`, `a woman`: no hair color or facial
+    features; hairstyle, clothing, expression, setting, light and shot described;
+  - style: 4 prints from Hiroshige's "One Hundred Famous Views of Edo" (public domain, Wikimedia
+    Commons), trigger `Zorvak`: every caption starts `Zorvak style, …`, none names the medium
+    (no print, woodblock, ukiyo-e, illustration, painting); H3 opens with the composition;
+  - object: 4 photos of a Rubik's Cube (CC BY / CC BY-SA, Wikimedia Commons), trigger `Zorbo`,
+    `a puzzle cube`: the first run described the cube's colors, stickers and logo in 11 of 16
+    captions; after the object line above, none of 16. Hands, a cat, settings and light are
+    described.
+  - The downloaded images and their credits are in `output/live-types-src` (not committed).
 
 ## Previous release: 0.2.1 (2026-09-25)
 

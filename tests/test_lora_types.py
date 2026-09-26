@@ -32,11 +32,23 @@ def test_object_prompts_name_the_object_with_its_own_token(output):
     prompt = make_prompt(settings("object", output, "Zorbo", "a backpack"), "clip" if output == "wan_i2v" else "image")
     assert "<object>" in prompt and "'a backpack'" in prompt and "<character>" not in prompt
     assert "Zorbo" not in prompt and "brand or product name" in prompt
-    assert "people who hold, wear or use it" in prompt
-    if output != "bria_json":
-        assert "'the backpack'" in prompt
+    assert "people who hold, wear or use it" in prompt and "'the backpack'" in prompt
+    # Live on Qwen3.8 27B the object's colors and stickers leaked until this was said outright.
+    assert "Never describe what the object itself looks like" in prompt
+    if output != "wan_i2v":  # the motion-only caption has no identity line
+        assert "DO NOT DESCRIBE: the main object's own appearance" in prompt
     if output in ("wan", "ltx", "h3", "wan_i2v"):
         assert "object LoRA" in prompt and "main object's appearance" in prompt
+
+
+def test_a_forgotten_object_token_takes_the_place_of_the_described_object():
+    s = settings("object", "wan", "Zorbo", "a puzzle cube")
+    text, notices, _ = finished("A 3x3 puzzle cube sits on a windowsill beside a cat.", s)
+    assert text == "Zorbo, a puzzle cube, sits on a windowsill beside a cat."
+    assert notices == ["The name was placed at the first mention of its type."]
+    # Seen live in H3: the model said the type again after the token.
+    text, _, _ = finished("A cat sits behind <object>, the puzzle cube, on a windowsill.", s)
+    assert text == "A cat sits behind Zorbo, a puzzle cube, on a windowsill."
 
 
 @pytest.mark.parametrize("output", PROMPT_OUTPUTS)

@@ -143,6 +143,15 @@ def subject_lines(s, where: str = "at the start") -> list[str]:
             "to people who hold, wear or use it; describe those people in their own right. Never write a brand or "
             "product name for the object."
         )
+        if "identity" in s.omitted_attributes:
+            # Seen with Qwen3.8 27B: the object's colors and parts leak unless this is said outright.
+            cls = subject_class(s)
+            lines.append(
+                f"Never describe what the object itself looks like: not its shape, size, parts, material, surface, "
+                f"colors, pattern, markings, logo or the text on it. Call it only {cls!r} or {definite(cls)!r}, "
+                "without adjectives, and describe only where it is, how it is placed, held or used, and its "
+                "surroundings."
+            )
     else:
         if "style" in s.omitted_attributes:
             lines.append(STYLE_CONTENT)
@@ -186,7 +195,8 @@ def name_subject(text: str, s, output: str, english: bool = True) -> tuple[str, 
     # The model sometimes adds an article or repeats the class around the token:
     # "frames a <character>", "<character>, a woman, sits", "<character> is a woman with ...".
     body = re.sub(r"\b(?:a|an|the)\s+" + re.escape(tok), tok, body, flags=re.I)
-    body = re.sub(re.escape(tok) + r"\s*,?\s*" + re.escape(cls) + r"\b", tok, body, flags=re.I)
+    said_again = "(?:" + re.escape(cls) + "|" + re.escape(definite(cls)) + ")"
+    body = re.sub(re.escape(tok) + r"\s*,?\s*" + said_again + r"\b", tok, body, flags=re.I)
     for verb, replacement in (("is", " has"), ("as", " with")):
         body = re.sub(
             re.escape(tok) + rf"\s+{verb}\s+" + re.escape(cls) + r"\s+with\b", tok + replacement, body, flags=re.I
@@ -194,6 +204,10 @@ def name_subject(text: str, s, output: str, english: bool = True) -> tuple[str, 
     first, later = opening(trigger, cls), definite(cls) if english else cls
     count = body.count(tok)
     mention = re.search(r"\b" + re.escape(cls) + r"\b", body, flags=re.I)
+    if not mention and len(cls.split()) > 1:
+        # "A 3x3 puzzle cube sits" for "a puzzle cube": the name replaces the whole phrase.
+        noun = re.escape(cls.split()[-1])
+        mention = re.search(r"\b(?:a|an|the)\s+(?:[\w-]+\s+){0,3}?" + noun + r"\b", body, flags=re.I)
     if count == 0 and mention:
         # The model wrote the class instead of the token: "frames a woman seated ..."
         body = body[: mention.start()] + first + body[mention.end() :]

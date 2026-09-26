@@ -28,6 +28,8 @@ ATTRIBUTES: list[dict[str, Any]] = [
             "object": {
                 "label": "Object appearance",
                 "detail": "The object’s shape, material, colors and markings.",
+                "instruction": "the main object's own appearance: its shape, parts, material, surface, colors, "
+                "pattern, markings, logos and any text on it",
             }
         },
     },
@@ -129,7 +131,7 @@ def policy_prompt(settings, media: str = "image", only: tuple[str, ...] | None =
                 if a["id"] in omitted
                 else "CONTROL_WITH_PROMPT — DESCRIBE IF VISIBLE: "
             )
-            + a["instruction"]
+            + a.get("by_type", {}).get(settings.preset, a)["instruction"]
             + "."
         )
     lines += [
