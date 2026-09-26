@@ -13,6 +13,22 @@ test('the name fields, notes and detail names follow the LoRA type', async ({ pa
     'Written once where the object is first named: “Zorbo, a backpack, …”.',
   );
   await expect(identity.locator('.detail-name')).toHaveText('Object appearance');
+  // An object has its own details: no hair, clothing or expression.
+  await expect(page.locator('#training-controls .detail-name')).toHaveText([
+    'Object appearance',
+    'Logo and text on the object',
+    'Variant and state',
+    'Placement and orientation',
+    'Use and interaction',
+    'Environment and background',
+    'Lighting',
+    'Composition and camera',
+    'Medium',
+    'Motion over time',
+    'Camera movement',
+  ]);
+  await expect(page.locator('#training-plan')).toHaveText('7 of 9 details included in caption');
+  await recipe.locator('[data-attribute=object_text]').check();
 
   await recipe.locator('[name=preset]').selectOption('style');
   await recipe.locator('[name=trigger]').fill('Zorvak');
@@ -21,9 +37,18 @@ test('the name fields, notes and detail names follow the LoRA type', async ({ pa
   await expect(page.locator('#trigger-note')).toHaveText(
     'Written at the start of every caption: “Zorvak style, …”. The caption describes only the content.',
   );
-  await expect(identity.locator('.detail-name')).toHaveText('Identity / subject appearance');
+  await expect(identity.locator('.detail-name')).toHaveText('What is depicted');
+  await expect(recipe.locator('[data-attribute=hair_color]')).toHaveCount(0);
   await page.locator('#apply-training-preset').click();
-  await expect.poll(async () => (await state(page)).settings.omitted_attributes).toEqual(['style']);
+  await expect.poll(async () => (await state(page)).settings.omitted_attributes).toEqual(['style', 'palette']);
+  // Back on the object, its own choices return: the logo is still described.
+  await recipe.locator('[name=preset]').selectOption('object');
+  await expect(recipe.locator('[data-attribute=object_text]')).toBeChecked();
+  await expect(recipe.locator('[data-attribute=identity]')).not.toBeChecked();
+  await expect
+    .poll(async () => (await state(page)).settings.omitted_by_type)
+    .toEqual({ general: [], object: ['identity'], style: ['style', 'palette'] });
+  await recipe.locator('[name=preset]').selectOption('style');
   await page.locator('#preview-prompt').click();
   await expect(page.locator('#prompt-text')).toContainText('Never name or describe the medium');
   await expect(page.locator('#prompt-text')).not.toContainText('Zorvak');

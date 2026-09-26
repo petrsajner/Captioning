@@ -154,7 +154,10 @@ def normalize_json(text: str, settings=None) -> str:
         if "style" in omitted:
             data.pop("style_medium", None)
             data.pop("artistic_style", None)
-            data["aesthetics"].update(color_scheme="", mood_atmosphere="")
+            data["aesthetics"]["mood_atmosphere"] = ""
+        # A style LoRA learns its palette as a detail of its own; elsewhere "Visual style" includes it.
+        if "palette" in omitted or ("style" in omitted and settings.preset != "style"):
+            data["aesthetics"]["color_scheme"] = ""
         if data["objects"]:
             main = data["objects"][0]
             groups = {
@@ -167,7 +170,9 @@ def normalize_json(text: str, settings=None) -> str:
                 if group in omitted:
                     for field in fields:
                         main.pop(field, None)
-            if {"hair_color", "hairstyle", "accessories"} <= omitted:
+            if {"hair_color", "hairstyle", "accessories"} <= omitted or (
+                settings.preset == "object" and "identity" in omitted
+            ):
                 main.pop("appearance_details", None)
         if not settings.text_in_image:
             data["text_render"] = []

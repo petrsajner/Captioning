@@ -10,7 +10,7 @@ from captioning.errors import UserError
 from captioning.models import Settings, make_prompt
 from captioning.provider import CaptionResult, generate
 from captioning.service import Studio
-from captioning.training import ATTRIBUTES
+from captioning.training import details_for
 
 
 def example():
@@ -60,7 +60,7 @@ def test_policy_covers_each_attribute_without_preset_conflicts():
     s = Settings(preset="character", omitted_attributes=["identity", "clothing"], instructions="Describe all clothes.")
     prompt = make_prompt(s)
     assert prompt.count("LEARN_WITH_LORA — DO NOT DESCRIBE:") == 2
-    photo_details = [a for a in ATTRIBUTES if a.get("media") != "clip"]
+    photo_details = [a for a in details_for("character") if a.get("media") != "clip"]
     assert prompt.count("CONTROL_WITH_PROMPT — DESCRIBE IF VISIBLE:") == len(photo_details) - 2
     assert prompt.index("MANDATORY CAPTION POLICY") > prompt.index("Describe all clothes.")
     assert "CONTROL_WITH_PROMPT — DESCRIBE IF VISIBLE: clothing" not in prompt

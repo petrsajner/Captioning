@@ -6,7 +6,7 @@ from urllib.parse import urlsplit
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from .anchor import PURPOSE, naming_line, subject_class, subject_lines
-from .training import Attribute, policy_prompt
+from .training import Attribute, LoraType, policy_prompt, type_ids
 
 MANAGED_PORT = 8091
 MANAGED_URL = f"http://127.0.0.1:{MANAGED_PORT}/v1"
@@ -56,8 +56,10 @@ class Settings(BaseModel):
     preset: Literal["general", "character", "object", "style"] = "general"
     format: Literal["description", "tags"] = "description"
     output_format: Literal["normal", "bria_json", "wan", "wan_i2v", "ltx", "h3", "video_all"] = "normal"
-    # Caption details left out (unchecked in the UI); everything else is described.
+    # Caption details left out (unchecked in the UI) for the current LoRA type; the rest is described.
     omitted_attributes: list[Attribute] = Field(default_factory=list)
+    # Every LoRA type keeps its own choices; switching back to a type restores them (0.2.3).
+    omitted_by_type: dict[LoraType, list[Attribute]] = Field(default_factory=dict)
     language: Literal["English", "Czech"] = "English"
     words: int = Field(100, ge=20, le=300)
     trigger: str = Field("", max_length=100)
@@ -109,11 +111,28 @@ class Settings(BaseModel):
             # 0.2.0 and 0.2.1 called the class phrase character_class; "Main subject name" is gone since 0.2.2.
             old = value["character_class"]
             value = {**value, "subject_class": "" if old == "a person" else old}  # "a person" was the default
+        if (
+            isinstance(value, dict)
+            and "omitted_by_type" not in value
+            and value.get("preset") == "style"
+            and "style" in value.get("omitted_attributes", [])
+        ):
+            # Up to 0.2.2 "Visual style" also covered the palette, which a style LoRA now learns separately.
+            value = {**value, "omitted_attributes": [*value["omitted_attributes"], "palette"]}
         if isinstance(value, dict) and "local_source" not in value:
             url = value.get("local_url", MANAGED_URL)
             if isinstance(url, str) and url.rstrip("/") != MANAGED_URL:
                 value = {**value, "local_source": "external"}
         return value
+
+    @model_validator(mode="after")
+    def details_of_each_type(self):
+        """Keep only the details a type has, and remember the current type's choices."""
+        omitted = [a for a in dict.fromkeys(self.omitted_attributes) if a in type_ids(self.preset)]
+        remembered = {t: [a for a in dict.fromkeys(ids) if a in type_ids(t)] for t, ids in self.omitted_by_type.items()}
+        self.omitted_attributes = omitted
+        self.omitted_by_type = {**remembered, self.preset: omitted}
+        return self
 
     @classmethod
     def recover(cls, saved) -> tuple[Settings, bool]:

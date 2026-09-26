@@ -21,7 +21,7 @@ from .media import is_video, probe
 from .models import MEDIA_OUTPUTS, OUTPUT_NAMES, OUTPUT_SUFFIX, VIDEO_OUTPUTS, Settings, outputs_for
 from .runtime import Runtime
 from .storage import KeyStore, fingerprint, preserve_damaged, read_json, save_json, write_caption
-from .training import ATTRIBUTES
+from .training import ALL_TYPES, TYPE_DEFAULTS, details_for
 from .video import I2V_WORDS, validate_h3
 
 MAX_IMAGES = 20000
@@ -294,7 +294,9 @@ class Studio:
         return {
             "version": __version__,
             "settings": self.settings.model_dump(),
-            "training_attributes": ATTRIBUTES,
+            # Each LoRA type has its own details, names and defaults.
+            "training_details": {t: details_for(t) for t in ALL_TYPES},
+            "training_defaults": TYPE_DEFAULTS,
             "caption_outputs": {o: {"suffix": OUTPUT_SUFFIX[o], "name": OUTPUT_NAMES[o]} for o in OUTPUT_SUFFIX},
             "video_outputs": VIDEO_OUTPUTS,
             "media_outputs": MEDIA_OUTPUTS,

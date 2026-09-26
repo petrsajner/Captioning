@@ -90,14 +90,23 @@ GPU. Selected images are sent to the chosen provider and billed under its terms.
    and allows replacing it.
 
 Checked details are described when visible; unchecked details are omitted. The
-model receives an explicit instruction for every detail in both output modes.
-**Apply defaults for this LoRA type** omits identity and hair color for character
-datasets, identity for object datasets or style for style datasets, and includes the
-other details. Hair color and hairstyle are separate details: a character's hair color
-usually belongs to the LoRA while its hairstyle (loose, ponytail, bangs) stays free for
-prompts. Merely changing the dataset type does not overwrite your choices. Existing
-recipes retain their original include/omit meaning when upgraded; a recipe that
-omitted "Hair and hairstyle" now omits both hair details.
+model receives an explicit instruction for every detail in every output. Each LoRA type
+has its own details, and **Apply defaults for this LoRA type** leaves out the ones in bold:
+
+| Type | Details |
+|---|---|
+| Character / person, General | **Identity**, **Hair color** (character only), Hairstyle, Clothing, Accessories, Pose and action, Facial expression, Environment, Lighting, Composition and camera, Visual style |
+| Object / product | **Object appearance**, **Logo and text on the object**, Variant and state, Placement and orientation, Use and interaction, Environment, Lighting, Composition and camera, Medium |
+| Visual style | What is depicted, Pose and action, Environment, Light situation, Composition and camera, **Medium and technique**, **Color palette and grading** |
+
+Clips add **Motion over time** and **Camera movement** for every type. Every type keeps its
+own choices: switching to another type shows that type's details, and switching back
+restores what you chose for it. Hair color and hairstyle are separate details: a
+character's hair color usually belongs to the LoRA while its hairstyle (loose, ponytail,
+bangs) stays free for prompts. For an object with several colorways that should stay
+promptable, say so in the additional instructions; **Variant and state** then names the
+colorway. Existing recipes keep their choices when upgraded; a style recipe that left out
+"Visual style" now leaves out both medium and palette.
 
 ### What you are training
 
@@ -106,8 +115,8 @@ omitted "Hair and hairstyle" now omits both hair details.
 | Type | Fields | A caption starts | Learned by the LoRA (default details left out) |
 |---|---|---|---|
 | Character / person | Character name, Character type (`a woman`) | `Velmira, a woman, sits…`, later "the woman" or "she" | face and body, hair color |
-| Object / product | Object name, Object type (`a backpack`) | `Zorbo, a backpack, hangs…`, later "the backpack" or "it" | the object's shape, material, colors and markings |
-| Visual style | Style name | `Zorvak style, a woman sits…` | medium, technique, brushwork, texture, palette |
+| Object / product | Object name, Object type (`a backpack`) | `Zorbo, a backpack, hangs…`, later "the backpack" or "it" | the object's shape, material, colors and markings; its logo and text |
+| Visual style | Style name | `Zorvak style, a woman sits…` | medium, technique, brushwork, texture; palette and grading |
 | General dataset | Trigger word (optional) | `ohwx, a woman sits…` | nothing in particular |
 
 For a character or an object the model writes a placeholder where it first names the

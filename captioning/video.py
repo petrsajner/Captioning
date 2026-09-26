@@ -114,8 +114,8 @@ def wan_i2v_prompt(s: Settings, media: str) -> list[str]:
         "character": "Begin with <character>, then describe the character's movement and actions",
         "object": "Begin with <object>, then describe how it moves or is handled",
     }.get(s.preset, "Describe the movement and actions of the main subject and any other motion")
-    # A style LoRA's ban on naming the medium also holds for motion-only captions.
-    only = ("identity", "motion", "camera_motion", *(("style",) if "style" in s.omitted_attributes else ()))
+    # Only motion and camera are described; every detail the LoRA learns stays forbidden here too.
+    only = ("motion", "camera_motion", *s.omitted_attributes)
     return [
         _purpose(s, "WAN 2.2 image-to-video")
         + " The video model receives the clip's first frame, so the caption describes only what happens after it.",

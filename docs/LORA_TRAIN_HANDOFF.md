@@ -81,8 +81,8 @@ every caption output names what the LoRA learns: `name.txt`, the `short_descript
 | LoRA type | The caption names it | Later mentions | Details left out by default |
 |---|---|---|---|
 | `character` | once, `{trigger}, {class},`: `Velmira, a woman, sits …` | `the woman`, she | identity, hair color |
-| `object` | once, `{trigger}, {class},`: `Zorbo, a backpack, hangs …` | `the backpack`, it | identity (the object's shape, material, colors, markings) |
-| `style` | at the start, `{trigger} style, `: `Zorvak style, a woman sits …` | — | visual style |
+| `object` | once, `{trigger}, {class},`: `Zorbo, a backpack, hangs …` | `the backpack`, it | object appearance (shape, material, colors, markings); logo and text on it |
+| `style` | at the start, `{trigger} style, `: `Zorvak style, a woman sits …` | — | medium and technique; color palette and grading |
 | `general` | at the start, `{trigger}, `: `ohwx, a woman sits …` | — | none |
 
 - The class is the recipe's type field (`settings.subject_class`, up to 40 characters). Empty
@@ -620,6 +620,8 @@ Unchanged since 0.1.x:
 - `POST /api/runtime/stop`.
 
 Added in 0.2.x and useful to LORA Train [V]:
+- `settings.omitted_by_type`, the details left out for each LoRA type since 0.2.3 (every type has
+  its own set, `training_details` and `training_defaults` in the state);
 - `settings.trigger`, `settings.preset` (the LoRA type), `settings.subject_class` (empty means
   the type's default class) and `settings.output_format`, the recipe's current values;
 - `caption_outputs`, a map from output ID to `{suffix, name}`: `normal`, `bria_json`, `wan`,

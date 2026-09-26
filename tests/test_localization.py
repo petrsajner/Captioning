@@ -9,7 +9,7 @@ from captioning.i18n import catalog, translate
 from captioning.models import Settings, make_prompt
 from captioning.quality import unfinished
 from captioning.service import Studio
-from captioning.training import ATTRIBUTES
+from captioning.training import ALL_TYPES, details_for
 
 ROOT = Path(__file__).parents[1]
 USER_FIELDS = {"message", "notice", "error", "detail"}
@@ -53,8 +53,10 @@ def ui_message_ids():
             ids |= {match[1] for match in re.findall(r"(['\"])((?:(?!\1).)*)\1", argument)}
         for table in re.findall(r"(?:labels|phaseLabels|modelNotes)\s*=\s*\{([^}]*)\}", source):
             ids |= set(re.findall(r":\s*'([^']*)'", table))
-    details = [*ATTRIBUTES, *(text for a in ATTRIBUTES for text in a.get("by_type", {}).values())]
-    return ids | {detail[key] for detail in details for key in ("label", "detail")}
+    # Every LoRA type names its details in its own way (training.details_for).
+    return ids | {
+        detail[key] for lora_type in ALL_TYPES for detail in details_for(lora_type) for key in ("label", "detail")
+    }
 
 
 def message_templates(node):

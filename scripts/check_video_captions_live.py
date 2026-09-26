@@ -17,6 +17,7 @@ from captioning.models import OUTPUT_SUFFIX, Settings, outputs_for
 from captioning.quality import word_count
 from captioning.service import Studio
 from captioning.storage import KeyStore
+from captioning.training import TYPE_DEFAULTS
 from captioning.video import h3_body
 
 
@@ -58,8 +59,7 @@ async def main():
         shutil.copy2(args.folder / name, dataset / name)
     studio = Studio(output / "profile")
     # The recipe's "Apply defaults for this LoRA type" choices, unless details are given.
-    defaults = {"character": ["identity", "hair_color"], "object": ["identity"], "style": ["style"]}
-    omitted = args.omit if args.omit is not None else defaults.get(args.preset, [])
+    omitted = args.omit if args.omit is not None else TYPE_DEFAULTS[args.preset]
     connection: dict = (
         {"mode": "cloud", "cloud_url": args.cloud_url, "cloud_model": args.cloud_model}
         if args.cloud_url

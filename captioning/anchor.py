@@ -29,12 +29,16 @@ PURPOSE = {
     "stays controllable by prompts.",
 }
 KIND = {"general": "", "character": "character ", "object": "object ", "style": "visual-style "}
-STYLE_CONTENT = (
+# A style LoRA's two learned details: its medium and technique, and its palette (training.py).
+STYLE_MEDIUM = (
     "Describe only what is depicted: the subjects, objects, actions, setting and composition. Never name or "
-    "describe the medium, rendering technique, brushwork, line work, shading, texture, grain, color grading or "
-    "overall color palette, and do not use words such as painting, painted, illustration, drawing, sketch, render, "
-    "rendered, 3D, CGI, anime, cartoon, photo, photograph, photographic, cinematic, film still or stylized. The "
-    "colors of individual things are content and may be described."
+    "describe the medium, rendering technique, brushwork, line work, shading, texture or grain, and do not use "
+    "words such as painting, painted, illustration, drawing, sketch, print, render, rendered, 3D, CGI, anime, "
+    "cartoon, photo, photograph, photographic, cinematic, film still or stylized."
+)
+STYLE_PALETTE = (
+    "Do not describe the overall color palette, color scheme or grading. The colors of individual things are content "
+    "and may be described."
 )
 # Notices finishing can add to a caption; each is a UI message with a translation.
 MISSING_H3 = "Put the name into [Shot 1] manually."
@@ -138,23 +142,27 @@ def subject_lines(s, where: str = "at the start") -> list[str]:
     elif s.preset == "character":
         lines.append("Keep the main character's description separate from other people in the image.")
     elif s.preset == "object":
-        lines.append(
-            "The main subject is the object. Details about hair, clothing, accessories, expression and pose refer "
-            "to people who hold, wear or use it; describe those people in their own right. Never write a brand or "
-            "product name for the object."
-        )
+        lines.append("The main subject is the object; people who hold, wear or use it are secondary subjects.")
+        # Seen with Qwen3.8 27B: the object's colors, stickers and logo leak unless this is said outright.
+        hidden = []
         if "identity" in s.omitted_attributes:
-            # Seen with Qwen3.8 27B: the object's colors and parts leak unless this is said outright.
-            cls = subject_class(s)
+            hidden.append("its shape, size, parts, material, surface, colors, pattern or markings")
+        if "object_text" in s.omitted_attributes:
+            hidden.append("its logo, brand marks, labels or the text on it, and never write a brand or product name")
+        if hidden:
+            # Live, BRIA's color_scheme named the cube's colors although every caption field was covered.
             lines.append(
-                f"Never describe what the object itself looks like: not its shape, size, parts, material, surface, "
-                f"colors, pattern, markings, logo or the text on it. Call it only {cls!r} or {definite(cls)!r}, "
-                "without adjectives, and describe only where it is, how it is placed, held or used, and its "
-                "surroundings."
+                "Never describe what the object itself looks like: not " + "; not ".join(hidden) + ". This holds "
+                "everywhere, also in summaries and in any description of the image's colors or color scheme."
             )
+        if "identity" in s.omitted_attributes:
+            cls = subject_class(s)
+            lines.append(f"Call it only {cls!r} or {definite(cls)!r}, without adjectives.")
     else:
         if "style" in s.omitted_attributes:
-            lines.append(STYLE_CONTENT)
+            lines.append(STYLE_MEDIUM)
+        if "palette" in s.omitted_attributes:
+            lines.append(STYLE_PALETTE)
         lines.append("Describe people generically, such as a woman or an old man; never say who they are.")
     if token(s) is None and lead_phrase(s):
         lines.append(

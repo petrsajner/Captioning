@@ -8,14 +8,19 @@ const recipe = $('recipe-form');
 let recipeTimer,
   recipeDirty = false,
   recipeRevision = 0,
-  recipeSaving = null;
+  recipeSaving = null,
+  // Every LoRA type has its own details and keeps its own choices while another type is shown.
+  shownType = null,
+  typeChoices = {};
+
+const shownOmitted = () =>
+  [...recipe.querySelectorAll('[data-attribute]')].filter((el) => !el.checked).map((el) => el.dataset.attribute);
 
 // Current recipe form values on top of the saved settings.
 export function liveSettings() {
   const out = formValues(recipe, ui.state.settings);
-  out.omitted_attributes = [...recipe.querySelectorAll('[data-attribute]')]
-    .filter((el) => !el.checked)
-    .map((el) => el.dataset.attribute);
+  out.omitted_attributes = shownOmitted();
+  out.omitted_by_type = { ...typeChoices, [shownType || out.preset]: out.omitted_attributes };
   return out;
 }
 
@@ -41,17 +46,24 @@ export async function saveRecipe() {
   if (recipeDirty) await saveRecipe();
 }
 
-// A detail can be named differently for a LoRA type: identity is "Object appearance" for objects.
-const detailText = (a, preset) => a.by_type?.[preset] || a;
-
+// The details of the recipe's LoRA type, with that type's names, checked unless omitted.
 export function fillTrainingControls(settings) {
   const omitted = new Set(settings.omitted_attributes || []);
-  $('training-controls').innerHTML = ui.state.training_attributes
-    .map((a) => {
-      const text = detailText(a, settings.preset);
-      return `<label class="caption-detail" data-media="${a.media || ''}"><span><input type="checkbox" name="include_${a.id}" data-attribute="${a.id}" ${omitted.has(a.id) ? '' : 'checked'}><span class="detail-name">${esc(t(text.label))}</span><span class="detail-state" aria-hidden="true"><span class="state-on">ON</span><span class="state-off">OFF</span></span></span><small>${esc(t(text.detail))}</small></label>`;
-    })
+  shownType = settings.preset;
+  $('training-controls').innerHTML = ui.state.training_details[settings.preset]
+    .map(
+      (a) =>
+        `<label class="caption-detail" data-media="${a.media || ''}"><span><input type="checkbox" name="include_${a.id}" data-attribute="${a.id}" ${omitted.has(a.id) ? '' : 'checked'}><span class="detail-name">${esc(t(a.label))}</span><span class="detail-state" aria-hidden="true"><span class="state-on">ON</span><span class="state-off">OFF</span></span></span><small>${esc(t(a.detail))}</small></label>`,
+    )
     .join('');
+}
+
+// A new LoRA type shows its own details: the choices made for it before, or its defaults.
+function switchType() {
+  const preset = recipe.elements.preset.value;
+  if (preset === shownType) return;
+  typeChoices[shownType] = shownOmitted();
+  fillTrainingControls({ preset, omitted_attributes: typeChoices[preset] ?? ui.state.training_defaults[preset] });
 }
 
 // What the trigger and class fields mean for each LoRA type, and how the caption opens.
@@ -122,16 +134,10 @@ function renderTypeFields(s) {
     $('subject-class-note').textContent = fields.classNote;
     $('subject-classes').innerHTML = fields.classes.map((c) => `<option value="${esc(c)}"></option>`).join('');
   }
-  for (const a of ui.state.training_attributes.filter((a) => a.by_type)) {
-    const label = recipe.querySelector(`[data-attribute="${a.id}"]`)?.closest('label'),
-      text = detailText(a, s.preset);
-    if (!label) continue;
-    label.querySelector('.detail-name').textContent = t(text.label);
-    label.querySelector('small').textContent = t(text.detail);
-  }
 }
 
 export function loadRecipe(settings) {
+  typeChoices = { ...settings.omitted_by_type };
   fillTrainingControls(settings);
   fillForm(recipe, settings);
   $('word-output').value = settings.words;
@@ -145,7 +151,7 @@ function renderTrainingPlan() {
     blocked = hasBusy() || ui.state.runtime.installing || ui.state.runtime.status === 'loading';
   // Motion and camera movement exist only in clips, which only the video models caption.
   for (const label of $('training-controls').querySelectorAll('[data-media=clip]')) label.hidden = !video;
-  const attrs = ui.state.training_attributes.filter((a) => video || a.media !== 'clip'),
+  const attrs = ui.state.training_details[s.preset].filter((a) => video || a.media !== 'clip'),
     omitted = s.omitted_attributes.filter((id) => attrs.some((a) => a.id === id));
   $('training-plan').textContent = t('{included} of {total} details included in caption', {
     included: attrs.length - omitted.length,
@@ -176,6 +182,7 @@ recipe.addEventListener('input', () => {
   $('word-output').value = recipe.elements.words.value;
   recipeDirty = true;
   recipeRevision++;
+  switchType();
   renderTrainingPlan();
   $('recipe-status').textContent = t('Unsaved settings…');
   clearTimeout(recipeTimer);
@@ -184,15 +191,9 @@ recipe.addEventListener('input', () => {
 recipe.addEventListener('submit', (e) => e.preventDefault());
 
 $('apply-training-preset').onclick = () => {
-  // A character's hair color belongs to the LoRA; its hairstyle stays free for prompts.
-  const preset = recipe.elements.preset.value,
-    omitted =
-      {
-        character: ['identity', 'hair_color'],
-        object: ['identity'],
-        style: ['style'],
-      }[preset] || [];
-  fillTrainingControls({ ...liveSettings(), omitted_attributes: omitted });
+  // For example, a character's hair color belongs to the LoRA; its hairstyle stays free for prompts.
+  const preset = recipe.elements.preset.value;
+  fillTrainingControls({ preset, omitted_attributes: ui.state.training_defaults[preset] });
   recipe.dispatchEvent(new Event('input', { bubbles: true }));
 };
 

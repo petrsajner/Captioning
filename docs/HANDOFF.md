@@ -1,6 +1,36 @@
 # Caption Studio development handoff
 
-## Current release: 0.2.2 (2026-09-26)
+## Current release: 0.2.3 (2026-09-26)
+
+Every LoRA type has its own caption details (Petr, 2026-09-26: the character set, with hair,
+clothing and expression, made no sense for a product or a style; logo and text on a product
+are a detail of their own; every type keeps its own choices).
+
+- `training.py`: every detail lists the types that show it and may have its own name and
+  instruction per type (`by_type`); `details_for(type)` gives a type's list, `TYPE_DEFAULTS`
+  its defaults. The state sends `training_details` and `training_defaults`.
+  - Character and general: unchanged.
+  - Object: **Object appearance**, **Logo and text on the object** (new), Variant and state
+    (new), Placement and orientation, Use and interaction (new), Environment, Lighting,
+    Composition and camera, Medium.
+  - Style: What is depicted, Pose and action, Environment, Light situation, Composition and
+    camera, **Medium and technique**, **Color palette and grading** (new).
+  - Bold details are left out by default; clips add motion and camera movement.
+- `Settings.omitted_by_type` remembers the choices of every type; `omitted_attributes` is the
+  current type's list, filtered to its details. A style recipe from 0.2.2 that left out "Visual
+  style" also leaves out the palette.
+- The object rule in `anchor.py` follows the two object details and now also covers summaries
+  and color descriptions; the style rule is split into medium and palette. WAN I2V forbids
+  every detail the LoRA learns. BRIA: the palette maps to `color_scheme`; an object's
+  `appearance_details` go with its appearance.
+- Live on Marvin (Q5), copies, Normal, BRIA and all video models:
+  - style (4 Hiroshige prints), 20 captions: no medium or technique words;
+  - object (4 Rubik's Cube photos), 20 captions: no cube colors in the text outputs; one H3
+    named "a logo" on the cube. BRIA's `color_scheme` named the cube's colors in 3 of 4 until
+    the rule covered color descriptions, then in 1 of 4 ("the multicolor of the cube"). Review
+    `color_scheme` of object datasets.
+
+## Previous release: 0.2.2 (2026-09-26)
 
 The LoRA type ("What are you training?") decides how every caption output names what the LoRA
 learns (Petr, 2026-09-26: trigger plus type instead of a subject name, fields per type, style

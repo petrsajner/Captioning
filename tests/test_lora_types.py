@@ -4,10 +4,11 @@ import json
 
 import pytest
 
-from captioning.anchor import NAMED_TWICE, STYLE_CONTENT, class_caption, finish_caption
+from captioning.anchor import NAMED_TWICE, STYLE_MEDIUM, STYLE_PALETTE, class_caption, finish_caption
 from captioning.bria import normalize_json
 from captioning.i18n import catalog
 from captioning.models import Settings, make_prompt
+from captioning.training import TYPE_DEFAULTS
 from captioning.video import finish_video_caption, h3_body
 
 TEXT_OUTPUTS = ["normal", "wan", "wan_i2v", "ltx", "h3"]
@@ -15,7 +16,7 @@ PROMPT_OUTPUTS = ["normal", "bria_json", "wan", "wan_i2v", "ltx", "h3"]
 
 
 def settings(preset, output="normal", trigger="Zorvak", cls="", **extra):
-    omitted = {"character": ["identity", "hair_color"], "object": ["identity"], "style": ["style"]}.get(preset, [])
+    omitted = TYPE_DEFAULTS[preset]
     return Settings(
         preset=preset, output_format=output, trigger=trigger, subject_class=cls, omitted_attributes=omitted, **extra
     )
@@ -54,7 +55,7 @@ def test_a_forgotten_object_token_takes_the_place_of_the_described_object():
 @pytest.mark.parametrize("output", PROMPT_OUTPUTS)
 def test_style_prompts_describe_only_the_content(output):
     prompt = make_prompt(settings("style", output), "clip" if output == "wan_i2v" else "image")
-    assert STYLE_CONTENT in prompt and "Describe people generically" in prompt
+    assert STYLE_MEDIUM in prompt and STYLE_PALETTE in prompt and "Describe people generically" in prompt
     assert "Do not write a style name" in prompt and "Zorvak" not in prompt
     assert "<character>" not in prompt and "<object>" not in prompt and "main character" not in prompt
     assert "Live-action, photographic" not in prompt  # H3 opens with the composition; the style is learned
@@ -64,7 +65,78 @@ def test_style_prompts_describe_only_the_content(output):
 
 def test_a_style_detail_left_on_is_not_forbidden():
     prompt = make_prompt(Settings(preset="style", output_format="wan", trigger="Zorvak"))
-    assert STYLE_CONTENT not in prompt and "CONTROL_WITH_PROMPT — DESCRIBE IF VISIBLE: visual style" in prompt
+    assert STYLE_MEDIUM not in prompt and STYLE_PALETTE not in prompt
+    assert "CONTROL_WITH_PROMPT — DESCRIBE IF VISIBLE: medium and technique" in prompt
+    # The palette alone can be described while the medium stays learned.
+    prompt = make_prompt(Settings(preset="style", omitted_attributes=["style"], omitted_by_type={}))
+    assert STYLE_MEDIUM in prompt and STYLE_PALETTE not in prompt
+    assert "CONTROL_WITH_PROMPT — DESCRIBE IF VISIBLE: the overall color palette" in prompt
+
+
+POLICY = "MANDATORY CAPTION POLICY"
+
+
+@pytest.mark.parametrize("output", PROMPT_OUTPUTS)
+def test_each_type_gets_only_its_own_details(output):
+    media = "clip" if output == "wan_i2v" else "image"
+    obj = make_prompt(settings("object", output, "Zorbo", "a backpack"), media).split(POLICY)[1]
+    assert "hairstyle" not in obj and "hair color" not in obj and "facial expression" not in obj
+    style = make_prompt(settings("style", output), media).split(POLICY)[1]
+    assert "hair color" not in style and "hairstyle" not in style and "logos" not in style
+    if output != "wan_i2v":  # motion-only captions describe only motion and camera
+        assert "how the main object is held, worn or used" in obj and "changeable state" in obj
+        assert "placement of the main object" in obj and "the medium of the image" in obj
+        assert "the light situation" in style and "what is depicted" in style
+
+
+def test_a_described_logo_is_no_longer_forbidden():
+    s = settings("object", "normal", "Zorbo", "a backpack").model_copy(update={"omitted_attributes": ["identity"]})
+    prompt = make_prompt(s)
+    assert "brand or product name" not in prompt and "logo, brand marks" not in prompt.split(POLICY)[0]
+    assert "CONTROL_WITH_PROMPT — DESCRIBE IF VISIBLE: logos, brand marks" in prompt
+    assert "its shape, size, parts, material" in prompt  # the object's own look is still learned
+
+
+def test_each_type_remembers_its_own_choices():
+    s = Settings(preset="object", omitted_attributes=["identity", "hair_color"])
+    assert s.omitted_attributes == ["identity"]  # hair color is not a detail of an object
+    assert s.omitted_by_type == {"object": ["identity"]}
+    s = Settings(preset="style", omitted_attributes=["style"], omitted_by_type={"object": ["identity"]})
+    assert s.omitted_by_type == {"object": ["identity"], "style": ["style"]}
+    # Recipes up to 0.2.2: "Visual style" of a style LoRA also covered the palette.
+    old = Settings(**{"preset": "style", "omitted_attributes": ["style"]})
+    assert old.omitted_attributes == ["style", "palette"]
+    assert Settings(**{"preset": "character", "omitted_attributes": ["style"]}).omitted_attributes == ["style"]
+
+
+def test_bria_json_keeps_the_palette_apart_for_a_style_lora():
+    data = {
+        "short_description": "A woman sits.",
+        "objects": [
+            {"description": "a woman", "location": "center", "relationship": "main", "appearance_details": "a scarf"}
+        ],
+        "background_setting": "a café",
+        "lighting": {"conditions": "daylight", "direction": "left"},
+        "aesthetics": {"composition": "centered", "color_scheme": "muted blues", "mood_atmosphere": "calm"},
+        "style_medium": "woodblock print",
+        "context": "",
+    }
+    medium_only = Settings(preset="style", omitted_attributes=["style"], omitted_by_type={})
+    result = json.loads(normalize_json(json.dumps(data), medium_only))
+    assert "style_medium" not in result and result["aesthetics"]["color_scheme"] == "muted blues"
+    both = json.loads(normalize_json(json.dumps(data), settings("style")))
+    assert both["aesthetics"]["color_scheme"] == ""
+    # Other types: "Visual style" still covers the palette.
+    character = json.loads(normalize_json(json.dumps(data), Settings(preset="character", omitted_attributes=["style"])))
+    assert character["aesthetics"]["color_scheme"] == ""
+    obj = json.loads(normalize_json(json.dumps(data), settings("object", "bria_json", "Zorbo", "a backpack")))
+    assert "appearance_details" not in obj["objects"][0]
+
+
+def test_motion_only_captions_forbid_every_learned_detail():
+    prompt = make_prompt(settings("character", "wan_i2v", "Velmira", "a woman"), "clip").split(POLICY)[1]
+    assert "DO NOT DESCRIBE: hair color" in prompt and "DO NOT DESCRIBE: stable visual identity" in prompt
+    assert "clothing of the main subject" not in prompt and "movement and actions" in prompt
 
 
 @pytest.mark.parametrize("output", PROMPT_OUTPUTS)
@@ -187,8 +259,8 @@ def test_old_recipes_move_to_the_class_field_and_drop_the_subject_name():
 
 
 def test_type_specific_detail_names_are_translated():
-    from captioning.training import ATTRIBUTES
+    from captioning.training import ALL_TYPES, details_for
 
     messages = catalog("cs")["messages"]
-    names = [text[key] for a in ATTRIBUTES for text in a.get("by_type", {}).values() for key in ("label", "detail")]
-    assert names and [name for name in names if name not in messages] == []
+    names = {d[key] for t in ALL_TYPES for d in details_for(t) for key in ("label", "detail")}
+    assert [name for name in names if name not in messages] == []
