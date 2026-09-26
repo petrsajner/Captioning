@@ -67,12 +67,9 @@ function switchType() {
 }
 
 // What the trigger and class fields mean for each LoRA type, and how the caption opens.
+// The notes show invented example names, never the entered trigger, which may be a real person's name.
 function typeFields(s) {
-  const trigger = s.trigger
-      .trim()
-      .replace(/^,+|,+$/g, '')
-      .trim(),
-    cls = s.subject_class.trim();
+  const cls = s.subject_class.trim();
   if (s.preset === 'character')
     return {
       label: t('Character name'),
@@ -84,7 +81,7 @@ function typeFields(s) {
         'Written after the name, for example “Velmira, a woman, …”. It also tells the model which pronouns to use.',
       ),
       note: t('Written once where the character is first named: “{trigger}, {cls}, …”.', {
-        trigger: trigger || 'Velmira',
+        trigger: 'Velmira',
         cls: cls || 'a person',
       }),
     };
@@ -97,12 +94,12 @@ function typeFields(s) {
       classes: ['a bag', 'a bottle', 'a shoe', 'a watch', 'a car'],
       classNote: t('Written after the name, for example “Zorbo, a backpack, …”.'),
       note: t('Written once where the object is first named: “{trigger}, {cls}, …”.', {
-        trigger: trigger || 'Zorbo',
+        trigger: 'Zorbo',
         cls: cls || 'an object',
       }),
     };
   if (s.preset === 'style') {
-    const phrase = /\bstyle$/i.test(trigger) ? trigger : `${trigger || 'Zorvak'} style`;
+    const phrase = 'Zorvak style';
     return {
       label: t('Style name'),
       placeholder: t('e.g. Zorvak'),

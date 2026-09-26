@@ -1,6 +1,13 @@
 # Caption Studio development handoff
 
-## Current release: 0.2.3 (2026-09-26)
+## Current release: 0.2.4 (2026-09-26)
+
+- The notes under the trigger field show invented example names (Velmira, Zorbo, Zorvak style)
+  and never repeat the entered trigger, which can be a real person's name (Petr, 2026-09-26: no
+  real person's name may appear anywhere in the product). Docs and tests use invented names
+  only.
+
+## Previous release: 0.2.3 (2026-09-26)
 
 Every LoRA type has its own caption details (Petr, 2026-09-26: the character set, with hair,
 clothing and expression, made no sense for a product or a style; logo and text on a product

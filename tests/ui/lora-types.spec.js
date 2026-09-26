@@ -4,7 +4,8 @@ test('the name fields, notes and detail names follow the LoRA type', async ({ pa
   const recipe = page.locator('#recipe-form');
   const identity = page.locator('.caption-detail', { has: page.locator('[data-attribute=identity]') });
   await recipe.locator('[name=preset]').selectOption('object');
-  await recipe.locator('[name=trigger]').fill('Zorbo');
+  // The notes always show invented example names, never the entered trigger.
+  await recipe.locator('[name=trigger]').fill('Kestrin');
   await expect(page.locator('#trigger-label')).toHaveText('Object name');
   await expect(page.locator('#subject-class-label')).toHaveText('Object type');
   await expect(recipe.locator('[name=subject_class]')).toHaveAttribute('placeholder', 'an object');
@@ -12,6 +13,7 @@ test('the name fields, notes and detail names follow the LoRA type', async ({ pa
   await expect(page.locator('#trigger-note')).toHaveText(
     'Written once where the object is first named: “Zorbo, a backpack, …”.',
   );
+  await expect(page.locator('#trigger-note')).not.toContainText('Kestrin');
   await expect(identity.locator('.detail-name')).toHaveText('Object appearance');
   // An object has its own details: no hair, clothing or expression.
   await expect(page.locator('#training-controls .detail-name')).toHaveText([
@@ -31,7 +33,7 @@ test('the name fields, notes and detail names follow the LoRA type', async ({ pa
   await recipe.locator('[data-attribute=object_text]').check();
 
   await recipe.locator('[name=preset]').selectOption('style');
-  await recipe.locator('[name=trigger]').fill('Zorvak');
+  await recipe.locator('[name=trigger]').fill('Kestrin');
   await expect(page.locator('#subject-class-field')).toBeHidden();
   await expect(page.locator('#trigger-label')).toHaveText('Style name');
   await expect(page.locator('#trigger-note')).toHaveText(
@@ -51,5 +53,5 @@ test('the name fields, notes and detail names follow the LoRA type', async ({ pa
   await recipe.locator('[name=preset]').selectOption('style');
   await page.locator('#preview-prompt').click();
   await expect(page.locator('#prompt-text')).toContainText('Never name or describe the medium');
-  await expect(page.locator('#prompt-text')).not.toContainText('Zorvak');
+  await expect(page.locator('#prompt-text')).not.toContainText('Kestrin');
 });
