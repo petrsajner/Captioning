@@ -1,7 +1,7 @@
 # LORA Train handoff: training from Caption Studio captions
 
 For LORA Train development. Written 2026-09-25 against Caption Studio 0.2.1 and LORA Train
-`513881b` (2026-09-11); updated 2026-09-26 for Caption Studio 0.2.2, where the LoRA type
+`4dfcec0` (2026-09-11); updated 2026-09-26 for Caption Studio 0.2.2, where the LoRA type
 (character, object, style, general) decides how every caption names what the LoRA learns
 (section 3). Caption Studio only describes photos and clips that the user prepared;
 it writes caption files next to them and never trains, converts or trims media. LORA Train
@@ -671,7 +671,7 @@ Live runs on 2026-09-25 with copies of Petr's material:
 Code read locally on 2026-09-25:
 - Caption Studio `dd6cd17`/`eb193a7`: `captioning/video.py`, `service.py`, `storage.py`,
   `media.py`, `paths.py`;
-- LORA Train `513881b`: `backend/trainer/cache.py`, `dataset.py`, `next_flow.py`, `profiles.py`,
+- LORA Train `4dfcec0`: `backend/trainer/cache.py`, `dataset.py`, `next_flow.py`, `profiles.py`,
   `backend/caption_studio_bridge.py`;
 - ai-toolkit `60d0c28` (2026-09-24);
 - musubi-tuner `4e7c714` (2026-09-16) and the AkaneTendo25 `ltx-2` fork `9dc9abc`;
