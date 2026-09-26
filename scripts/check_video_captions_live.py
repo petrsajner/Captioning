@@ -1,4 +1,4 @@
-"""Video-model captions for copies of selected photos and clips, through a running local server or a cloud API.
+"""Captions of any LoRA type and output for copies of photos and clips, through a local server or a cloud API.
 
 The original folder is read-only and checked by hash afterwards. A local server (for example Marvin on
 127.0.0.1:8080) is never started, stopped or reconfigured. For a cloud API, the encrypted key is read from
@@ -13,7 +13,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from captioning.models import OUTPUT_SUFFIX, Settings
+from captioning.models import OUTPUT_SUFFIX, Settings, outputs_for
 from captioning.quality import word_count
 from captioning.service import Studio
 from captioning.storage import KeyStore
@@ -39,9 +39,11 @@ async def main():
     parser.add_argument("--cloud-url", help="use this cloud API instead of the local server")
     parser.add_argument("--cloud-model", help="cloud model ID")
     parser.add_argument("--keys", type=Path, help="keys.json holding the cloud API key (read into memory only)")
+    parser.add_argument("--preset", default="character", choices=["general", "character", "object", "style"])
     parser.add_argument("--trigger", default="")
-    parser.add_argument("--character-class", default="a person")
-    parser.add_argument("--omit", nargs="*", default=["identity"], help="details left out of the captions")
+    parser.add_argument("--class", dest="subject_class", default="", help="character or object type, e.g. a woman")
+    parser.add_argument("--outputs", nargs="+", default=["video_all"], help="caption outputs, run one after another")
+    parser.add_argument("--omit", nargs="*", help="details left out of the captions (default: the type's defaults)")
     parser.add_argument("--words", type=int, default=80)
     parser.add_argument("--interval", type=float, default=0.5, help="seconds between clip frames")
     parser.add_argument("--out", default="video-captions-live", help="folder name under output/")
@@ -55,6 +57,9 @@ async def main():
     for name in args.names:
         shutil.copy2(args.folder / name, dataset / name)
     studio = Studio(output / "profile")
+    # The recipe's "Apply defaults for this LoRA type" choices, unless details are given.
+    defaults = {"character": ["identity", "hair_color"], "object": ["identity"], "style": ["style"]}
+    omitted = args.omit if args.omit is not None else defaults.get(args.preset, [])
     connection: dict = (
         {"mode": "cloud", "cloud_url": args.cloud_url, "cloud_model": args.cloud_model}
         if args.cloud_url
@@ -63,11 +68,11 @@ async def main():
     studio.save_settings(
         Settings(
             **connection,
-            preset="character",
-            output_format="video_all",
+            preset=args.preset,
+            output_format=args.outputs[0],
             trigger=args.trigger,
-            character_class=args.character_class,
-            omitted_attributes=args.omit,
+            subject_class=args.subject_class,
+            omitted_attributes=omitted,
             words=args.words,
             clip_interval=args.interval,
             timeout=600,
@@ -79,12 +84,15 @@ async def main():
     if args.keys:
         studio.keys.data = KeyStore(args.keys).data.copy()  # encrypted values, in memory only
     await studio.import_images([], str(dataset), False, False)
-    await studio.start_job([r["id"] for r in studio.rows])
-    await studio.task
+    for output_format in args.outputs:
+        studio.save_settings(studio.settings.model_copy(update={"output_format": output_format}))
+        await studio.start_job([r["id"] for r in studio.rows])
+        await studio.task
+    wanted = {name for output_format in args.outputs for name in outputs_for(output_format)}
     report = []
     for row in studio.rows:
         for output_name, slot in row["outputs"].items():
-            if output_name not in ("wan", "wan_i2v", "ltx", "h3"):
+            if output_name not in wanted:
                 continue
             text = slot["caption"]
             history = slot.get("generation_history", [])
@@ -94,7 +102,7 @@ async def main():
                     "kind": row.get("kind"),
                     "output": output_name,
                     "status": slot["status"],
-                    "words": word_count(h3_body(text) if output_name == "h3" else text),
+                    "words": None if output_name == "bria_json" else word_count(h3_body(text)),
                     "trigger_count": text.count(args.trigger) if args.trigger else None,
                     "seconds": slot.get("seconds"),
                     "stages": [h.get("stage") for h in history],

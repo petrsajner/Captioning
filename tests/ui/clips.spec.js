@@ -24,8 +24,9 @@ test('clips show their frames and get WAN I2V captions; photo-only outputs leave
   await expect(page.locator('#clip-note')).toContainText('WAN 2.2 I2V (A14B) trains at 16 fps');
   await expect(page.locator('.caption-tab')).toHaveText(['.wan.txt', '.wan-i2v.txt', '.ltx.txt', '.h3.txt']);
 
+  await recipe.locator('[name=preset]').selectOption('character');
   await recipe.locator('[name=trigger]').fill('Velmira');
-  await recipe.locator('[name=character_class]').fill('a woman');
+  await recipe.locator('[name=subject_class]').fill('a woman');
   await page.locator('#select-all').uncheck();
   await card(page, 'walk.mp4').locator('.card-select').check();
   await page.locator('#generate').click();

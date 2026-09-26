@@ -41,14 +41,94 @@ export async function saveRecipe() {
   if (recipeDirty) await saveRecipe();
 }
 
+// A detail can be named differently for a LoRA type: identity is "Object appearance" for objects.
+const detailText = (a, preset) => a.by_type?.[preset] || a;
+
 export function fillTrainingControls(settings) {
   const omitted = new Set(settings.omitted_attributes || []);
   $('training-controls').innerHTML = ui.state.training_attributes
-    .map(
-      (a) =>
-        `<label class="caption-detail" data-media="${a.media || ''}"><span><input type="checkbox" name="include_${a.id}" data-attribute="${a.id}" ${omitted.has(a.id) ? '' : 'checked'}><span class="detail-name">${esc(t(a.label))}</span><span class="detail-state" aria-hidden="true"><span class="state-on">ON</span><span class="state-off">OFF</span></span></span><small>${esc(t(a.detail))}</small></label>`,
-    )
+    .map((a) => {
+      const text = detailText(a, settings.preset);
+      return `<label class="caption-detail" data-media="${a.media || ''}"><span><input type="checkbox" name="include_${a.id}" data-attribute="${a.id}" ${omitted.has(a.id) ? '' : 'checked'}><span class="detail-name">${esc(t(text.label))}</span><span class="detail-state" aria-hidden="true"><span class="state-on">ON</span><span class="state-off">OFF</span></span></span><small>${esc(t(text.detail))}</small></label>`;
+    })
     .join('');
+}
+
+// What the trigger and class fields mean for each LoRA type, and how the caption opens.
+function typeFields(s) {
+  const trigger = s.trigger
+      .trim()
+      .replace(/^,+|,+$/g, '')
+      .trim(),
+    cls = s.subject_class.trim();
+  if (s.preset === 'character')
+    return {
+      label: t('Character name'),
+      placeholder: t('e.g. Velmira'),
+      classLabel: t('Character type'),
+      classDefault: 'a person',
+      classes: ['a woman', 'a man', 'a person'],
+      classNote: t(
+        'Written after the name, for example “Velmira, a woman, …”. It also tells the model which pronouns to use.',
+      ),
+      note: t('Written once where the character is first named: “{trigger}, {cls}, …”.', {
+        trigger: trigger || 'Velmira',
+        cls: cls || 'a person',
+      }),
+    };
+  if (s.preset === 'object')
+    return {
+      label: t('Object name'),
+      placeholder: t('e.g. Zorbo'),
+      classLabel: t('Object type'),
+      classDefault: 'an object',
+      classes: ['a bag', 'a bottle', 'a shoe', 'a watch', 'a car'],
+      classNote: t('Written after the name, for example “Zorbo, a backpack, …”.'),
+      note: t('Written once where the object is first named: “{trigger}, {cls}, …”.', {
+        trigger: trigger || 'Zorbo',
+        cls: cls || 'an object',
+      }),
+    };
+  if (s.preset === 'style') {
+    const phrase = /\bstyle$/i.test(trigger) ? trigger : `${trigger || 'Zorvak'} style`;
+    return {
+      label: t('Style name'),
+      placeholder: t('e.g. Zorvak'),
+      note: t('Written at the start of every caption: “{phrase}, …”. The caption describes only the content.', {
+        phrase,
+      }),
+    };
+  }
+  return {
+    label: t('Trigger word'),
+    placeholder: t('e.g. ohwx'),
+    note:
+      s.output_format === 'bria_json'
+        ? t('Inserted into short_description so the JSON remains valid.')
+        : t('Added exactly at the start of each caption.'),
+  };
+}
+
+function renderTypeFields(s) {
+  const fields = typeFields(s),
+    classField = $('subject-class-field');
+  $('trigger-label').textContent = fields.label;
+  recipe.elements.trigger.placeholder = fields.placeholder;
+  $('trigger-note').textContent = fields.note;
+  classField.hidden = !fields.classLabel;
+  if (fields.classLabel) {
+    $('subject-class-label').textContent = fields.classLabel;
+    recipe.elements.subject_class.placeholder = fields.classDefault;
+    $('subject-class-note').textContent = fields.classNote;
+    $('subject-classes').innerHTML = fields.classes.map((c) => `<option value="${esc(c)}"></option>`).join('');
+  }
+  for (const a of ui.state.training_attributes.filter((a) => a.by_type)) {
+    const label = recipe.querySelector(`[data-attribute="${a.id}"]`)?.closest('label'),
+      text = detailText(a, s.preset);
+    if (!label) continue;
+    label.querySelector('.detail-name').textContent = t(text.label);
+    label.querySelector('small').textContent = t(text.detail);
+  }
 }
 
 export function loadRecipe(settings) {
@@ -71,24 +151,14 @@ function renderTrainingPlan() {
     included: attrs.length - omitted.length,
     total: attrs.length,
   });
-  // Video models get English descriptions; the trigger is the character's name, so no subject name.
+  // Video models get English descriptions.
   recipe.elements.format.disabled = json || video || blocked;
   recipe.elements.language.disabled = video || blocked;
   recipe.elements.words.disabled = json || blocked;
   $('json-format-note').hidden = !json;
   $('length-policy-note').hidden = json;
   $('video-format-note').hidden = !video;
-  $('character-class-field').hidden = !video;
-  $('subject-field').hidden = video;
-  recipe.elements.trigger.placeholder = video ? t('e.g. Velmira') : t('e.g. ohwx person');
-  $('trigger-note').textContent = json
-    ? t('Inserted into short_description so the JSON remains valid.')
-    : video
-      ? t('Written once where the character is first named: “{trigger}, {cls}, …”.', {
-          trigger: s.trigger.trim() || 'Velmira',
-          cls: s.character_class.trim() || 'a person',
-        })
-      : t('Added exactly at the start of each caption.');
+  renderTypeFields(s);
   const files = outputsFor(format)
     .map((output) => 'image' + ui.state.caption_outputs[output].suffix)
     .join(', ');

@@ -1,7 +1,9 @@
 # LORA Train handoff: training from Caption Studio captions
 
 For LORA Train development. Written 2026-09-25 against Caption Studio 0.2.1 and LORA Train
-`513881b` (2026-09-11). Caption Studio only describes photos and clips that the user prepared;
+`513881b` (2026-09-11); updated 2026-09-26 for Caption Studio 0.2.2, where the LoRA type
+(character, object, style, general) decides how every caption names what the LoRA learns
+(section 3). Caption Studio only describes photos and clips that the user prepared;
 it writes caption files next to them and never trains, converts or trims media. LORA Train
 picks the files for the model it trains. Nothing in LORA Train was changed for this document:
 everything addressed to LORA Train is a proposal for its own development.
@@ -20,7 +22,7 @@ Labels used below:
    `name.txt` (section 4).
 3. **Do not prepend the trigger to model files; check it instead.** For H3 a prepend breaks the
    file's structure (section 5).
-4. **Build class-only captions for preservation from the opening** `{trigger}, {class},`
+4. **Build class-only captions for preservation from the opening** of the LoRA type
    (section 6).
 5. **Video profiles read clips themselves**: rotation, true frame count, frame rate and the
    trained window compared with the described clip (section 7).
@@ -72,13 +74,33 @@ Rules [V]:
 
 ## 3. Caption content
 
-### 3.1 `name.txt` and `name.json` (model-independent, unchanged)
+Since 0.2.2 the recipe's LoRA type ("What are you training?", `settings.preset`) decides how
+every caption output names what the LoRA learns: `name.txt`, the `short_description` of
+`name.json` and all video files [V]:
+
+| LoRA type | The caption names it | Later mentions | Details left out by default |
+|---|---|---|---|
+| `character` | once, `{trigger}, {class},`: `Velmira, a woman, sits …` | `the woman`, she | identity, hair color |
+| `object` | once, `{trigger}, {class},`: `Zorbo, a backpack, hangs …` | `the backpack`, it | identity (the object's shape, material, colors, markings) |
+| `style` | at the start, `{trigger} style, `: `Zorvak style, a woman sits …` | — | visual style |
+| `general` | at the start, `{trigger}, `: `ohwx, a woman sits …` | — | none |
+
+- The class is the recipe's type field (`settings.subject_class`, up to 40 characters). Empty
+  means `a person` for a character and `an object` for an object.
+- A style trigger that already ends in "style" is used as it is (`ink wash style, …`).
+- After a style or general trigger the first letter is lowercased, except "I" and words with
+  more capitals (`LED`).
+- Style captions describe only the content: people generically, never the medium, technique,
+  texture, grain or palette.
+
+### 3.1 `name.txt` and `name.json` (model-independent)
 
 - `name.txt` is the Normal output. It can be prose or tags and is in the caption language chosen
-  in the recipe. If a trigger is set, the caption starts with it; when the model did not start
-  with it, Caption Studio prepends `trigger, `. LORA Train reads this file today.
-- `name.json` is BRIA FIBO ImageAnalysis with the trigger inside `short_description`. LORA
-  Train's FIBO profile reads it through `fibo_caption.normalize_caption`. Unchanged.
+  in the recipe. With a trigger it opens as in the table above; in tags the opening is the
+  first tag (`Velmira, a woman, sitting, café, …`). LORA Train reads this file today.
+- `name.json` is BRIA FIBO ImageAnalysis. Its `short_description` opens the same way, and for a
+  character or an object the main subject's `description` in `objects` is the class. LORA
+  Train's FIBO profile reads it through `fibo_caption.normalize_caption`.
 
 ### 3.2 Video model files: shared rules
 
@@ -88,12 +110,12 @@ Rules [V]:
   described, and the LoRA learns them. Hairstyle, clothing, accessories, expression, pose,
   setting, lighting and camera are described unless the user omitted them. Clip captions add
   motion over time and camera movement.
-- **Opening.** The character is named once as `{trigger}, {class},`, for example
-  `Velmira, a woman,`. Later mentions are `the woman` or a pronoun. The class is the recipe's
-  Character type: up to 40 characters, default `a person`. The trigger is up to 100 characters;
-  the UI suggests one invented, readable word.
-- **Without a trigger** the opening is only the class phrase, capitalized at the start of a
-  sentence: `A woman sits …`, `… frames a woman seated …`.
+- **Opening.** A character or object is named once as `{trigger}, {class},`, for example
+  `Velmira, a woman,`. Later mentions are `the woman` or a pronoun. The trigger is up to 100
+  characters; the UI suggests one invented, readable word. Style and general captions start
+  with their trigger (3.3).
+- **Without a trigger** a character or object opening is only the class phrase, capitalized at
+  the start of a sentence: `A woman sits …`, `… frames a woman seated …`.
 - **Punctuation.** When the opening falls right before `.` or `;`, its trailing comma is
   dropped: `A photo of Velmira, a woman.`
 - **Warnings** that Caption Studio shows but does not enforce: the trigger occurs more than
@@ -110,6 +132,10 @@ Rules [V]:
 | `.wan-i2v.txt` | first words; then only motion and camera | `Velmira, a woman, looks out of the window, then turns …` |
 | `.ltx.txt` | first sentence, after the shot | `A medium close-up at eye level frames Velmira, a woman, as she …` |
 | `.h3.txt` | in `[Shot 1]`, after style and composition | `integrated_multimodal_description: [Shot 1] Live-action, photographic, a medium close-up at eye level frames Velmira, a woman, seated …` |
+
+An object sits in the same places as a character. Style and general triggers start every file;
+in H3 they start the `[Shot 1]` body. A style caption's H3 body opens with the composition, not
+with style words: `[Shot 1] Zorvak style, a medium close-up at eye level frames a woman …`.
 
 Photos are described as stills with no motion; H3 photo captions end with "The camera holds a
 static shot." Clips describe the motion in time order and the camera movement, including a
@@ -179,16 +205,19 @@ Recommended check for model files [R]:
 2. The trigger must occur exactly once, case-sensitive and not inside another word:
    `len(re.findall(rf"(?<!\w){re.escape(trigger)}(?!\w)", text)) == 1`. For H3 it must be in the
    body.
-3. If the opening `{trigger}, {class}` is missing, warn: the file was edited by hand or written
-   with another class, and preservation cannot build its class caption (section 6).
+3. If the opening of the LoRA type is missing (`{trigger}, {class}` for a character or object,
+   `{trigger} style, ` or `{trigger}, ` at the start otherwise), warn: the file was edited by
+   hand or written with another type or class, and preservation cannot build its class caption
+   (section 6).
 4. If the files contain no trigger (Caption Studio ran without one) but LORA Train has one, fail
    with "These captions have no trigger. Set it in Caption Studio and create them again." Do not
    insert it: the class phrase can occur several times, so the right place is ambiguous.
 5. If LORA Train has no trigger while the files contain one, training still learns that name.
    Show a notice.
 
-Source of the trigger and class: the user enters them in LORA Train. The bridge can prefill both
-from Caption Studio's `/api/state` (`settings.trigger`, `settings.character_class`). These are
+Source of the trigger, type and class: the user enters them in LORA Train. The bridge can prefill
+them from Caption Studio's `/api/state` (`settings.trigger`, `settings.preset`,
+`settings.subject_class`). These are
 the current recipe values, not necessarily the ones the files were written with, so the check
 above stays the authority.
 
@@ -206,37 +235,50 @@ If LORA Train ever hands these files to another trainer [V]:
 ## 6. Class-only captions for preservation
 
 Differential output preservation (DOP) and prior preservation compare the LoRA with the base
-model on captions where the trigger is replaced by the class. The apposition opening makes this
-exact. The function below returns the caption Caption Studio writes without a trigger. It was
-checked against `finish_video_caption` for WAN, WAN I2V, LTX and H3, with the opening at the
-start, mid-sentence, after `[Shot 1]` and before a full stop [V].
+model on captions where the trigger is replaced by the class. The fixed openings make this
+exact. The function below returns the caption Caption Studio writes without a trigger; it is
+the same rule as `captioning/anchor.py` `class_caption`. `tests/test_lora_types.py` checks it
+for all four LoRA types and all text outputs (Normal, WAN, WAN I2V, LTX, H3), with the opening
+at the start, mid-sentence, after `[Shot 1]` and before a full stop [V].
 
 ```python
 import re
 
+DEFAULT_CLASS = {"character": "a person", "object": "an object"}
 
-def class_caption(caption: str, trigger: str, character_class: str) -> str:
+
+def class_caption(caption: str, preset: str, trigger: str, subject_class: str = "") -> str:
     """The caption as Caption Studio writes it without a trigger."""
-    for opening in (f"{trigger}, {character_class},", f"{trigger}, {character_class}"):
-        start = caption.find(opening)
-        if start >= 0:
-            break
+    trigger = trigger.strip().strip(",").strip()
+    if not trigger:
+        return caption
+    if preset in DEFAULT_CLASS:
+        cls = subject_class or DEFAULT_CLASS[preset]
+        replacements = [(f"{trigger}, {cls},", cls), (f"{trigger}, {cls}", cls)]
     else:
-        raise ValueError(f"The caption does not contain the opening '{trigger}, {character_class},'.")
-    rest = caption[start + len(opening) :]
-    phrase = character_class
-    # Capitalize the class phrase where it starts a sentence or the [Shot 1] body.
-    if re.search(r"(?:^|[.!?]\s+|\[Shot 1\]\s+)$", caption[:start]):
-        phrase = phrase[:1].upper() + phrase[1:]
-    return caption[:start] + phrase + rest
+        phrase = trigger
+        if preset == "style" and not re.search(r"\bstyle$", trigger, re.I):
+            phrase += " style"
+        replacements = [(phrase + ", ", "")]
+    for old, new in replacements:
+        start = caption.find(old)
+        if start >= 0:
+            rest = new + caption[start + len(old) :]
+            # Capitalize where the remaining text starts a sentence or the [Shot 1] body.
+            if re.search(r"(?:^|[.!?]\s+|\[Shot 1\]\s+)$", caption[:start]):
+                rest = rest[:1].upper() + rest[1:]
+            return caption[:start] + rest
+    raise ValueError("The caption does not contain the opening of its LoRA type.")
 ```
 
-| Caption | Class-only caption |
-|---|---|
-| `Velmira, a woman, sits at a café table …` | `A woman sits at a café table …` |
-| `… frames Velmira, a woman, as she turns her head.` | `… frames a woman as she turns her head.` |
-| `… [Shot 1] Velmira, a woman, stands in a doorway. …` | `… [Shot 1] A woman stands in a doorway. …` |
-| `A photo of Velmira, a woman.` | `A photo of a woman.` |
+| Type | Caption | Class-only caption |
+|---|---|---|
+| character | `Velmira, a woman, sits at a café table …` | `A woman sits at a café table …` |
+| character | `… frames Velmira, a woman, as she turns her head.` | `… frames a woman as she turns her head.` |
+| character | `… [Shot 1] Velmira, a woman, stands in a doorway. …` | `… [Shot 1] A woman stands in a doorway. …` |
+| object | `A photo of Zorbo, a backpack.` | `A photo of a backpack.` |
+| style | `Zorvak style, a woman sits at a café table …` | `A woman sits at a café table …` |
+| general | `ohwx, a woman sits at a café table …` | `A woman sits at a café table …` |
 
 For comparison, other trainers do a plain substring replacement [V]:
 - ai-toolkit replaces the trigger with its class word: `Velmira, a woman,` becomes a harmless
@@ -578,8 +620,8 @@ Unchanged since 0.1.x:
 - `POST /api/runtime/stop`.
 
 Added in 0.2.x and useful to LORA Train [V]:
-- `settings.trigger`, `settings.character_class` and `settings.output_format`, the recipe's
-  current values;
+- `settings.trigger`, `settings.preset` (the LoRA type), `settings.subject_class` (empty means
+  the type's default class) and `settings.output_format`, the recipe's current values;
 - `caption_outputs`, a map from output ID to `{suffix, name}`: `normal`, `bria_json`, `wan`,
   `wan_i2v`, `ltx`, `h3`;
 - `media_outputs`: `{"image": ["normal", "bria_json", "wan", "ltx", "h3"], "clip": ["wan",

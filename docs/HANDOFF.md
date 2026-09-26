@@ -1,6 +1,37 @@
 # Caption Studio development handoff
 
-## Current release: 0.2.1 (2026-09-25)
+## Current release: 0.2.2 (2026-09-26)
+
+The LoRA type ("What are you training?") decides how every caption output names what the LoRA
+learns (Petr, 2026-09-26: trigger plus type instead of a subject name, fields per type, style
+captions describe only the content, style trigger at the start, style defaults omit only style).
+
+- New `captioning/anchor.py` holds the rules for all outputs (Normal, BRIA JSON, WAN, WAN I2V,
+  LTX, H3):
+  - character and object: the model writes `<character>` or `<object>` once and the app writes
+    `{trigger}, {class},` there; later mentions use "the woman" or a pronoun;
+  - style: the prompt forbids naming the medium or technique and asks for people described
+    generically; the app starts the caption with `{trigger} style, ` (H3: inside `[Shot 1]`,
+    which then opens with the composition instead of style words);
+  - general: `{trigger}, ` at the start, as before.
+- The recipe fields follow the type: Character name + Character type, Object name + Object
+  type, Style name, Trigger word. **Main subject name** is gone; it made the model write a name
+  that the trigger then repeated. `character_class` became `subject_class` (empty means `a
+  person` or `an object`); old recipes migrate, and the old default `a person` becomes empty.
+- For objects the identity detail is shown as **Object appearance**, and person details refer
+  to people who hold, wear or use the object.
+- Video prompts follow the type as well (0.2.0 and 0.2.1 always wrote character prompts).
+- After a style or general trigger the first letter is lowercased (`ohwx, a woman sits`), except
+  "I" and words with more capitals.
+- Fixed: a lowercase trigger at a sentence start was capitalized (`velmira` became `Velmira`), so
+  case-sensitive trainers missed it. This affected video outputs since 0.2.0.
+- Normal word counts still include the trigger; video outputs count the model's own text.
+- `class_caption` gives the caption without its trigger for preservation (DOP). The same rule is
+  in [LORA_TRAIN_HANDOFF.md](LORA_TRAIN_HANDOFF.md) section 6, checked against the app for every
+  type and output.
+- `scripts/check_video_captions_live.py` takes `--preset`, `--class` and `--outputs`.
+
+## Previous release: 0.2.1 (2026-09-25)
 
 Video clips, following [VIDEO_LORA_PLAN.md](VIDEO_LORA_PLAN.md) section 5.
 

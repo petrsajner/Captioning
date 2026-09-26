@@ -41,7 +41,13 @@ def main():
     if not runtime.ready(args.profile, args.backend):
         raise SystemExit(f"Download the {args.profile} model and the {args.backend} runtime in Caption Studio first.")
     frames = clip_frames(args.clip, args.interval)
-    settings = Settings(output_format="wan", trigger="Karvel", character_class="a man", omitted_attributes=["identity"])
+    settings = Settings(
+        output_format="wan",
+        preset="character",
+        trigger="Karvel",
+        subject_class="a man",
+        omitted_attributes=["identity"],
+    )
     payload = build_payload(settings, MANAGED_MODEL, frames, "clip")
     payload.update(temperature=0.6, top_p=0.95, chat_template_kwargs={"enable_thinking": False})
     before = gpu_used_mib()

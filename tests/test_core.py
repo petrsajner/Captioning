@@ -13,11 +13,12 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
+from captioning.anchor import finish_caption
 from captioning.api import make_app
 from captioning.errors import ProviderUnavailableError, UserError
 from captioning.folders import PAGE_SIZE, FolderBrowser
 from captioning.models import Settings, make_prompt
-from captioning.provider import CaptionResult, clean_caption, generate
+from captioning.provider import CaptionResult, generate
 from captioning.runtime import Runtime, SetupCancelled, safe_extract
 from captioning.service import Studio
 from captioning.storage import KeyStore, fingerprint, write_caption
@@ -154,7 +155,7 @@ def test_payload_and_image_preprocessing(tmp_path, monkeypatch):
     )
     s = Settings(trigger="abc", image_size=1024)
     result = asyncio.run(generate(image, s))
-    assert result.text == "abc, A blue rectangle."
+    assert result.text == "abc, a blue rectangle."  # the sentence continues after the trigger
     payload = captured[0]
     assert "sensitive-path" not in json.dumps(payload)
     encoded = payload["messages"][0]["content"][0]["image_url"]["url"].split(",", 1)[1]
@@ -185,17 +186,18 @@ def test_incomplete_response_rejected(tmp_path, monkeypatch, finish, content):
 
 
 def test_prompt_trigger_and_network_boundaries():
-    s = Settings(
-        preset="character", subject="ohwx", trigger="ohwx", omit_identity=True, instructions="Describe clothing."
-    )
+    s = Settings(preset="character", trigger="ohwx", omit_identity=True, instructions="Describe clothing.")
     prompt = make_prompt(s)
+    # The model never sees the trigger: it writes <character>, and the application puts the name there.
     assert (
-        "ohwx" in prompt
+        "<character>" in prompt
+        and "ohwx" not in prompt
         and "Describe clothing." in prompt
         and "LEARN_WITH_LORA — DO NOT DESCRIBE: stable visual identity" in prompt
     )
-    assert clean_caption("ohwx, woman", "ohwx") == "ohwx, woman"
-    assert clean_caption("ohwxish object", "ohwx") == "ohwx, ohwxish object"
+    general = Settings(trigger="ohwx")
+    assert finish_caption("ohwx, woman", general)[0] == "ohwx, woman"
+    assert finish_caption("ohwxish object", general)[0] == "ohwx, ohwxish object"
     with pytest.raises(ValueError):
         Settings(local_url="https://external.example/v1")
     with pytest.raises(ValueError):

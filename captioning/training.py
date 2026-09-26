@@ -1,6 +1,6 @@
 """Caption conditioning intent; these controls do not mask image training loss."""
 
-from typing import Literal
+from typing import Any, Literal
 
 Attribute = Literal[
     "identity",
@@ -17,12 +17,19 @@ Attribute = Literal[
     "motion",
     "camera_motion",
 ]
-ATTRIBUTES = [
+ATTRIBUTES: list[dict[str, Any]] = [
     {
         "id": "identity",
         "label": "Identity / subject appearance",
         "detail": "Facial and physical features; an object’s characteristic shape, material and colors.",
         "instruction": "stable visual identity of the MAIN subject: facial structure and distinctive physical features; for an animal its coat markings; for an object its characteristic shape, material and colors",
+        # Shown instead of label and detail for an object LoRA, where the main subject is the object.
+        "by_type": {
+            "object": {
+                "label": "Object appearance",
+                "detail": "The object’s shape, material, colors and markings.",
+            }
+        },
     },
     # Separate since 0.2.0: a character's hair color usually belongs to the LoRA, its hairstyle to the prompt.
     {

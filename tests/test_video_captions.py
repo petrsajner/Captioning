@@ -8,18 +8,24 @@ import httpx
 import pytest
 from PIL import Image
 
+from captioning.anchor import FINISH_NOTICES
 from captioning.errors import ProviderUnavailableError, UserError
 from captioning.i18n import catalog
 from captioning.models import OUTPUT_SUFFIX, Settings, make_prompt
 from captioning.provider import CaptionResult, generate, revision_instruction
 from captioning.service import Studio
-from captioning.video import FINISH_NOTICES, H3_ERROR, finish_video_caption, h3_body, validate_h3
+from captioning.video import H3_ERROR, finish_video_caption, h3_body, validate_h3
 
 H3_PHOTO = (
     "integrated_multimodal_description: [Shot 1] Live-action, photographic, a medium close-up at eye level frames "
     "Velmira, a woman, seated at a café table. The camera holds a static shot.\n\n"
     "overall_soundscape: N/A\n\nnon_diegetic_music: N/A"
 )
+
+
+def finish(draft, output, trigger="Velmira", cls="a woman", media="image"):
+    s = Settings(output_format=output, preset="character", trigger=trigger, subject_class=cls)
+    return finish_video_caption(draft, s, media)
 
 
 def picture(path: Path) -> Path:
@@ -36,13 +42,12 @@ def test_video_prompts_are_english_descriptions_with_the_character_token(output)
         format="tags",
         preset="character",
         trigger="Velmira",
-        subject="Mira",
-        character_class="a woman",
+        subject_class="a woman",
         omitted_attributes=["identity"],
     )
     prompt = make_prompt(s)
     assert "Write in English" in prompt and "Czech" not in prompt
-    assert "comma-separated" not in prompt and "Mira" not in prompt and "Velmira" not in prompt
+    assert "comma-separated" not in prompt and "Velmira" not in prompt
     assert "<character>" in prompt and "'a woman'" in prompt and "'the woman'" in prompt
     assert "not even in passing" in prompt and "hair" not in prompt.split("MANDATORY CAPTION POLICY")[0]
     assert "do not describe motion over time or camera movement" in prompt
@@ -81,52 +86,49 @@ def test_video_prompts_are_english_descriptions_with_the_character_token(output)
     ],
 )
 def test_the_character_token_becomes_the_trigger_and_class_once(output, draft, expected):
-    text, notices, review = finish_video_caption(draft, output, "Velmira", "a woman")
+    text, notices, review = finish(draft, output)
     assert text == expected and not review
     assert text.count("Velmira") == 1
 
 
 def test_later_mentions_and_a_missing_token_read_naturally():
-    text, notices, _ = finish_video_caption(
-        "<character> smiles. <character> wears a grey coat.", "wan", "Velmira", "a woman"
-    )
+    text, notices, _ = finish("<character> smiles. <character> wears a grey coat.", "wan")
     assert text == "Velmira, a woman, smiles. The woman wears a grey coat."
     # The model wrote the class instead of the token: the name goes to its first mention.
     draft = "Live-action, photographic, a medium close-up frames a woman seated by a window."
-    text, notices, review = finish_video_caption(draft, "h3", "Velmira", "a woman")
-    assert not review and notices == ["The character name was placed at the first mention of the character type."]
+    text, notices, review = finish(draft, "h3", "Velmira")
+    assert not review and notices == ["The name was placed at the first mention of its type."]
     assert h3_body(text).startswith("Live-action, photographic, a medium close-up frames Velmira, a woman, seated")
-    text, _, _ = finish_video_caption("A woman sits by a window.", "ltx", "Velmira", "a woman")
+    text, _, _ = finish("A woman sits by a window.", "ltx", "Velmira")
     assert text == "Velmira, a woman, sits by a window."
     # Seen with Qwen3.8 27B: an article before the token, and the class said again after it.
-    text, _, _ = finish_video_caption("A close-up frames a <character>.", "ltx", "Velmira", "a woman")
+    text, _, _ = finish("A close-up frames a <character>.", "ltx", "Velmira")
     assert text == "A close-up frames Velmira, a woman."
-    text, _, _ = finish_video_caption("<character> is a woman with long hair.", "wan", "Velmira", "a woman")
+    text, _, _ = finish("<character> is a woman with long hair.", "wan", "Velmira")
     assert text == "Velmira, a woman, has long hair."
-    text, _, _ = finish_video_caption(
-        "A close-up frames <character> as a woman with a ponytail.", "ltx", "Velmira", "a woman"
-    )
+    text, _, _ = finish("A close-up frames <character> as a woman with a ponytail.", "ltx", "Velmira")
     assert text == "A close-up frames Velmira, a woman, with a ponytail."
 
 
 def test_without_a_trigger_the_class_opens_the_caption():
-    text, notices, _ = finish_video_caption("<character> sits at a table.", "wan", "", "a woman")
+    text, notices, _ = finish("<character> sits at a table.", "wan", "")
     assert text == "A woman sits at a table." and notices == []
-    text, notices, _ = finish_video_caption("She sits at a table.", "wan", "Velmira", "a woman")
-    assert text == "Velmira, a woman, She sits at a table." and notices == [
-        "The character name was added at the start."
-    ]
+    text, notices, _ = finish("She sits at a table.", "wan")
+    assert text == "Velmira, a woman, she sits at a table." and notices == ["The name was added at the start."]
+    # Without a trigger there is no name to add, and H3 needs no manual step.
+    text, notices, review = finish("Live-action, someone sits.", "h3", "")
+    assert h3_body(text).startswith("Live-action, someone sits.") and notices == [] and not review
 
 
 def test_h3_body_is_wrapped_in_the_official_fields_with_a_static_shot():
     draft = "integrated_multimodal_description: [Shot 1] Live-action, photographic, a medium close-up at eye level frames <character> seated at a café table."
-    text, notices, review = finish_video_caption(draft, "h3", "Velmira", "a woman")
+    text, notices, review = finish(draft, "h3")
     assert text == H3_PHOTO and notices == [] and not review
     validate_h3(text)
     assert h3_body(text).startswith("Live-action") and "overall_soundscape" not in h3_body(text)
     # The character must be inside [Shot 1]; H3 never gets a name glued in front of its field label.
-    text, notices, review = finish_video_caption("Live-action, someone sits.", "h3", "Velmira", "a woman")
-    assert review and notices == ["Put the character name into [Shot 1] manually."]
+    text, notices, review = finish("Live-action, someone sits.", "h3")
+    assert review and notices == ["Put the name into [Shot 1] manually."]
     assert text.startswith("integrated_multimodal_description: [Shot 1] Live-action")
 
 
@@ -144,9 +146,9 @@ def test_h3_validation_rejects_captions_without_the_three_fields(text):
 
 
 def test_trigger_warnings_follow_trainer_substring_matching():
-    _, notices, _ = finish_video_caption("<character> asks for tea.", "wan", "sks", "a man")
+    _, notices, _ = finish("<character> asks for tea.", "wan", "sks", "a man")
     assert "The trigger is part of another word here; trainers may miss it. Choose a more distinct name." in notices
-    _, notices, _ = finish_video_caption("<character> stands.", "wan", "ohwx person", "a man")
+    _, notices, _ = finish("<character> stands.", "wan", "ohwx person", "a man")
     assert "The trigger contains a space; a single invented word works best." in notices
 
 
@@ -169,7 +171,13 @@ def test_generation_finishes_video_captions_and_revises_the_model_text(tmp_path,
 
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs))
     s = Settings(
-        mode="cloud", cloud_model="m", output_format="wan", trigger="Velmira", character_class="a woman", words=20
+        mode="cloud",
+        cloud_model="m",
+        output_format="wan",
+        preset="character",
+        trigger="Velmira",
+        subject_class="a woman",
+        words=20,
     )
     result = asyncio.run(generate(image, s, "not-a-real-key"))
     assert result.text == "Velmira, a woman, sits at a café table and looks out at the rain."
@@ -179,11 +187,13 @@ def test_generation_finishes_video_captions_and_revises_the_model_text(tmp_path,
     assert result.history[0]["text"].startswith("Velmira, a woman, sits")
 
 
-def test_revision_instruction_for_normal_captions_is_unchanged():
+def test_revision_instructions_keep_the_token_and_never_see_the_trigger():
+    # The draft has no trigger yet; the application adds it to the finished caption.
     s = Settings(trigger="ohwx", language="Czech")
     text = revision_instruction(s, "draft", too_long=True)
-    assert "Write in Czech." in text and "Preserve this exact trigger at the beginning" in text
-    assert "<character>" not in text
+    assert "Write in Czech." in text and "ohwx" not in text and "<character>" not in text
+    text = revision_instruction(s.model_copy(update={"preset": "character"}), "draft", too_long=True)
+    assert "Keep the token <character> exactly once" in text and "ohwx" not in text
 
 
 def test_all_video_models_write_their_own_files_and_leave_the_others(tmp_path, monkeypatch):

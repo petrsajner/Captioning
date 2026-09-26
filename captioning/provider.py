@@ -11,6 +11,7 @@ from pathlib import Path
 import httpx
 from PIL import Image, ImageOps
 
+from .anchor import finish_caption, token
 from .bria import normalize_json, schema_prompt
 from .errors import ProviderUnavailableError, UserError
 from .media import VIDEO_EXTENSIONS, encode, frame_times, frames_at, is_video, probe
@@ -78,7 +79,8 @@ def image_bytes(path: Path, size: int, quality=92) -> bytes:
         return out.getvalue()
 
 
-def clean_caption(value: str, trigger: str) -> str:
+def clean_caption(value: str) -> str:
+    """The model's text without reasoning, fences, quotes and extra whitespace; the trigger comes later."""
     value = re.sub(r"<think>.*?</think>", "", value, flags=re.S).strip()
     if "</think>" in value:
         value = value.rsplit("</think>", 1)[-1]
@@ -90,9 +92,6 @@ def clean_caption(value: str, trigger: str) -> str:
     value = re.sub(r"\s+", " ", value).strip()
     if not value:
         raise UserError("The model returned an empty caption.")
-    trigger = trigger.strip().strip(",")
-    if trigger and not re.match(re.escape(trigger) + r"(?:\s|[,.:;]|$)", value, re.I):
-        value = trigger + ", " + value
     return value
 
 
@@ -185,15 +184,16 @@ def read_response(body: dict, s: Settings, stage: str, media: str = "image") -> 
         if s.output_format == "bria_json":
             text = normalize_json(content, s)
             complete = True
-        elif s.output_format in VIDEO_OUTPUTS:
-            # Revision and word counts use the model's own text; the file gets the finished caption.
-            draft = clean_caption(content, "")
-            text, notices, review = finish_video_caption(draft, s.output_format, s.trigger, s.character_class, media)
-            video = {"draft": draft, "finish_notices": notices, "finish_review": review}
-            complete = not unfinished(draft, "description", finish)
         else:
-            text = clean_caption(content, s.trigger)
-            complete = not unfinished(text, s.format, finish)
+            # Revision works on the model's own text; the file gets the finished caption.
+            draft = clean_caption(content)
+            if s.output_format in VIDEO_OUTPUTS:
+                text, notices, review = finish_video_caption(draft, s, media)
+                complete = not unfinished(draft, "description", finish)
+            else:
+                text, notices, review = finish_caption(draft, s)
+                complete = not unfinished(draft, s.format, finish)
+            video = {"draft": draft, "finish_notices": notices, "finish_review": review}
     except UserError:
         text = re.sub(r"<think>.*?(?:</think>|$)", "", content, flags=re.S).strip()
         complete = False
@@ -207,7 +207,11 @@ def read_response(body: dict, s: Settings, stage: str, media: str = "image") -> 
         "app_token_limit": None,
         "output_format": s.output_format,
         "text": text,
-        "word_count": word_count(video.get("draft", text)) if s.output_format != "bria_json" else None,
+        # Normal counts the saved caption, trigger included; video models count the model's own text,
+        # because H3 labels and the inserted name are not part of their target.
+        "word_count": None
+        if s.output_format == "bria_json"
+        else word_count(video.get("draft", text) if s.output_format in VIDEO_OUTPUTS else text),
         "complete": complete,
         "blocked": finish in BLOCKED_FINISH,
         **video,
@@ -239,14 +243,11 @@ def revision_instruction(s: Settings, draft: str, too_long: bool) -> str:
         if s.format == "tags" and not video
         else "Return only the full caption in complete sentences, ending naturally. Do not cut off words or sentences."
     )
-    if video:
-        instruction += " Keep the token <character> exactly once, where the character is first mentioned."
-        if s.output_format == "h3":
-            instruction += " Do not add field labels, [Shot 1] or sound."
-    elif s.trigger.strip():
-        instruction += (
-            " Preserve this exact trigger at the beginning: " + json.dumps(s.trigger.strip(), ensure_ascii=False) + "."
-        )
+    # The draft has no trigger yet: the application adds it to the finished caption (anchor.py).
+    if token(s):
+        instruction += f" Keep the token {token(s)} exactly once, where it is first mentioned."
+    if s.output_format == "h3":
+        instruction += " Do not add field labels, [Shot 1] or sound."
     return instruction + "\nCaption to edit:\n" + json.dumps(draft, ensure_ascii=False)
 
 
@@ -272,7 +273,7 @@ class CaptionSession:
             self.on_progress(event)
 
     def result(self, trace: dict, notice: str = "", needs_review: bool = False) -> CaptionResult:
-        """The chosen response; video outputs add the notices from finishing their caption."""
+        """The chosen response with the notices from finishing its caption."""
         notices = [notice, *trace.get("finish_notices", [])]
         return CaptionResult(
             trace["text"],
@@ -365,8 +366,7 @@ class CaptionSession:
         """Complete an unfinished caption or shorten one well over the target, keeping the best version."""
 
         def words(trace: dict) -> int:
-            # Video outputs count the model's own text: H3 labels and the inserted name are not part of it.
-            return word_count(trace.get("draft", trace["text"]))
+            return trace["word_count"]
 
         candidates = [current] if current["complete"] else []
         ceiling = word_ceiling(self.s.words)

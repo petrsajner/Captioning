@@ -15,7 +15,9 @@ test('captions selected images, keeps model responses and saves manual edits', a
   await expect(page.locator('#job-count')).toHaveText('2 / 2 · 2 saved');
   for (const name of ['second', 'Waiting']) {
     await expect(card(page, name + '.png').locator('.status-label')).toHaveText('Saved');
-    expect(readFileSync(path.join(env.dataset, name + '.txt'), 'utf8')).toBe(`ohwx, ${CAPTION}\n`);
+    expect(readFileSync(path.join(env.dataset, name + '.txt'), 'utf8')).toBe(
+      `ohwx, ${CAPTION[0].toLowerCase()}${CAPTION.slice(1)}\n`,
+    );
   }
   await expect(card(page, 'blue.png').locator('.status-label')).toHaveText('Waiting');
 

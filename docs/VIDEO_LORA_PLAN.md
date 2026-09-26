@@ -3,7 +3,9 @@
 Status: 0.2.0 (photos, runtime alignment, D7) and 0.2.1 (clips, WAN I2V) are implemented,
 and the LORA Train handoff (section 10) is written as
 [LORA_TRAIN_HANDOFF.md](LORA_TRAIN_HANDOFF.md). Written 2026-09-25. The decisions in
-section 11 were confirmed by Petr on 2026-09-25.
+section 11 were confirmed by Petr on 2026-09-25. Since 0.2.2 the LoRA type (character, object,
+style, general) decides how every output names what the LoRA learns, and `character_class` is
+`subject_class`; see [HANDOFF.md](HANDOFF.md).
 
 ## 1. Goal and scope
 

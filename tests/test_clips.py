@@ -135,7 +135,14 @@ def capture(monkeypatch, content="<character> turns toward the camera."):
 def test_clip_requests_send_labeled_frames_and_the_clip_instructions(tmp_path, monkeypatch):
     video = clip(tmp_path / "walk.mp4", seconds=2, fps=10)
     requests = capture(monkeypatch)
-    s = Settings(mode="cloud", cloud_model="m", output_format="wan_i2v", trigger="Velmira", character_class="a woman")
+    s = Settings(
+        mode="cloud",
+        cloud_model="m",
+        output_format="wan_i2v",
+        preset="character",
+        trigger="Velmira",
+        subject_class="a woman",
+    )
     result = asyncio.run(generate(video, s, "not-a-real-key"))
     assert result.text == "Velmira, a woman, turns toward the camera."
     content = requests[0]["messages"][0]["content"]
@@ -151,7 +158,9 @@ def test_clip_requests_send_labeled_frames_and_the_clip_instructions(tmp_path, m
 def test_h3_clip_captions_keep_their_own_camera_movement(tmp_path, monkeypatch):
     video = clip(tmp_path / "walk.mp4")
     capture(monkeypatch, "Live-action, a medium shot frames <character> walking. The camera pans right slowly.")
-    s = Settings(mode="cloud", cloud_model="m", output_format="h3", trigger="Velmira", character_class="a woman")
+    s = Settings(
+        mode="cloud", cloud_model="m", output_format="h3", preset="character", trigger="Velmira", subject_class="a woman"
+    )
     text = asyncio.run(generate(video, s, "not-a-real-key")).text
     assert "The camera pans right slowly." in text and "static" not in text
     photo_prompt = make_prompt(s)

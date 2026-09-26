@@ -78,8 +78,9 @@ GPU. Selected images are sent to the chosen provider and billed under its terms.
    the open dataset. The folder browser shows thumbnails, an expandable tree,
    breadcrumbs, Back/Forward, Up, Home and Refresh. Shortcuts: Alt+Left/Right,
    Alt+Up, Ctrl+L and F5.
-2. Choose the dataset type, caption format, caption language, optional trigger,
-   subject name and additional instructions.
+2. Choose what you are training, the caption output, the trigger and, for a character
+   or an object, its type; then the caption format, caption language and additional
+   instructions.
 3. Under **Choose what to include in the caption**, check details you want to
    change with prompts. Leave out details you want the LoRA to capture.
 4. Select images and click **Create captions**. Captions are processed one at a time.
@@ -97,6 +98,25 @@ usually belongs to the LoRA while its hairstyle (loose, ponytail, bangs) stays f
 prompts. Merely changing the dataset type does not overwrite your choices. Existing
 recipes retain their original include/omit meaning when upgraded; a recipe that
 omitted "Hair and hairstyle" now omits both hair details.
+
+### What you are training
+
+**What are you training?** decides how every caption output names what the LoRA learns:
+
+| Type | Fields | A caption starts | Learned by the LoRA (default details left out) |
+|---|---|---|---|
+| Character / person | Character name, Character type (`a woman`) | `Velmira, a woman, sits…`, later "the woman" or "she" | face and body, hair color |
+| Object / product | Object name, Object type (`a backpack`) | `Zorbo, a backpack, hangs…`, later "the backpack" or "it" | the object's shape, material, colors and markings |
+| Visual style | Style name | `Zorvak style, a woman sits…` | medium, technique, brushwork, texture, palette |
+| General dataset | Trigger word (optional) | `ohwx, a woman sits…` | nothing in particular |
+
+For a character or an object the model writes a placeholder where it first names the
+subject and never sees the trigger; Caption Studio writes the trigger and the type there,
+so the trigger appears exactly once. People who hold or use an object are described in
+their own right. Style captions describe only the content, people generically, and never
+the medium or technique (words such as painting, illustration or photo). A style name that
+already ends in "style" is used as it is. The type is written as entered, so write it in
+the caption language; video model captions are English.
 
 ### Normal captions
 
@@ -118,7 +138,7 @@ or reuse in the editor. Stopping during a revision retains the response received
 
 ### Video model captions (WAN 2.2, LTX-2.5, MiniMax H3)
 
-For character LoRAs of video models. Photos and video clips (`.mp4`, `.mov`, `.webm`,
+For LoRAs of video models. Photos and video clips (`.mp4`, `.mov`, `.webm`,
 `.mkv`, `.m4v`, `.avi`) can be in the same dataset. Every model gets its own caption
 file next to the media, in the shape its prompts use:
 
@@ -140,13 +160,14 @@ the video models and describe what happens over the clip. The inspector plays th
 shows its size, length, frame rate and audio, the frames sent to the model, and what the
 selected model trains on. For cloud APIs the frames are compressed further if a request
 would exceed 18 MB. The captions are English
-descriptions; caption language and tags do not apply. The model names the character
-once, and Caption Studio writes the trigger and **Character type** there, for example
-`Velmira, a woman, sits by the window…`: at the very start for WAN, after the opening
-shot for LTX and inside `[Shot 1]` for H3. An invented, readable trigger works better
-than tokens such as `sks`, which trainers also find inside other words. H3 files are
-validated for their three fields when saved. The details chosen in the recipe apply
-as usual; the character preset leaves out identity.
+descriptions; caption language and tags do not apply. A character or an object is named
+once as described above, for example `Velmira, a woman, sits by the window…`: at the very
+start for WAN, after the opening shot for LTX and inside `[Shot 1]` for H3. Style and
+general captions start with the trigger, for H3 inside `[Shot 1]`; for a style LoRA H3
+opens with the composition instead of style words. An invented, readable trigger works
+better than tokens such as `sks`, which trainers also find inside other words. H3 files
+are validated for their three fields when saved. The details chosen in the recipe apply
+as usual.
 
 ai-toolkit and musubi-tuner read these files with `caption_ext: "wan.txt"` or
 `caption_extension = ".wan.txt"`. See [docs/VIDEO_LORA_PLAN.md](docs/VIDEO_LORA_PLAN.md)
@@ -157,7 +178,9 @@ for the rules and their sources.
 BRIA mode saves structured `.json` sidecars using BRIA's published image-analysis
 field layout. It describes the subject, objects, scene, lighting, composition and
 other selected details in named fields. Keys stay English; descriptive values use
-the recipe's caption language. The trigger is inserted into `short_description`.
+the recipe's caption language. The trigger goes into `short_description`, the same way
+as in Normal captions; for a character or an object, the main subject's description in
+`objects` is its type.
 
 The normal word target does not apply to JSON, and there is no application output-token
 cap. Responses are parsed and validated, then repaired automatically when needed.

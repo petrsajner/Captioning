@@ -76,42 +76,21 @@
             </select></label
           >
           <label
-            ><span data-i18n="Trigger word">Trigger word</span
-            ><input
-              name="trigger"
-              placeholder="e.g. ohwx person"
-              maxlength="100"
-              data-i18n-placeholder="e.g. ohwx person"
-            /><small id="trigger-note"
+            ><span id="trigger-label" data-i18n="Trigger word">Trigger word</span
+            ><input name="trigger" placeholder="e.g. ohwx" maxlength="100" data-i18n-placeholder="e.g. ohwx" /><small
+              id="trigger-note"
               ><span data-i18n="Added exactly at the start of each caption."
                 >Added exactly at the start of each caption.</span
               ></small
             ></label
           >
-          <label id="character-class-field" hidden
-            ><span data-i18n="Character type">Character type</span
-            ><input name="character_class" list="character-classes" maxlength="40" placeholder="a person" /><datalist
-              id="character-classes"
-            >
-              <option value="a woman"></option>
-              <option value="a man"></option>
-              <option value="a person"></option></datalist
-            ><small
-              ><span
-                data-i18n="Written in English after the trigger, for example “Velmira, a woman, …”. It also tells the model which pronouns to use."
-                >Written in English after the trigger, for example “Velmira, a woman, …”. It also tells the model which
-                pronouns to use.</span
-              ></small
-            ></label
-          >
-          <label id="subject-field"
-            ><span data-i18n="Main subject name">Main subject name</span
-            ><input
-              name="subject"
-              placeholder="Optional name or identifier"
-              maxlength="100"
-              data-i18n-placeholder="Optional name or identifier"
-          /></label>
+          <label id="subject-class-field" hidden
+            ><span id="subject-class-label" data-i18n="Character type">Character type</span
+            ><input name="subject_class" list="subject-classes" maxlength="40" placeholder="a person" /><datalist
+              id="subject-classes"
+            ></datalist
+            ><small id="subject-class-note"></small
+          ></label>
           <div class="form-row">
             <label
               ><span data-i18n="Format">Format</span

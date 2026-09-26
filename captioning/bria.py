@@ -10,6 +10,7 @@ import re
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from .anchor import name_in_json
 from .errors import UserError
 
 
@@ -170,8 +171,7 @@ def normalize_json(text: str, settings=None) -> str:
                 main.pop("appearance_details", None)
         if not settings.text_in_image:
             data["text_render"] = []
-        trigger = settings.trigger.strip().strip(",")
-        if trigger and not re.match(re.escape(trigger) + r"(?:\s|[,.:;]|$)", data["short_description"], re.I):
-            data["short_description"] = trigger + ", " + data["short_description"]
+        # The trigger goes into short_description the same way as in every other output (anchor.py).
+        name_in_json(data, settings)
     ordered = FiboCaption.model_validate(data).model_dump(exclude_none=True)
     return json.dumps(ordered, ensure_ascii=False, indent=2, allow_nan=False)

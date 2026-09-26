@@ -8,13 +8,18 @@ const H3 =
 
 test('video model outputs write their own caption files and open the character once', async ({ page }) => {
   const recipe = page.locator('#recipe-form');
+  // A general dataset has only the trigger; a character LoRA adds its type.
+  await expect(page.locator('#subject-class-field')).toBeHidden();
+  await expect(page.locator('#trigger-label')).toHaveText('Trigger word');
+  await recipe.locator('[name=preset]').selectOption('character');
   await recipe.locator('[name=output_format]').selectOption('wan');
-  await expect(page.locator('#character-class-field')).toBeVisible();
-  await expect(page.locator('#subject-field')).toBeHidden();
+  await expect(page.locator('#subject-class-field')).toBeVisible();
+  await expect(page.locator('#trigger-label')).toHaveText('Character name');
+  await expect(page.locator('#subject-class-label')).toHaveText('Character type');
   await expect(recipe.locator('[name=language]')).toBeDisabled();
   await expect(recipe.locator('[name=format]')).toBeDisabled();
   await recipe.locator('[name=trigger]').fill('Velmira');
-  await recipe.locator('[name=character_class]').fill('a woman');
+  await recipe.locator('[name=subject_class]').fill('a woman');
   await expect(page.locator('#trigger-note')).toHaveText(
     'Written once where the character is first named: “Velmira, a woman, …”.',
   );

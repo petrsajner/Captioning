@@ -53,7 +53,8 @@ def ui_message_ids():
             ids |= {match[1] for match in re.findall(r"(['\"])((?:(?!\1).)*)\1", argument)}
         for table in re.findall(r"(?:labels|phaseLabels|modelNotes)\s*=\s*\{([^}]*)\}", source):
             ids |= set(re.findall(r":\s*'([^']*)'", table))
-    return ids | {attribute[key] for attribute in ATTRIBUTES for key in ("label", "detail")}
+    details = [*ATTRIBUTES, *(text for a in ATTRIBUTES for text in a.get("by_type", {}).values())]
+    return ids | {detail[key] for detail in details for key in ("label", "detail")}
 
 
 def message_templates(node):
