@@ -147,7 +147,9 @@ def test_interface_language_does_not_change_fibo_schema_or_caption_language():
 def test_localization_tokens_match_and_czech_is_only_in_locale_resources():
     messages = catalog("cs")["messages"]
     for source, target in messages.items():
-        assert sorted(re.findall(r"\{\w+\}", source)) == sorted(re.findall(r"\{\w+\}", target)), source
+        # A Czech value may carry the three count forms as "one|few|many"; each keeps the same values.
+        for variant in target.split("|"):
+            assert sorted(re.findall(r"\{\w+\}", source)) == sorted(re.findall(r"\{\w+\}", variant)), source
     assert translate("Select images", "cs") == messages["Select images"]
     assert translate("Select images") == "Select images"
     root = Path(__file__).parents[1]

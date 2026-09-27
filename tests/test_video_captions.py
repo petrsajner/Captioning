@@ -281,6 +281,31 @@ def test_a_paused_batch_continues_only_the_missing_outputs(tmp_path, monkeypatch
     asyncio.run(run())
 
 
+def test_a_paused_batch_can_be_discarded(tmp_path, monkeypatch):
+    async def run():
+        folder = tmp_path / "images"
+        for name in ("a.png", "b.png"):
+            picture(folder / name)
+        studio = Studio(tmp_path / "app")
+        await studio.import_images([], str(folder), False, False)
+
+        async def flaky(path, settings, key, **kwargs):
+            raise ProviderUnavailableError("Server stopped")
+
+        monkeypatch.setattr("captioning.provider.generate", flaky)
+        await studio.start_job([r["id"] for r in studio.rows])
+        await studio.task
+        assert studio.job["paused"] and studio.job["remaining_ids"]
+        await studio.cancel_job()
+        # Discarding frees the images for a new selection instead of resuming the old one.
+        assert not studio.job.get("paused")
+        assert studio.job["remaining_ids"] == [] and studio.job["remaining_tasks"] == []
+        assert studio.job["message"] == "Batch discarded; saved captions have been preserved"
+        assert all(r["outputs"]["normal"]["status"] == "pending" for r in studio.rows)
+
+    asyncio.run(run())
+
+
 def test_an_external_edit_blocks_only_its_own_caption_file(tmp_path, monkeypatch):
     async def run():
         image = picture(tmp_path / "images" / "a.png")

@@ -1,6 +1,26 @@
 # Caption Studio development handoff
 
-## Current release: 0.2.4 (2026-09-26)
+## Current release: 0.2.5 (2026-09-27)
+
+A paused batch can be discarded instead of only continued (Petr, 2026-09-27: the Continue
+button must not trap the user in the old selection), and the Czech interface keeps its
+count forms.
+
+- `service.py`: `cancel_job` also discards a paused batch — `paused` is cleared and
+  `remaining_ids`/`remaining_tasks` emptied, so the next batch starts from the current
+  selection. The run bar button reads "Discard batch" while paused and "Stop batch" while
+  running.
+- `ui/i18n.js`: a Czech value may carry the three count forms as "one|few|many" (1, then
+  2-4, then 0 or 5+); the first numeric value picks the form. Used for "Loaded {v0}
+  images.", the frame count and the found-server and available-model counts.
+- The language switch no longer rewrites the static `data-i18n` texts of `recipe-status`,
+  `key-status`, `local-key-status`, `local-discovery-message` and `local-model-status`.
+  Rewriting their `textContent` dropped the marked span and the indented text matched no
+  message again, so "Settings are saved automatically" and "A model appearing in the list
+  does not confirm image support." stayed English in the Czech interface.
+- `setup_local.py` accepts the `q2` profile like the application and the README.
+
+## Previous release: 0.2.4 (2026-09-26)
 
 - The notes under the trigger field show invented example names (Velmira, Zorbo, Zorvak style)
   and never repeat the entered trigger, which can be a real person's name (Petr, 2026-09-26: no

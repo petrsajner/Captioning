@@ -7,17 +7,34 @@ export const i18n = {
   legacy: new Map(),
 };
 
+// Czech counts name things in three forms: 1, then 2-4, then 0 or 5+.
+// A message carries them as "one|few|many"; the first numeric value decides which one is used.
+function countIn(values) {
+  for (const value of Object.values(values ?? {})) {
+    const count = typeof value === 'number' ? value : /^\d+$/.test(String(value)) ? Number(value) : NaN;
+    if (Number.isFinite(count)) return count;
+  }
+  return null;
+}
+
+function pluralForm(target, values) {
+  const forms = String(target).split('|');
+  if (forms.length < 2) return target;
+  const count = countIn(values);
+  return forms[count === 1 ? 0 : count !== null && count >= 2 && count <= 4 ? 1 : 2];
+}
+
 export function t(key, values) {
   const source = String(key ?? '');
   let result = source;
   if (i18n.language === 'cs') {
-    if (Object.hasOwn(i18n.messages, source)) result = i18n.messages[source];
+    if (Object.hasOwn(i18n.messages, source)) result = pluralForm(i18n.messages[source], values);
     else if (!values) {
       for (const entry of i18n.patterns) {
         const match = source.match(entry.regex);
         if (match) {
           const captured = Object.fromEntries(entry.names.map((name, index) => [name, match[index + 1]]));
-          return entry.target.replace(/\{(\w+)\}/g, (all, name) =>
+          return pluralForm(entry.target, captured).replace(/\{(\w+)\}/g, (all, name) =>
             name === 'message' ? t(captured[name]) : (captured[name] ?? all),
           );
         }
@@ -65,14 +82,14 @@ function messagePatterns(messages) {
 }
 
 export function useCatalog(catalog) {
-  i18n.messages = catalog.messages;
-  i18n.legacy = new Map(Object.entries(catalog.messages).map(([key, value]) => [value, key]));
-  i18n.patterns = messagePatterns(Object.entries(catalog.messages));
-  i18n.legacyPatterns = messagePatterns(
-    Object.entries(catalog.messages)
-      .filter(([key, value]) => key !== value)
-      .map(([key, value]) => [value, key]),
+  // A value with count forms ("one|few|many") matches as any of its forms.
+  const variants = Object.entries(catalog.messages).flatMap(([key, value]) =>
+    value.split('|').map((form) => [form, key]),
   );
+  i18n.messages = catalog.messages;
+  i18n.legacy = new Map(variants);
+  i18n.patterns = messagePatterns(Object.entries(catalog.messages));
+  i18n.legacyPatterns = messagePatterns(variants.filter(([form, key]) => form !== key));
 }
 
 export async function loadTranslations() {
@@ -93,6 +110,8 @@ export function setLanguage(language) {
   document.documentElement.lang = i18n.language;
   applyStatic();
   // Messages already on screen are diagnostics; re-translate them in place.
+  // Static data-i18n markup is left to applyStatic: rewriting its textContent would drop the
+  // marked span, and the surrounding indentation never matches a message again.
   for (const id of [
     'recipe-status',
     'key-status',
@@ -104,6 +123,6 @@ export function setLanguage(language) {
     'folder-error',
   ]) {
     const element = document.getElementById(id);
-    if (element) element.textContent = diagnostic(element.textContent);
+    if (element && !element.querySelector('[data-i18n]')) element.textContent = diagnostic(element.textContent);
   }
 }

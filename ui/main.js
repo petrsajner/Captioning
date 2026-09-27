@@ -40,7 +40,11 @@ function render() {
       })
     : '';
   $('job-progress').style.width = j.total ? (100 * j.completed) / j.total + '%' : '0%';
-  $('stop-job').hidden = !j.running;
+  // A paused batch can be continued or discarded; the button names the action it performs.
+  $('stop-job').hidden = !j.running && !j.paused;
+  const stopLabel = $('stop-job').querySelector('span');
+  stopLabel.dataset.i18n = j.paused ? 'Discard batch' : 'Stop batch';
+  stopLabel.textContent = t(stopLabel.dataset.i18n);
   const pending = resumeIds(),
     runCount = pending.length || ui.selected.size;
   $('generate').disabled = hasBusy() || !runCount;

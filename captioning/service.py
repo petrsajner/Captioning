@@ -637,6 +637,17 @@ class Studio:
                         slot["status"] = Status.PENDING
             self.job.update({"running": False, "message": "Batch stopped; saved captions have been preserved"})
             self.persist()
+        elif self.job.get("paused"):
+            # A paused batch is not running; discarding it frees the images for a new selection.
+            self.job.update(
+                {
+                    "paused": False,
+                    "remaining_ids": [],
+                    "remaining_tasks": [],
+                    "message": "Batch discarded; saved captions have been preserved",
+                }
+            )
+            self.persist()
 
     async def close(self):
         await self.cancel_job()

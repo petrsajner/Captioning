@@ -10,7 +10,7 @@ from captioning.runtime import Runtime
 
 async def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--profile", choices=["q3", "q4", "q5"], default="q4")
+    parser.add_argument("--profile", choices=["q2", "q3", "q4", "q5"], default="q4")
     parser.add_argument("--backend", choices=["cuda", "vulkan", "cpu"], default="cuda")
     args = parser.parse_args()
     runtime = Runtime(prepare_data_directory()[0])

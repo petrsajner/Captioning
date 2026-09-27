@@ -1,6 +1,17 @@
 import path from 'node:path';
 import { env, expect, state, switchLanguage, test } from './support.js';
 
+test('static panel texts follow the interface language', async ({ page }) => {
+  // Texts only a language switch touches: they start as static data-i18n markup.
+  await page.locator('#open-settings').click();
+  await switchLanguage(page, 'cs');
+  await expect(page.locator('#recipe-status')).not.toContainText('Settings are saved automatically');
+  await expect(page.locator('#local-model-status')).not.toContainText('does not confirm image support');
+  await switchLanguage(page, 'en');
+  await expect(page.locator('#recipe-status')).toContainText('Settings are saved automatically');
+  await expect(page.locator('#local-model-status')).toContainText('does not confirm image support');
+});
+
 test('switching language keeps drafts, detail choices and caption text', async ({ page }) => {
   const prompt = page.locator('#prompt-text');
   await page.locator('[data-attribute=identity]').uncheck();
