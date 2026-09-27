@@ -155,6 +155,12 @@ class KeyStore:
     def has(self, endpoint: str) -> bool:
         return endpoint in self.data
 
+    def endpoints(self) -> tuple[list[str], list[str]]:
+        """API addresses with a saved key: cloud addresses and local addresses. Never the keys."""
+        cloud = sorted(url for url in self.data if not url.startswith("local:"))
+        local = sorted(url.removeprefix("local:") for url in self.data if url.startswith("local:"))
+        return cloud, local
+
     def set(self, endpoint: str, value: str):
         if value:
             self.data[endpoint] = base64.b64encode(protect(value.encode())).decode()

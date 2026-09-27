@@ -234,7 +234,11 @@ def test_key_encrypted_and_bound_to_endpoint(tmp_path):
     assert fake not in keys.path.read_text()
     assert keys.get("https://provider-a.example/v1") == fake
     assert keys.get("https://provider-b.example/v1") == ""
+    keys.set("local:http://127.0.0.1:1234/v1", fake)
+    # The setup shows which addresses have a key, never the keys themselves.
+    assert keys.endpoints() == (["https://provider-a.example/v1"], ["http://127.0.0.1:1234/v1"])
     keys.set("https://provider-a.example/v1", "")
+    assert keys.endpoints() == ([], ["http://127.0.0.1:1234/v1"])
     assert not keys.has("https://provider-a.example/v1")
 
 

@@ -9,7 +9,7 @@ import { openSettings, renderRuntime } from './settings.js';
 import { captionView, hasBusy, resumeIds, ui } from './store.js';
 
 const folderPicker = new FolderPicker(doImport);
-let pollBusy = false;
+let pollBusy = null;
 
 function render() {
   const { state } = ui;
@@ -76,18 +76,19 @@ function render() {
   renderRuntime();
 }
 
-async function refresh() {
-  if (pollBusy) return;
-  pollBusy = true;
-  try {
-    const next = await api('/state');
-    // Keep the recipe being edited; the server copy lags until autosave completes.
-    if (hasUnsavedRecipe() && ui.state) next.settings = ui.state.settings;
-    ui.state = next;
-    render();
-  } finally {
-    pollBusy = false;
-  }
+function refresh() {
+  // Callers share one in-flight state read instead of being dropped: an import or save
+  // that awaits this must never continue on the rows from before its own request.
+  return (pollBusy ??= api('/state')
+    .then((next) => {
+      // Keep the recipe being edited; the server copy lags until autosave completes.
+      if (hasUnsavedRecipe() && ui.state) next.settings = ui.state.settings;
+      ui.state = next;
+      render();
+    })
+    .finally(() => {
+      pollBusy = null;
+    }));
 }
 
 function relocalize() {

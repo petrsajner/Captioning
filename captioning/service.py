@@ -291,6 +291,7 @@ class Studio:
         self.settings = settings
 
     def snapshot(self):
+        cloud_keys, local_keys = self.keys.endpoints()
         return {
             "version": __version__,
             "settings": self.settings.model_dump(),
@@ -302,6 +303,9 @@ class Studio:
             "media_outputs": MEDIA_OUTPUTS,
             "has_key": self.keys.has(self.settings.cloud_url),
             "has_local_key": self.keys.has("local:" + self.settings.local_url),
+            # Which API addresses have a saved key, so the setup can show it at a glance.
+            "cloud_keys": cloud_keys,
+            "local_keys": local_keys,
             "rows": self.rows,
             "job": self.job,
             "importing": self.importing,

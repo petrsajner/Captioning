@@ -25,6 +25,8 @@ test('switching language keeps drafts, detail choices and caption text', async (
   const caption = 'Clothing, Saved, Waiting. This user text must stay unchanged.';
   await editor.fill(caption);
   await page.locator('#open-settings').click();
+  await expect(page.locator('#find-local-servers')).toBeEnabled(); // the automatic server check has settled
+  const scanned = await page.locator('#local-discovery-message').textContent();
   await page.locator('[name=local_url]').fill('http://127.0.0.1:12345/v1');
   await page.locator('#local-api-key').fill('qa-draft-key-not-to-save');
   await switchLanguage(page, 'cs');
@@ -34,9 +36,9 @@ test('switching language keeps drafts, detail choices and caption text', async (
   await expect(page.locator('[name=language]')).toHaveValue('English');
   await expect(page.locator('[data-attribute=identity]')).not.toBeChecked();
   await expect(page.locator('[data-attribute=clothing]')).toBeChecked();
-  await expect(page.locator('#local-discovery-message')).not.toHaveText(/^Check common/);
+  await expect(page.locator('#local-discovery-message')).not.toHaveText(scanned);
   await switchLanguage(page, 'en');
-  await expect(page.locator('#local-discovery-message')).toHaveText(/^Check common/);
+  await expect(page.locator('#local-discovery-message')).toHaveText(scanned);
   await switchLanguage(page, 'cs');
   await page.locator('#settings-dialog .close-dialog').click();
   expect((await state(page)).has_local_key).toBe(false);

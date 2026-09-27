@@ -11,6 +11,64 @@ let settingsMode = 'local',
   localModelsBusy = false,
   localServers = [];
 
+const normalizedUrl = (field) => field.value.trim().replace(/\/$/, '');
+
+// Whether an API address has a saved key; the keys themselves never leave the app.
+function keySaved(url, local) {
+  return ((local ? ui.state.local_keys : ui.state.cloud_keys) || []).includes(url);
+}
+
+function keyStatusText(url, local) {
+  return keySaved(url, local)
+    ? t('Key saved for this address. Leave the field empty to keep it.')
+    : t('No key is saved for this address.');
+}
+
+function renderProviderOptions() {
+  // The name comes from the option's data-i18n; only the key mark is added here.
+  for (const option of $('cloud-provider').options) {
+    const mark = option.value === 'custom' ? '' : ' · ' + (keySaved(option.value) ? t('key saved') : t('no key'));
+    option.textContent = t(option.dataset.i18n) + mark;
+  }
+}
+
+function renderKeyStatuses() {
+  renderProviderOptions();
+  $('key-status').textContent = keyStatusText(normalizedUrl(settingsForm.elements.cloud_url), false);
+  $('local-key-status').textContent = keyStatusText(normalizedUrl(settingsForm.elements.local_url), true);
+}
+
+// What the connection choices offer right now: the managed model, a found server and saved keys.
+function renderSummary() {
+  const r = ui.state.runtime;
+  let local, localReady;
+  if (settingsForm.elements.local_source.value === 'managed') {
+    localReady = r.running || r.ready;
+    local = r.installing
+      ? t('Local · preparing the runtime')
+      : r.running
+        ? t('Local · the model is running')
+        : r.ready
+          ? t('Local · the model is ready to start')
+          : t('Local · the runtime is not downloaded');
+  } else if (localScanBusy) {
+    localReady = false;
+    local = t('Local · checking the servers…');
+  } else {
+    const found = localServers.find((server) => server.url === normalizedUrl(settingsForm.elements.local_url));
+    localReady = !!found;
+    local = !found
+      ? t('Local · no server answers')
+      : found.status === 'requires_key'
+        ? t('Local · the server needs a key')
+        : t('Local · the server is running');
+  }
+  const keys = (ui.state.cloud_keys || []).length;
+  $('connection-summary').innerHTML =
+    `<span><i class="dot ${localReady ? 'green-dot' : 'muted-dot'}"></i>${esc(local)}</span>` +
+    `<span><i class="dot ${keys ? 'green-dot' : 'muted-dot'}"></i>${esc(t('Cloud · saved keys: {v0}', { v0: keys }))}</span>`;
+}
+
 export function renderRuntime() {
   const r = ui.state.runtime,
     jobRunning = ui.state.job.running;
@@ -41,6 +99,8 @@ export function renderRuntime() {
   $('save-settings').disabled = r.installing || r.status === 'loading' || ui.busy;
   $('find-local-servers').disabled = r.installing || r.status === 'loading' || localScanBusy || localModelsBusy;
   $('load-local-models').disabled = r.installing || r.status === 'loading' || localModelsBusy || localScanBusy;
+  renderKeyStatuses();
+  renderSummary();
 }
 
 function switchMode(mode) {
@@ -59,12 +119,7 @@ function showLocalSource() {
 function clearLocalKeyInput() {
   $('local-api-key').value = '';
   $('clear-local-key').checked = false;
-  const { state } = ui;
-  const saved =
-    state.has_local_key && state.settings.local_url === settingsForm.elements.local_url.value.replace(/\/$/, '');
-  $('local-key-status').textContent = saved
-    ? t('A key is saved. Leave this field empty to keep it.')
-    : t('A saved key is used only for this address. Enter a new key here if needed.');
+  renderKeyStatuses();
 }
 
 function fillLocalModels(models) {
@@ -91,13 +146,12 @@ export function openSettings() {
   $('cloud-provider').value = [...$('cloud-provider').options].some((o) => o.value === state.settings.cloud_url)
     ? state.settings.cloud_url
     : 'custom';
-  $('key-status').textContent = state.has_key
-    ? t('A key is saved. Leave this field empty to keep it.')
-    : t('The key is stored encrypted for your Windows account.');
   $('setup-title').textContent = state.settings.setup_complete ? t('Model and runtime') : t('Set up your workspace');
   $('settings-message').textContent = '';
   $('settings-dialog').showModal();
   renderRuntime();
+  // What is available must be visible immediately, not after trying buttons.
+  action(findLocalServers);
 }
 
 async function saveSetup(close = false) {
@@ -154,7 +208,7 @@ async function findLocalServers() {
     $('local-server-results').innerHTML = localServers
       .map(
         (server, index) =>
-          `<button type="button" class="local-server" data-server-index="${index}"><span><b>${esc(server.url)}</b><small>${esc(t(server.hint))}</small></span><span>${server.status === 'requires_key' ? t('Key required') : server.models.length ? t('Models: ') + server.models.length : t('No model')} →</span></button>`,
+          `<button type="button" class="local-server" data-server-index="${index}"><span><b>${esc(server.url)}</b><small>${esc(t(server.hint))}</small></span><span>${server.status === 'requires_key' ? t('Key required') : server.models.length ? t('Models: ') + server.models.length : t('No model')}${server.managed ? '' : ' · ' + (keySaved(server.url, true) ? t('key saved') : t('no key'))} →</span></button>`,
       )
       .join('');
     $('local-server-results').hidden = !localServers.length;
@@ -224,7 +278,8 @@ $('cloud-provider').onchange = () => {
   settingsForm.elements.cloud_model.value = '';
   $('api-key').value = '';
   $('clear-key').checked = false;
-  $('key-status').textContent = t('Keys are stored separately for each API address.');
+  renderKeyStatuses();
+  renderSummary();
 };
 $('save-settings').onclick = () => action(() => saveSetup(true));
 $('ui-language').onchange = () => action(changeLanguage);
@@ -270,9 +325,11 @@ $('stop-model').onclick = () =>
 $('local-source').onchange = showLocalSource;
 settingsForm.elements.local_url.addEventListener('input', () => {
   clearLocalKeyInput();
+  renderSummary();
   $('local-models').replaceChildren();
   $('local-model-status').textContent = t('Load the available models for this address.');
 });
+settingsForm.elements.cloud_url.addEventListener('input', renderKeyStatuses);
 $('find-local-servers').onclick = findLocalServers;
 $('local-server-results').onclick = selectLocalServer;
 $('load-local-models').onclick = loadLocalModels;

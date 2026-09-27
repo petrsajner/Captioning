@@ -851,6 +851,22 @@ dialog::backdrop {
   font-size: 9px;
   margin-bottom: 6px;
 }
+.connection-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--elevated);
+  padding: 10px 14px;
+  margin-bottom: 18px;
+}
+.connection-summary > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+}
 .mode-tabs {
   display: flex;
   gap: 10px;

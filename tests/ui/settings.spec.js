@@ -2,8 +2,11 @@ import { env, expect, state, test } from './support.js';
 
 test('finds a running local server, loads its models and saves the connection', async ({ page }) => {
   await page.locator('#open-settings').click();
+  // The dialog checks the servers on its own; settle before the manual check.
+  await expect(page.locator('#find-local-servers')).toBeEnabled();
   await page.locator('[name=local_url]').fill(env.modelUrl);
   await page.locator('#find-local-servers').click();
+  await expect(page.locator('#find-local-servers')).toBeEnabled();
   const found = page.locator('[data-server-index]', { hasText: env.modelUrl });
   await expect(found).toBeVisible({ timeout: 15_000 });
   await expect(found).toContainText('Models: 1');
@@ -21,6 +24,7 @@ test('finds a running local server, loads its models and saves the connection', 
 
 test('invalid addresses are explained and unsaved dialog changes are discarded', async ({ page }) => {
   await page.locator('#open-settings').click();
+  await expect(page.locator('#find-local-servers')).toBeEnabled();
   await page.locator('[name=local_url]').fill('http://192.168.1.2/v1');
   await page.locator('#find-local-servers').click();
   await expect(page.locator('#local-discovery-message')).toHaveText('Local mode requires a localhost address.');
@@ -28,7 +32,7 @@ test('invalid addresses are explained and unsaved dialog changes are discarded',
   await page.locator('[data-mode=cloud]').click();
   await page.locator('#cloud-provider').selectOption('https://api.openai.com/v1');
   await expect(page.locator('[name=cloud_url]')).toHaveValue('https://api.openai.com/v1');
-  await expect(page.locator('#key-status')).toHaveText('Keys are stored separately for each API address.');
+  await expect(page.locator('#key-status')).toHaveText('No key is saved for this address.');
   await page.locator('[data-mode=local]').click();
   await page.locator('#local-source').selectOption('managed');
   await expect(page.locator('#runtime-badge')).toHaveText('Not ready');
@@ -37,4 +41,21 @@ test('invalid addresses are explained and unsaved dialog changes are discarded',
 
   const saved = (await state(page)).settings;
   expect(saved).toMatchObject({ mode: 'local', local_source: 'external', cloud_url: 'https://openrouter.ai/api/v1' });
+});
+
+test('saved keys and the running server are visible at a glance', async ({ page }) => {
+  await page.locator('#open-settings').click();
+  await expect(page.locator('#find-local-servers')).toBeEnabled();
+  await expect(page.locator('#connection-summary')).toContainText('Local · the server is running');
+  await expect(page.locator('#connection-summary')).toContainText('Cloud · saved keys: 0');
+  await page.locator('[data-mode=cloud]').click();
+  await expect(page.locator('#cloud-provider option[value="https://openrouter.ai/api/v1"]')).toContainText('no key');
+  await expect(page.locator('#key-status')).toHaveText('No key is saved for this address.');
+  await page.locator('#api-key').fill('qa-key-never-used');
+  await page.locator('#save-settings').click();
+  await page.locator('#open-settings').click();
+  await page.locator('[data-mode=cloud]').click();
+  await expect(page.locator('#cloud-provider option[value="https://openrouter.ai/api/v1"]')).toContainText('key saved');
+  await expect(page.locator('#key-status')).toHaveText('Key saved for this address. Leave the field empty to keep it.');
+  await expect(page.locator('#connection-summary')).toContainText('Cloud · saved keys: 1');
 });

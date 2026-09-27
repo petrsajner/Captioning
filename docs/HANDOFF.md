@@ -1,6 +1,24 @@
 # Caption Studio development handoff
 
-## Current release: 0.2.5 (2026-09-27)
+## Current release: 0.2.6 (2026-09-27)
+
+The setup shows what is available at a glance (Petr, 2026-09-27: choosing a connection must
+not be guessing), instead of hiding the state behind the Find and Load buttons.
+
+- `/api/state` lists `cloud_keys` and `local_keys`: the API addresses with a saved key,
+  never the keys themselves (`KeyStore.endpoints()`).
+- `settings.js`: every provider option carries its key mark ("key saved" / "no key"), and
+  the status under the key field answers for the address in the field — including while
+  switching providers, which used to show only a generic sentence and looked keyless.
+  The summary line above the mode tabs reports the managed model, the answering local
+  server and the saved key count; `findLocalServers` runs when the dialog opens, so a
+  running server and its model count are visible without clicking.
+- `main.js`: callers of `refresh` share one in-flight state read instead of being dropped
+  when the poll was busy. An import that was dropped finished on the rows from before its
+  own request: it kept the old selection and active image, so the inspector stayed empty
+  and its message counted the old dataset (seen as a failing recipe/BRIA UI test).
+
+## Previous release: 0.2.5 (2026-09-27)
 
 A paused batch can be discarded instead of only continued (Petr, 2026-09-27: the Continue
 button must not trap the user in the old selection), and the Czech interface keeps its
