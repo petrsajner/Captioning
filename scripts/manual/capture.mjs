@@ -4,6 +4,7 @@
 import { chromium } from '@playwright/test';
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import http from 'node:http';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,6 +35,26 @@ async function startApp(profile) {
   const launch = path.join(profile, 'launch.json');
   for (let i = 0; i < 200 && !existsSync(launch); i++) await new Promise((r) => setTimeout(r, 100));
   return { proc, url: JSON.parse(readFileSync(launch, 'utf8')).url };
+}
+
+// Marvin, the local Qwen harness, serves its model as "q5" on 127.0.0.1:8080. When Marvin itself is not
+// running, a stand-in answers the model list the same way, so the setup shows what a Marvin user sees.
+const MARVIN_PORT = 8080;
+function standInMarvin() {
+  return new Promise((resolve) => {
+    const server = http.createServer((request, response) => {
+      if (request.method === 'GET' && request.url === '/v1/models') {
+        response.writeHead(200, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify({ object: 'list', data: [{ id: 'q5', object: 'model', owned_by: 'llamacpp' }] }));
+      } else {
+        response.writeHead(404);
+        response.end();
+      }
+    });
+    // A busy port means Marvin (or another server) already runs there; use it as it is.
+    server.once('error', () => resolve(() => {}));
+    server.listen(MARVIN_PORT, '127.0.0.1', () => resolve(() => server.close()));
+  });
 }
 
 // Replace the demo profile and dataset paths wherever the page shows them.
@@ -129,12 +150,15 @@ try {
       await page.locator('[data-mode=local]').click();
       await page.locator('#local-source').selectOption('managed');
       await shoot(page, img('setup-local.jpg'), '#settings-dialog', pairs);
-      await page.locator('#local-source').selectOption('external');
-      await page.waitForTimeout(2500);
-      // A typical LM Studio server as the example address and model.
-      await page.locator('[name=local_url]').fill('http://127.0.0.1:1234/v1');
-      await page.locator('[name=local_model]').fill('qwen3.8-27b');
-      await shoot(page, img('setup-server.jpg'), '#settings-dialog', pairs);
+      // Marvin as the local server: found by the search and selected with one click.
+      const stopMarvin = await standInMarvin();
+      try {
+        await page.locator('#find-local-servers').click();
+        await page.locator(`.local-server:has-text("127.0.0.1:${MARVIN_PORT}")`).click();
+        await shoot(page, img('setup-server.jpg'), '#settings-dialog', pairs);
+      } finally {
+        stopMarvin();
+      }
       await page.locator('#settings-dialog details').evaluate((details) => (details.open = true));
       await page.locator('#settings-dialog details').scrollIntoViewIfNeeded();
       await shoot(page, img('setup-analysis.jpg'), '#settings-dialog details', pairs);

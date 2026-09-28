@@ -22,11 +22,12 @@
         <li>
           <a href="#setup">3 Setup: connecting a model</a>
           <ol>
-            <li><a href="#cloud">3.1 Cloud API</a></li>
-            <li><a href="#server">3.2 An existing local server</a></li>
-            <li><a href="#own">3.3 Your own downloaded model</a></li>
-            <li><a href="#gpu">3.4 Supported graphics cards</a></li>
-            <li><a href="#setup-rest">3.5 The rest of the setup</a></li>
+            <li><a href="#marvin">3.1 Marvin: the recommended local model</a></li>
+            <li><a href="#cloud">3.2 Cloud API</a></li>
+            <li><a href="#server">3.3 Other local servers</a></li>
+            <li><a href="#own">3.4 Your own downloaded model</a></li>
+            <li><a href="#gpu">3.5 Supported graphics cards</a></li>
+            <li><a href="#setup-rest">3.6 The rest of the setup</a></li>
           </ol>
         </li>
         <li><a href="#window">4 The main window</a></li>
@@ -74,14 +75,18 @@
         dataset. Each kind names its subject in its own way and offers its own choice of details.
       </li>
       <li>
-        <strong>Three ways to run the vision model:</strong> a cloud API, a local server you already use (Ollama, LM
-        Studio, llama.cpp and others), or a model that Caption Studio downloads and runs itself.
+        <strong>Three ways to run the vision model:</strong> a cloud API; a local server, above all
+        <strong>Marvin</strong>, our local Qwen harness (or Ollama, LM Studio, llama.cpp and others); or a model that
+        Caption Studio downloads and runs itself.
       </li>
     </ul>
     <h2>Quick start</h2>
     <ol class="steps">
       <li>Install Caption Studio and start it (chapter <a href="#install">2</a>).</li>
-      <li>In the setup, connect a cloud API, a local server or download the model (chapter <a href="#setup">3</a>).</li>
+      <li>
+        In the setup, connect a cloud API or <strong>Marvin</strong> (or another local server), or download the model
+        (chapter <a href="#setup">3</a>).
+      </li>
       <li>Click <span class="ui">＋ Open folder</span> and choose the folder with your dataset.</li>
       <li>
         In the recipe, choose <span class="ui">What are you training?</span>, the
@@ -93,6 +98,14 @@
       <strong>No graphics card required</strong>
       Caption Studio runs on any Windows 10 or 11 computer. With a cloud API the images are analyzed by the provider, so
       you do not need a powerful graphics card. A card is needed only if you want to run the model on your own computer.
+    </div>
+    <div class="feature">
+      <span class="badge">RECOMMENDED</span>
+      <h3>Local captioning with Marvin</h3>
+      With an NVIDIA card (16 GB or more), run the model on your own computer with <strong>Marvin</strong>, our local AI
+      harness for Qwen3.8 27B (<a href="https://github.com/petrsajner/marvin">github.com/petrsajner/marvin</a>). Start
+      Marvin and Caption Studio finds it with one click: free, private and the same model for both applications. See
+      <a href="#marvin">3.1</a>.
     </div>
 
     <!-- 2 -->
@@ -109,7 +122,7 @@
       </tr>
       <tr>
         <td>Graphics card</td>
-        <td>None for a cloud API. For your own model, see <a href="#gpu">3.4 Supported graphics cards</a>.</td>
+        <td>None for a cloud API. For your own model, see <a href="#gpu">3.5 Supported graphics cards</a>.</td>
       </tr>
       <tr>
         <td>Disk space</td>
@@ -203,45 +216,105 @@
     <table>
       <tr>
         <th></th>
+        <th class="hl">Marvin (recommended)</th>
         <th>Cloud API</th>
-        <th>Existing local server</th>
-        <th>Your own downloaded model</th>
+        <th>Other local server</th>
+        <th>Own downloaded model</th>
       </tr>
       <tr>
         <td>You need</td>
+        <td class="hl">Marvin (free, from GitHub) and an NVIDIA card with 16 GB or more</td>
         <td>An account and API key with a provider</td>
         <td>An application such as LM Studio or Ollama with a vision model</td>
         <td>A graphics card with 16 GB or more, 13–23 GB of disk</td>
       </tr>
       <tr>
         <td>Cost</td>
+        <td class="hl">Free</td>
         <td>Billed by the provider per request</td>
         <td>Free</td>
         <td>Free</td>
       </tr>
       <tr>
         <td>Your images</td>
+        <td class="hl">Stay on your computer</td>
         <td>Resized copies are sent to the provider</td>
         <td>Stay on your computer</td>
         <td>Stay on your computer</td>
       </tr>
       <tr>
-        <td>Setup effort</td>
-        <td>Lowest</td>
+        <td>Setup</td>
+        <td class="hl">Start Marvin, then one click</td>
+        <td>Enter a key</td>
         <td>Low, if the server already runs</td>
         <td>One download, then automatic</td>
       </tr>
+      <tr>
+        <td>Best for</td>
+        <td class="hl">Everyday local work: one model for Marvin and Caption Studio</td>
+        <td>Computers without a strong graphics card</td>
+        <td>A vision model you already run elsewhere</td>
+        <td>Caption Studio on its own</td>
+      </tr>
     </table>
     <p>
-      At the top of the dialog, choose <span class="ui">◎ Local</span> (an existing server or your own model) or
+      At the top of the dialog, choose <span class="ui">◎ Local</span> (Marvin, another server or your own model) or
       <span class="ui">☁ Cloud API</span>. A line above the tabs shows both at a glance, for example
-      <em>Local · the model is running</em> and <em>Cloud · saved keys: 1</em>. On a computer without an NVIDIA card,
+      <em>Local · the server is running</em> and <em>Cloud · saved keys: 1</em>. On a computer without an NVIDIA card,
       the first setup starts on the Cloud API tab.
     </p>
+    <h2 id="marvin">3.1 Marvin: the recommended local model</h2>
+    <div class="feature">
+      <span class="badge">RECOMMENDED</span>
+      <p>
+        <strong>Marvin</strong> is a local AI harness for <strong>Qwen3.8 27B</strong> on NVIDIA graphics cards, made by
+        the author of Caption Studio. Besides serving the model to Caption Studio, it is a complete local assistant:
+        chat, a coding agent, image analysis, research and more. Model, chats and files stay on your computer.
+      </p>
+      <ul>
+        <li>The same Qwen3.8 27B vision model as Caption Studio's own download, with image support built in.</li>
+        <li>Profiles measured on real cards; the graphics memory figures in this manual come from Marvin.</li>
+        <li>A large context (up to 192k tokens), so even 30-frame clips fit easily.</li>
+        <li>One model for both applications: no second download in Caption Studio.</li>
+      </ul>
+      <p>
+        <strong>Download:</strong> <a href="https://github.com/petrsajner/marvin">github.com/petrsajner/marvin</a>, the
+        <em>Full installer</em> (recommended for a new PC; it includes everything and downloads the model during setup).
+      </p>
+    </div>
+    <div class="side keep">
+      <div>
+        <ol class="steps">
+          <li>
+            Install Marvin and start it. Marvin starts its model server by itself, at
+            <code>http://127.0.0.1:8080/v1</code>.
+          </li>
+          <li>
+            In Caption Studio's setup, click <span class="ui">◎ Local</span> and then
+            <span class="ui">Find local servers</span>.
+          </li>
+          <li>
+            Click the server <code>http://127.0.0.1:8080/v1</code>. Caption Studio lists it as the llama.cpp address,
+            because Marvin runs a llama.cpp server. The address and the model (for example <code>q5</code>) fill in by
+            themselves; no key is needed.
+          </li>
+          <li>Click <span class="ui">Save and continue →</span>.</li>
+        </ol>
+        <div class="tip">
+          <strong>Keep Marvin running while you caption</strong>
+          Caption Studio never starts or stops Marvin. Closing Marvin stops the model and frees the graphics card, for
+          example before you train a LoRA.
+        </div>
+      </div>
+      <figure class="dialog" style="flex-basis: 76mm">
+        <img src="img/en/setup-server.jpg" alt="Marvin found and selected" style="width: 76mm" />
+        <figcaption>Marvin found at 127.0.0.1:8080 and selected</figcaption>
+      </figure>
+    </div>
 
     <div class="side keep">
       <div>
-        <h2 id="cloud">3.1 Cloud API</h2>
+        <h2 id="cloud">3.2 Cloud API</h2>
         <ol class="steps">
           <li>Click <span class="ui">☁ Cloud API</span>.</li>
           <li>
@@ -265,83 +338,80 @@
           own key. When a key is saved, leave the field empty to keep it. To delete it, tick
           <span class="ui">Remove this provider's saved key</span> and save.
         </p>
-        <div class="note">
-          <strong>Choose a model that accepts images</strong>
-          The model list can include text-only models. If the model rejects images, choose another one. For video clips
-          the model receives up to 30 frames in one request.
-        </div>
       </div>
-      <figure class="dialog" style="flex-basis: 76mm">
-        <img src="img/en/setup-cloud.jpg" alt="Cloud API setup" style="width: 76mm" />
+      <figure class="dialog" style="flex-basis: 64mm">
+        <img src="img/en/setup-cloud.jpg" alt="Cloud API setup" style="width: 64mm" />
         <figcaption>Cloud API setup</figcaption>
       </figure>
     </div>
+    <div class="note">
+      <strong>Choose a model that accepts images</strong>
+      The model list can include text-only models. If the model rejects images, choose another one. For video clips the
+      model receives up to 30 frames in one request.
+    </div>
 
-    <div class="side keep">
-      <div>
-        <h2 id="server">3.2 An existing local server</h2>
-        <p>
-          If you already run a vision model in another application, Caption Studio can use it. The model stays in its
-          application; Caption Studio connects to it but never starts or stops it.
-        </p>
-        <ol class="steps">
-          <li>Start the API server in your application and load a vision model there.</li>
-          <li>In the setup, click <span class="ui">◎ Local</span>.</li>
-          <li>
-            Click <span class="ui">Find local servers</span>. Caption Studio checks the usual addresses and lists the
-            servers that answer. Click one to select it.
-          </li>
-          <li>
-            Or choose <span class="ui">Connection type</span> → <span class="ui">Existing local server</span> and enter
-            the <span class="ui">Local API address</span> yourself.
-          </li>
-          <li>If the server needs a key (for example Unsloth), enter the <span class="ui">Local API key</span>.</li>
-          <li>
-            Click <span class="ui">Load models</span>, choose the <span class="ui">Image-capable model</span> and click
-            <span class="ui">Save and continue →</span>.
-          </li>
-        </ol>
-        <table>
-          <tr>
-            <th>Application</th>
-            <th>Usual address</th>
-          </tr>
-          <tr>
-            <td>Ollama</td>
-            <td><code>http://127.0.0.1:11434/v1</code></td>
-          </tr>
-          <tr>
-            <td>LM Studio</td>
-            <td><code>http://127.0.0.1:1234/v1</code></td>
-          </tr>
-          <tr>
-            <td>llama.cpp (llama-server)</td>
-            <td><code>http://127.0.0.1:8080/v1</code></td>
-          </tr>
-          <tr>
-            <td>Unsloth, vLLM</td>
-            <td><code>http://127.0.0.1:8000/v1</code>, <code>:8888/v1</code></td>
-          </tr>
-        </table>
-      </div>
-      <figure class="dialog" style="flex-basis: 76mm">
-        <img src="img/en/setup-server.jpg" alt="Existing local server setup" style="width: 76mm" />
-        <figcaption>An existing local server (LM Studio)</figcaption>
-      </figure>
+    <div class="block">
+      <h2 id="server">3.3 Other local servers</h2>
+      <p>
+        Any other application that serves a vision model through an OpenAI-compatible API works the same way. The model
+        stays in its application; Caption Studio connects to it but never starts or stops it.
+      </p>
+      <ol class="steps">
+        <li>Start the API server in your application and load a vision model there.</li>
+        <li>
+          In the setup, click <span class="ui">◎ Local</span> and <span class="ui">Find local servers</span>; click a
+          server that answers.
+        </li>
+        <li>
+          Or choose <span class="ui">Connection type</span> → <span class="ui">Existing local server</span> and enter
+          the <span class="ui">Local API address</span> yourself.
+        </li>
+        <li>If the server needs a key (for example Unsloth), enter the <span class="ui">Local API key</span>.</li>
+        <li>
+          Click <span class="ui">Load models</span>, choose the <span class="ui">Image-capable model</span> and click
+          <span class="ui">Save and continue →</span>.
+        </li>
+      </ol>
+      <table>
+        <tr>
+          <th>Application</th>
+          <th>Usual address</th>
+        </tr>
+        <tr>
+          <td class="hl"><strong>Marvin</strong></td>
+          <td class="hl"><code>http://127.0.0.1:8080/v1</code></td>
+        </tr>
+        <tr>
+          <td>Ollama</td>
+          <td><code>http://127.0.0.1:11434/v1</code></td>
+        </tr>
+        <tr>
+          <td>LM Studio</td>
+          <td><code>http://127.0.0.1:1234/v1</code></td>
+        </tr>
+        <tr>
+          <td>llama.cpp (llama-server)</td>
+          <td><code>http://127.0.0.1:8080/v1</code></td>
+        </tr>
+        <tr>
+          <td>Unsloth, vLLM</td>
+          <td><code>http://127.0.0.1:8000/v1</code>, <code>:8888/v1</code></td>
+        </tr>
+      </table>
     </div>
     <div class="note">
       <strong>What the local model must handle</strong>
       Only local addresses (<code>localhost</code>, <code>127.0.0.1</code>) are accepted in Local mode. A model in the
       list does not have to support images, so choose a vision model. For clips it must accept up to 30 images in one
-      request; give it a large context (Caption Studio's own model uses 64k tokens).
+      request; give it a large context (at least 64k tokens). Marvin meets all of this out of the box.
     </div>
 
     <div class="side keep">
       <div>
-        <h2 id="own">3.3 Your own downloaded model</h2>
+        <h2 id="own">3.4 Your own downloaded model</h2>
         <p>
-          Caption Studio can download and run its own model: Qwen3.8 27B with a vision projector, running on a bundled
-          llama.cpp runtime. Nothing else has to be installed.
+          Caption Studio can also download and run the model itself: Qwen3.8 27B with a vision projector, on a bundled
+          llama.cpp runtime. Use this when you want Caption Studio on its own; with Marvin you can skip this section.
         </p>
         <ol class="steps">
           <li>
@@ -374,7 +444,7 @@
       </figure>
     </div>
 
-    <h2 id="gpu">3.4 Supported graphics cards</h2>
+    <h2 id="gpu">3.5 Supported graphics cards</h2>
     <p>All four profiles are the same Qwen3.8 27B model with different precision. Choose by graphics memory (VRAM):</p>
     <table>
       <tr>
@@ -419,13 +489,14 @@
       </tr>
     </table>
     <p>
-      VRAM was measured on an RTX 5090 with a 64k context and does not include other programs. The free disk space
-      includes the vision projector (0.93 GB) and the runtime (about 2 GB).
+      VRAM was measured by Marvin on an RTX 5090 with a 64k context and does not include other programs. The free disk
+      space includes the vision projector (0.93 GB) and the runtime (about 2 GB). Marvin runs the same model on the same
+      measured profiles, so the table applies to it as well.
     </p>
     <ul>
       <li>
-        <strong>NVIDIA with 16 GB or more</strong> (for example RTX 4080, 4090, 5080, 5090): CUDA backend. Keep the
-        NVIDIA driver up to date.
+        <strong>NVIDIA with 16 GB or more</strong> (for example RTX 4080, 4090, 5080, 5090): Marvin, or the CUDA backend
+        of your own model. Keep the NVIDIA driver up to date.
       </li>
       <li>
         <strong>AMD Radeon or Intel Arc with 16 GB or more:</strong> Vulkan backend. It is offered but not tested on
@@ -437,7 +508,7 @@
       </li>
     </ul>
 
-    <h2 id="setup-rest">3.5 The rest of the setup</h2>
+    <h2 id="setup-rest">3.6 The rest of the setup</h2>
     <p>
       <span class="ui">Interface language</span> switches the application between English and Czech immediately. It does
       not change the language of your captions; that is set in the recipe.
@@ -1150,7 +1221,7 @@
         </ul>
         <p>
           The frames show exactly what the model saw. If a quick movement is missed, set
-          <span class="ui">Clip frames for analysis</span> to every 0.25 s (chapter <a href="#setup-rest">3.5</a>).
+          <span class="ui">Clip frames for analysis</span> to every 0.25 s (chapter <a href="#setup-rest">3.6</a>).
         </p>
       </div>
       <figure class="panel">
@@ -1215,8 +1286,8 @@
     <h2>Privacy</h2>
     <ul>
       <li>
-        <strong>Local mode</strong> (your own model or a local server): images never leave your computer. The bottom bar
-        says <em>Local mode · images stay on this computer</em>.
+        <strong>Local mode</strong> (Marvin, another local server or your own model): images never leave your computer.
+        The bottom bar says <em>Local mode · images stay on this computer</em>.
       </li>
       <li>
         <strong>Cloud mode:</strong> resized copies of the selected images (or clip frames) without EXIF metadata, and
@@ -1275,8 +1346,8 @@
       <li>Use the <strong>same trigger</strong> in both applications, so the name is not added twice.</li>
       <li>Every image needs the file of the profile you train; LORA Train lists missing files before it starts.</li>
       <li>
-        If both applications use the same graphics card, click <span class="ui">Release GPU</span> in the Caption Studio
-        setup (or close Caption Studio) before training.
+        Free the graphics card before training: close Marvin if you captioned with it, or click
+        <span class="ui">Release GPU</span> in the Caption Studio setup (or close Caption Studio) for its own model.
       </li>
       <li>How to build a good dataset for each model is described in the LORA Train manual.</li>
     </ul>
@@ -1321,7 +1392,10 @@
       </tr>
       <tr>
         <td><em>No running server was found.</em></td>
-        <td>Start the API server in your application, or enter its address under Existing local server.</td>
+        <td>
+          Start Marvin (or the API server of your application) and click Find local servers again, or enter its address
+          under Existing local server.
+        </td>
       </tr>
       <tr>
         <td><em>Connected, but the list is empty.</em></td>

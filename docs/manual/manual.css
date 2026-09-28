@@ -202,6 +202,38 @@ figcaption {
   border-left-color: var(--note-line);
   background: var(--note);
 }
+/* Marvin, the recommended local model: the strongest highlight in the manual. */
+.feature {
+  border: 1.4pt solid var(--accent);
+  border-radius: 5pt;
+  background: var(--accent-soft);
+  padding: 8pt 11pt 6pt;
+  margin: 8pt 0 12pt;
+  break-inside: avoid;
+}
+.feature .badge {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  font-size: 7.5pt;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 1pt 6pt;
+  border-radius: 8pt;
+  margin-bottom: 4pt;
+}
+.feature h3 {
+  margin: 0 0 4pt;
+  font-size: 12pt;
+  color: var(--accent);
+}
+th.hl,
+td.hl {
+  background: #dcefd0;
+}
+th.hl {
+  color: var(--accent);
+}
 .tip strong:first-child,
 .note strong:first-child {
   display: block;

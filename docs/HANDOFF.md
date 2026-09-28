@@ -409,8 +409,11 @@ The user manual (English and Czech PDF) is built from `docs/manual/manual.{en,cs
 `docs/manual/img/{en,cs}`: it runs `python -m scripts.manual.prepare` (the demo dataset from
 `docs/manual/demo`, public-domain prints with their captions, plus a generated clip, and two fresh
 profiles under `output/manual`), starts the app from source for each language and imports the
-dataset. `node scripts/manual/build.mjs` prints `dist/Caption-Studio-Manual-<version>-{en,cs}.pdf`
-with Edge. Update the texts when the interface changes, then retake the screenshots and rebuild.
+dataset. The local server shown is Marvin (`github.com/petrsajner/marvin`, the recommended local
+model in the manual): when nothing listens on 127.0.0.1:8080, the script answers Marvin's model list
+(`q5`) there itself for that one screenshot. `node scripts/manual/build.mjs` prints
+`dist/Caption-Studio-Manual-<version>-{en,cs}.pdf` with Edge. Update the texts when the interface
+changes, then retake the screenshots and rebuild.
 
 Release 0.1.7 verification: 63 Python tests and the JavaScript localization test
 passed. The browser workflow passed in both languages. Both the build output and

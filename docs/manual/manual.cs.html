@@ -22,11 +22,12 @@
         <li>
           <a href="#setup">3 Nastavení: připojení modelu</a>
           <ol>
-            <li><a href="#cloud">3.1 Cloudové API</a></li>
-            <li><a href="#server">3.2 Existující lokální server</a></li>
-            <li><a href="#own">3.3 Vlastní stažený model</a></li>
-            <li><a href="#gpu">3.4 Podporované grafické karty</a></li>
-            <li><a href="#setup-rest">3.5 Zbytek nastavení</a></li>
+            <li><a href="#marvin">3.1 Marvin: doporučený lokální model</a></li>
+            <li><a href="#cloud">3.2 Cloudové API</a></li>
+            <li><a href="#server">3.3 Jiné lokální servery</a></li>
+            <li><a href="#own">3.4 Vlastní stažený model</a></li>
+            <li><a href="#gpu">3.5 Podporované grafické karty</a></li>
+            <li><a href="#setup-rest">3.6 Zbytek nastavení</a></li>
           </ol>
         </li>
         <li><a href="#window">4 Hlavní okno</a></li>
@@ -74,16 +75,17 @@
         Každý druh pojmenovává svůj subjekt po svém a nabízí vlastní výběr detailů.
       </li>
       <li>
-        <strong>Tři způsoby, jak spustit obrazový model:</strong> cloudové API, lokální server, který už používáte
-        (Ollama, LM Studio, llama.cpp a další), nebo model, který si Caption Studio stáhne a spouští samo.
+        <strong>Tři způsoby, jak spustit obrazový model:</strong> cloudové API; lokální server, především
+        <strong>Marvin</strong>, náš lokální harness pro Qwen (nebo Ollama, LM Studio, llama.cpp a další); nebo model,
+        který si Caption Studio stáhne a spouští samo.
       </li>
     </ul>
     <h2>Rychlý start</h2>
     <ol class="steps">
       <li>Nainstalujte a spusťte Caption Studio (kapitola <a href="#install">2</a>).</li>
       <li>
-        V nastavení připojte cloudové API nebo lokální server, případně stáhněte model (kapitola
-        <a href="#setup">3</a>).
+        V nastavení připojte cloudové API nebo <strong>Marvina</strong> (případně jiný lokální server), nebo stáhněte
+        model (kapitola <a href="#setup">3</a>).
       </li>
       <li>Klikněte na <span class="ui">＋ Otevřít složku</span> a vyberte složku s datasetem.</li>
       <li>
@@ -96,6 +98,14 @@
       <strong>Grafická karta není potřeba</strong>
       Caption Studio běží na každém počítači s Windows 10 nebo 11. S cloudovým API analyzuje obrázky poskytovatel, takže
       výkonnou grafickou kartu nepotřebujete. Karta je nutná, jen pokud chcete model spouštět na vlastním počítači.
+    </div>
+    <div class="feature">
+      <span class="badge">DOPORUČENO</span>
+      <h3>Lokální popisování s Marvinem</h3>
+      S kartou NVIDIA (16 GB a víc) spouštějte model na vlastním počítači s <strong>Marvinem</strong>, naším lokálním AI
+      harnessem pro Qwen3.8 27B (<a href="https://github.com/petrsajner/marvin">github.com/petrsajner/marvin</a>).
+      Spusťte Marvina a Caption Studio ho najde jedním kliknutím: zdarma, soukromě a se stejným modelem pro obě
+      aplikace. Viz <a href="#marvin">3.1</a>.
     </div>
 
     <!-- 2 -->
@@ -112,7 +122,7 @@
       </tr>
       <tr>
         <td>Grafická karta</td>
-        <td>Pro cloudové API žádná. Pro vlastní model viz <a href="#gpu">3.4 Podporované grafické karty</a>.</td>
+        <td>Pro cloudové API žádná. Pro vlastní model viz <a href="#gpu">3.5 Podporované grafické karty</a>.</td>
       </tr>
       <tr>
         <td>Místo na disku</td>
@@ -206,45 +216,107 @@
     <table>
       <tr>
         <th></th>
+        <th class="hl">Marvin (doporučeno)</th>
         <th>Cloudové API</th>
-        <th>Existující lokální server</th>
+        <th>Jiný lokální server</th>
         <th>Vlastní stažený model</th>
       </tr>
       <tr>
         <td>Potřebujete</td>
+        <td class="hl">Marvina (zdarma z GitHubu) a kartu NVIDIA s 16 GB a víc</td>
         <td>Účet a API klíč u poskytovatele</td>
         <td>Aplikaci jako LM Studio nebo Ollama s obrazovým modelem</td>
         <td>Grafickou kartu s 16 GB a víc, 13–23 GB na disku</td>
       </tr>
       <tr>
         <td>Cena</td>
+        <td class="hl">Zdarma</td>
         <td>Účtuje poskytovatel za požadavky</td>
         <td>Zdarma</td>
         <td>Zdarma</td>
       </tr>
       <tr>
         <td>Vaše obrázky</td>
+        <td class="hl">Zůstávají na počítači</td>
         <td>Zmenšené kopie se posílají poskytovateli</td>
         <td>Zůstávají na počítači</td>
         <td>Zůstávají na počítači</td>
       </tr>
       <tr>
-        <td>Náročnost</td>
-        <td>Nejnižší</td>
-        <td>Nízká, pokud server už běží</td>
+        <td>Nastavení</td>
+        <td class="hl">Spustit Marvina, pak jedno kliknutí</td>
+        <td>Zadat klíč</td>
+        <td>Snadné, pokud server už běží</td>
         <td>Jedno stažení, dál automaticky</td>
+      </tr>
+      <tr>
+        <td>Hodí se pro</td>
+        <td class="hl">Běžnou lokální práci: jeden model pro Marvina i Caption Studio</td>
+        <td>Počítače bez silné grafické karty</td>
+        <td>Obrazový model, který už spouštíte jinde</td>
+        <td>Samotné Caption Studio</td>
       </tr>
     </table>
     <p>
-      Nahoře v dialogu zvolte <span class="ui">◎ Lokálně</span> (existující server nebo vlastní model), nebo
+      Nahoře v dialogu zvolte <span class="ui">◎ Lokálně</span> (Marvin, jiný server nebo vlastní model), nebo
       <span class="ui">☁ Cloudové API</span>. Řádek nad nimi ukazuje obojí najednou, například
-      <em>Local · model běží</em> a <em>Cloud · uložené klíče: 1</em>. Na počítači bez karty NVIDIA začne první
+      <em>Local · server běží</em> a <em>Cloud · uložené klíče: 1</em>. Na počítači bez karty NVIDIA začne první
       nastavení rovnou na cloudovém API.
     </p>
+    <h2 id="marvin">3.1 Marvin: doporučený lokální model</h2>
+    <div class="feature">
+      <span class="badge">DOPORUČENO</span>
+      <p>
+        <strong>Marvin</strong> je lokální AI harness pro <strong>Qwen3.8 27B</strong> na grafických kartách NVIDIA od
+        autora Caption Studia. Kromě toho, že poskytuje model Caption Studiu, je to úplný lokální asistent: chat,
+        programovací agent, analýza obrázků, rešerše a další. Model, konverzace i soubory zůstávají na vašem počítači.
+      </p>
+      <ul>
+        <li>Stejný obrazový model Qwen3.8 27B jako vlastní stažení Caption Studia, s podporou obrázků.</li>
+        <li>
+          Profily změřené na skutečných kartách; údaje o paměti grafické karty v této příručce pocházejí z Marvina.
+        </li>
+        <li>Velký kontext (až 192k tokenů), takže se vejdou i klipy s 30 snímky.</li>
+        <li>Jeden model pro obě aplikace: v Caption Studiu už nic dalšího nestahujete.</li>
+      </ul>
+      <p>
+        <strong>Stažení:</strong> <a href="https://github.com/petrsajner/marvin">github.com/petrsajner/marvin</a>,
+        <em>Full installer</em> (doporučený pro nový počítač; obsahuje vše a model stáhne během instalace).
+      </p>
+    </div>
+    <div class="side keep">
+      <div>
+        <ol class="steps">
+          <li>
+            Nainstalujte a spusťte Marvina. Marvin sám spustí svůj server modelu na adrese
+            <code>http://127.0.0.1:8080/v1</code>.
+          </li>
+          <li>
+            V nastavení Caption Studia klikněte na <span class="ui">◎ Lokálně</span> a pak na
+            <span class="ui">Najít lokální servery</span>.
+          </li>
+          <li>
+            Klikněte na server <code>http://127.0.0.1:8080/v1</code>. Caption Studio ho uvádí jako adresu llama.cpp,
+            protože Marvin spouští server llama.cpp. Adresa i model (například <code>q5</code>) se vyplní samy; klíč
+            není potřeba.
+          </li>
+          <li>Klikněte na <span class="ui">Uložit a pokračovat →</span>.</li>
+        </ol>
+        <div class="tip">
+          <strong>Při popisování nechte Marvina běžet</strong>
+          Caption Studio Marvina nikdy nespouští ani neukončuje. Zavřením Marvina se model zastaví a grafická karta se
+          uvolní, například před tréninkem LoRA.
+        </div>
+      </div>
+      <figure class="dialog" style="flex-basis: 76mm">
+        <img src="img/cs/setup-server.jpg" alt="Nalezený a vybraný Marvin" style="width: 76mm" />
+        <figcaption>Marvin nalezený na 127.0.0.1:8080 a vybraný</figcaption>
+      </figure>
+    </div>
 
     <div class="side keep">
       <div>
-        <h2 id="cloud">3.1 Cloudové API</h2>
+        <h2 id="cloud">3.2 Cloudové API</h2>
         <ol class="steps">
           <li>Klikněte na <span class="ui">☁ Cloudové API</span>.</li>
           <li>
@@ -268,84 +340,80 @@
           Když je klíč uložený, prázdné pole ho ponechá. Smažete ho zaškrtnutím
           <span class="ui">Odstranit uložený klíč tohoto poskytovatele</span> a uložením.
         </p>
-        <div class="note">
-          <strong>Vyberte model, který přijímá obrázky</strong>
-          Seznam může obsahovat i čistě textové modely. Pokud model obrázky odmítne, zvolte jiný. U videoklipů dostane
-          model v jednom požadavku až 30 snímků.
-        </div>
       </div>
-      <figure class="dialog" style="flex-basis: 76mm">
-        <img src="img/cs/setup-cloud.jpg" alt="Nastavení cloudového API" style="width: 76mm" />
+      <figure class="dialog" style="flex-basis: 64mm">
+        <img src="img/cs/setup-cloud.jpg" alt="Nastavení cloudového API" style="width: 64mm" />
         <figcaption>Nastavení cloudového API</figcaption>
       </figure>
     </div>
+    <div class="note">
+      <strong>Vyberte model, který přijímá obrázky</strong>
+      Seznam může obsahovat i čistě textové modely. Pokud model obrázky odmítne, zvolte jiný. U videoklipů dostane model
+      v jednom požadavku až 30 snímků.
+    </div>
 
-    <div class="side keep">
-      <div>
-        <h2 id="server">3.2 Existující lokální server</h2>
-        <p>
-          Pokud už obrazový model spouštíte v jiné aplikaci, Caption Studio ho může použít. Model zůstává ve své
-          aplikaci; Caption Studio se k němu jen připojí a nikdy ho nespouští ani neukončuje.
-        </p>
-        <ol class="steps">
-          <li>Ve své aplikaci spusťte API server a načtěte v ní obrazový model.</li>
-          <li>V nastavení klikněte na <span class="ui">◎ Lokálně</span>.</li>
-          <li>
-            Klikněte na <span class="ui">Najít lokální servery</span>. Caption Studio projde obvyklé adresy a vypíše
-            servery, které odpovídají. Kliknutím jeden vyberte.
-          </li>
-          <li>
-            Nebo zvolte <span class="ui">Způsob připojení</span> → <span class="ui">Existující lokální server</span> a
-            <span class="ui">Adresu lokálního API</span> zadejte sami.
-          </li>
-          <li>Pokud server vyžaduje klíč (například Unsloth), zadejte <span class="ui">Lokální API klíč</span>.</li>
-          <li>
-            Klikněte na <span class="ui">Načíst modely</span>, vyberte
-            <span class="ui">Model s podporou obrázků</span> a klikněte na
-            <span class="ui">Uložit a pokračovat →</span>.
-          </li>
-        </ol>
-        <table>
-          <tr>
-            <th>Aplikace</th>
-            <th>Obvyklá adresa</th>
-          </tr>
-          <tr>
-            <td>Ollama</td>
-            <td><code>http://127.0.0.1:11434/v1</code></td>
-          </tr>
-          <tr>
-            <td>LM Studio</td>
-            <td><code>http://127.0.0.1:1234/v1</code></td>
-          </tr>
-          <tr>
-            <td>llama.cpp (llama-server)</td>
-            <td><code>http://127.0.0.1:8080/v1</code></td>
-          </tr>
-          <tr>
-            <td>Unsloth, vLLM</td>
-            <td><code>http://127.0.0.1:8000/v1</code>, <code>:8888/v1</code></td>
-          </tr>
-        </table>
-      </div>
-      <figure class="dialog" style="flex-basis: 76mm">
-        <img src="img/cs/setup-server.jpg" alt="Nastavení existujícího lokálního serveru" style="width: 76mm" />
-        <figcaption>Existující lokální server (LM Studio)</figcaption>
-      </figure>
+    <div class="block">
+      <h2 id="server">3.3 Jiné lokální servery</h2>
+      <p>
+        Stejně funguje každá jiná aplikace, která poskytuje obrazový model přes API kompatibilní s OpenAI. Model zůstává
+        ve své aplikaci; Caption Studio se k němu jen připojí a nikdy ho nespouští ani neukončuje.
+      </p>
+      <ol class="steps">
+        <li>Ve své aplikaci spusťte API server a načtěte v ní obrazový model.</li>
+        <li>
+          V nastavení klikněte na <span class="ui">◎ Lokálně</span> a <span class="ui">Najít lokální servery</span>;
+          klikněte na server, který odpověděl.
+        </li>
+        <li>
+          Nebo zvolte <span class="ui">Způsob připojení</span> → <span class="ui">Existující lokální server</span> a
+          <span class="ui">Adresu lokálního API</span> zadejte sami.
+        </li>
+        <li>Pokud server vyžaduje klíč (například Unsloth), zadejte <span class="ui">Lokální API klíč</span>.</li>
+        <li>
+          Klikněte na <span class="ui">Načíst modely</span>, vyberte <span class="ui">Model s podporou obrázků</span> a
+          klikněte na <span class="ui">Uložit a pokračovat →</span>.
+        </li>
+      </ol>
+      <table>
+        <tr>
+          <th>Aplikace</th>
+          <th>Obvyklá adresa</th>
+        </tr>
+        <tr>
+          <td class="hl"><strong>Marvin</strong></td>
+          <td class="hl"><code>http://127.0.0.1:8080/v1</code></td>
+        </tr>
+        <tr>
+          <td>Ollama</td>
+          <td><code>http://127.0.0.1:11434/v1</code></td>
+        </tr>
+        <tr>
+          <td>LM Studio</td>
+          <td><code>http://127.0.0.1:1234/v1</code></td>
+        </tr>
+        <tr>
+          <td>llama.cpp (llama-server)</td>
+          <td><code>http://127.0.0.1:8080/v1</code></td>
+        </tr>
+        <tr>
+          <td>Unsloth, vLLM</td>
+          <td><code>http://127.0.0.1:8000/v1</code>, <code>:8888/v1</code></td>
+        </tr>
+      </table>
     </div>
     <div class="note">
       <strong>Co musí lokální model zvládnout</strong>
       V lokálním režimu jsou povolené jen lokální adresy (<code>localhost</code>, <code>127.0.0.1</code>). Model v
       seznamu nemusí umět obrázky, proto vyberte obrazový model. Pro klipy musí přijmout až 30 obrázků v jednom
-      požadavku; dejte mu velký kontext (vlastní model Caption Studia používá 64k tokenů).
+      požadavku; dejte mu velký kontext (aspoň 64k tokenů). Marvin to všechno splňuje bez dalšího nastavování.
     </div>
 
     <div class="side keep">
       <div>
-        <h2 id="own">3.3 Vlastní stažený model</h2>
+        <h2 id="own">3.4 Vlastní stažený model</h2>
         <p>
-          Caption Studio si umí stáhnout a spouštět vlastní model: Qwen3.8 27B s obrazovou částí, běžící na přibaleném
-          prostředí llama.cpp. Nic dalšího není třeba instalovat.
+          Caption Studio si umí model stáhnout a spouštět i samo: Qwen3.8 27B s obrazovou částí na přibaleném prostředí
+          llama.cpp. Hodí se, když chcete Caption Studio samotné; s Marvinem tento oddíl přeskočte.
         </p>
         <ol class="steps">
           <li>
@@ -378,7 +446,7 @@
       </figure>
     </div>
 
-    <h2 id="gpu">3.4 Podporované grafické karty</h2>
+    <h2 id="gpu">3.5 Podporované grafické karty</h2>
     <p>
       Všechny čtyři profily jsou stejný model Qwen3.8 27B v různé přesnosti. Vybírejte podle paměti grafické karty
       (VRAM):
@@ -426,13 +494,14 @@
       </tr>
     </table>
     <p>
-      VRAM byla změřena na RTX 5090 s kontextem 64k a nezahrnuje jiné programy. Volné místo na disku zahrnuje obrazovou
-      část modelu (0,93 GB) a prostředí (asi 2 GB).
+      VRAM změřil Marvin na RTX 5090 s kontextem 64k a nezahrnuje jiné programy. Volné místo na disku zahrnuje obrazovou
+      část modelu (0,93 GB) a prostředí (asi 2 GB). Marvin spouští stejný model na stejných změřených profilech, takže
+      tabulka platí i pro něj.
     </p>
     <ul>
       <li>
-        <strong>NVIDIA s 16 GB a víc</strong> (například RTX 4080, 4090, 5080, 5090): výpočet CUDA. Udržujte ovladač
-        NVIDIA aktuální.
+        <strong>NVIDIA s 16 GB a víc</strong> (například RTX 4080, 4090, 5080, 5090): Marvin, nebo výpočet CUDA
+        vlastního modelu. Udržujte ovladač NVIDIA aktuální.
       </li>
       <li>
         <strong>AMD Radeon nebo Intel Arc s 16 GB a víc:</strong> výpočet Vulkan. Je k dispozici, ale není vyzkoušený na
@@ -444,7 +513,7 @@
       </li>
     </ul>
 
-    <h2 id="setup-rest">3.5 Zbytek nastavení</h2>
+    <h2 id="setup-rest">3.6 Zbytek nastavení</h2>
     <p>
       <span class="ui">Jazyk rozhraní</span> okamžitě přepne aplikaci mezi angličtinou a češtinou. Jazyk popisků tím
       nemění; ten se nastavuje v receptu.
@@ -1142,7 +1211,7 @@
         </ul>
         <p>
           Snímky ukazují přesně to, co model viděl. Pokud mu uniká rychlý pohyb, nastavte
-          <span class="ui">Snímky z klipu pro analýzu</span> na každých 0,25 s (kapitola <a href="#setup-rest">3.5</a>).
+          <span class="ui">Snímky z klipu pro analýzu</span> na každých 0,25 s (kapitola <a href="#setup-rest">3.6</a>).
         </p>
       </div>
       <figure class="panel">
@@ -1207,8 +1276,8 @@
     <h2>Soukromí</h2>
     <ul>
       <li>
-        <strong>Lokální režim</strong> (vlastní model nebo lokální server): obrázky nikdy neopustí váš počítač. Spodní
-        lišta píše <em>Lokální režim · obrázky zůstávají na tomto počítači</em>.
+        <strong>Lokální režim</strong> (Marvin, jiný lokální server nebo vlastní model): obrázky nikdy neopustí váš
+        počítač. Spodní lišta píše <em>Lokální režim · obrázky zůstávají na tomto počítači</em>.
       </li>
       <li>
         <strong>Cloudový režim:</strong> poskytovateli se posílají zmenšené kopie vybraných obrázků (nebo snímky klipů)
@@ -1267,8 +1336,8 @@
         Každý obrázek potřebuje soubor profilu, který trénujete; LORA Train chybějící soubory vypíše ještě před startem.
       </li>
       <li>
-        Pokud obě aplikace používají stejnou grafickou kartu, klikněte před tréninkem v nastavení Caption Studia na
-        <span class="ui">Uvolnit GPU</span> (nebo Caption Studio zavřete).
+        Před tréninkem uvolněte grafickou kartu: pokud jste popisovali s Marvinem, zavřete ho; u vlastního modelu
+        klikněte v nastavení Caption Studia na <span class="ui">Uvolnit GPU</span> (nebo Caption Studio zavřete).
       </li>
       <li>Jak sestavit dobrý dataset pro jednotlivé modely, popisuje příručka LORA Train.</li>
     </ul>
@@ -1312,7 +1381,10 @@
       </tr>
       <tr>
         <td><em>Nebyl nalezen běžící server.</em></td>
-        <td>Spusťte API server ve své aplikaci, nebo zadejte jeho adresu u Existujícího lokálního serveru.</td>
+        <td>
+          Spusťte Marvina (nebo API server své aplikace) a znovu klikněte na Najít lokální servery, nebo zadejte jeho
+          adresu u Existujícího lokálního serveru.
+        </td>
       </tr>
       <tr>
         <td><em>Připojeno, ale seznam je prázdný.</em></td>
