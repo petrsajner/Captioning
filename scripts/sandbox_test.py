@@ -24,7 +24,8 @@ from captioning import __version__
 from captioning.runtime import ARCHIVES, RELEASE
 
 ROOT = Path(__file__).resolve().parents[1]
-SANDBOX_DESKTOP = r"C:\Users\WDAGUtilityAccount\Desktop"
+# The sandbox side of the shared folders; kept off the desktop, like everything the test creates.
+SANDBOX_WORK = r"C:\CaptionStudioTest"
 # What a working clean install looks like; any other value is reported as a failure.
 EXPECTED = {
     "installer_exit": lambda v: v == 0,
@@ -64,18 +65,18 @@ def prepare(sandbox: Path) -> Path:
   <MappedFolders>
     <MappedFolder>
       <HostFolder>{inbox}</HostFolder>
-      <SandboxFolder>{SANDBOX_DESKTOP}\\in</SandboxFolder>
+      <SandboxFolder>{SANDBOX_WORK}\\in</SandboxFolder>
       <ReadOnly>true</ReadOnly>
     </MappedFolder>
     <MappedFolder>
       <HostFolder>{results}</HostFolder>
-      <SandboxFolder>{SANDBOX_DESKTOP}\\results</SandboxFolder>
+      <SandboxFolder>{SANDBOX_WORK}\\results</SandboxFolder>
       <ReadOnly>false</ReadOnly>
     </MappedFolder>
   </MappedFolders>
   <MemoryInMB>8192</MemoryInMB>
   <LogonCommand>
-    <Command>powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File {SANDBOX_DESKTOP}\\in\\clean-install-test.ps1</Command>
+    <Command>powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File {SANDBOX_WORK}\\in\\clean-install-test.ps1</Command>
   </LogonCommand>
 </Configuration>
 """,

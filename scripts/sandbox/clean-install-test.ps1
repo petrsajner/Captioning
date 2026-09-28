@@ -3,9 +3,10 @@
 # read-only and a results folder that this script fills with summary.json, logs and screenshots.
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
-$desk = 'C:\Users\WDAGUtilityAccount\Desktop'
-$in = Join-Path $desk 'in'
-$results = Join-Path $desk 'results'
+# The test keeps its own files in one folder, off the desktop; the app installs where it belongs.
+$work = 'C:\CaptionStudioTest'
+$in = Join-Path $work 'in'
+$results = Join-Path $work 'results'
 $summary = [ordered]@{}
 function Log($message) { "$(Get-Date -Format 'HH:mm:ss') $message" | Out-File -FilePath (Join-Path $results 'log.txt') -Append -Encoding utf8 }
 function WebView2Version {
@@ -72,7 +73,7 @@ try {
     $origin = $url.Split('?')[0].TrimEnd('/')
     $null = Invoke-WebRequest -Uri $url -UseBasicParsing -SessionVariable web
     $headers = @{ 'X-Caption-Client' = '1'; 'Origin' = $origin }
-    $media = Join-Path $desk 'media'
+    $media = Join-Path $work 'media'
     Copy-Item (Join-Path $in 'media') $media -Recurse -Force
     $body = @{ folder = $media; recursive = $false; append = $false } | ConvertTo-Json
     $null = Invoke-WebRequest -Uri "$origin/api/import" -Method Post -Body $body -ContentType 'application/json' -Headers $headers -WebSession $web -UseBasicParsing
@@ -99,10 +100,10 @@ Log 'api done'
 
 # 5. llama.cpp on this clean system: without and with the Visual C++ runtime the app ships.
 try {
-    $zip = Join-Path $desk 'llama-cpu.zip'
+    $zip = Join-Path $work 'llama-cpu.zip'
     $config = Get-Content (Join-Path $in 'config.json') -Raw | ConvertFrom-Json
     Invoke-WebRequest -Uri $config.llama_cpu_url -OutFile $zip -UseBasicParsing
-    $llama = Join-Path $desk 'llama'
+    $llama = Join-Path $work 'llama'
     Expand-Archive $zip $llama -Force
     $server = Get-ChildItem $llama -Recurse -Filter 'llama-server.exe' | Select-Object -First 1
     $run = Start-Process -FilePath $server.FullName -ArgumentList '--version' -Wait -PassThru -NoNewWindow -RedirectStandardOutput (Join-Path $results 'llama-without.txt') -RedirectStandardError (Join-Path $results 'llama-without-err.txt')
