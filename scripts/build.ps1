@@ -60,4 +60,6 @@ if (-not $isccPath) { throw 'Building the installer requires Inno Setup 6.' }
 if ($LASTEXITCODE -ne 0) { throw 'Installer build failed.' }
 Copy-Item -LiteralPath 'README.md','THIRD_PARTY.md' -Destination 'dist\CaptionStudio'
 Compress-Archive -LiteralPath 'dist\CaptionStudio' -DestinationPath "dist\Caption-Studio-$version-Windows-x64-Portable.zip" -Force
-Get-FileHash -Algorithm SHA256 -LiteralPath "dist\Caption-Studio-Setup-$version-Windows-x64.exe","dist\Caption-Studio-$version-Windows-x64-Portable.zip" | ForEach-Object { '{0}  {1}' -f $_.Hash.ToLowerInvariant(), (Split-Path -Leaf $_.Path) } | Set-Content -Encoding utf8 'dist\SHA256SUMS.txt'
+# Plain ASCII with LF endings, so `sha256sum -c SHA256SUMS.txt` works anywhere (Set-Content would add a BOM and CRLF).
+$sums = Get-FileHash -Algorithm SHA256 -LiteralPath "dist\Caption-Studio-Setup-$version-Windows-x64.exe","dist\Caption-Studio-$version-Windows-x64-Portable.zip" | ForEach-Object { '{0}  {1}' -f $_.Hash.ToLowerInvariant(), (Split-Path -Leaf $_.Path) }
+[System.IO.File]::WriteAllText((Join-Path $workspacePath 'dist\SHA256SUMS.txt'), (($sums -join "`n") + "`n"), [System.Text.Encoding]::ASCII)
