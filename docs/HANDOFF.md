@@ -20,6 +20,11 @@ first release). Checked with a static import scan of every `.exe`, `.dll` and `.
   the browser.
 - Not bundled, by nature: the NVIDIA driver for the CUDA backend and the downloads of the
   runtime and model (internet).
+- Checked in Windows Sandbox (a clean Windows 11 Enterprise 26100 without Python or the Visual
+  C++ runtime): the silent install took 7 s; the app window opened with WebView2 (already part
+  of Windows 11, so the bootstrapper was correctly skipped); import of two photos and a clip,
+  thumbnails, clip frames, a saved caption and the WAN prompt worked; the llama.cpp CPU runtime
+  failed without the bundled DLLs (0xC0000135, DLL not found) and ran with them.
 
 ## Previous release: 0.2.6 (2026-09-27)
 
@@ -380,7 +385,15 @@ Build with `scripts/build.ps1`; it runs ruff (lint and format check), mypy, pyte
 JavaScript and UI suites, gathers licenses of the bundled runtime packages, packages Python/UI with PyInstaller,
 compiles Inno Setup and writes the portable ZIP plus SHA-256 manifest.
 `scripts/smoke_package.py <exe>` runs a packaged executable in a fresh temporary
-profile, from outside the source tree, with a minimal PATH. It checks localization
+profile, from outside the source tree, with a minimal PATH.
+
+Before a release, `python -m scripts.sandbox_test` checks the built installer on a clean
+Windows in Windows Sandbox (the Windows feature must be enabled): it installs silently, opens
+the app window, imports photos and a clip through the app's API, saves a caption and runs the
+llama.cpp runtime without and with the bundled Visual C++ DLLs
+(`scripts/sandbox/clean-install-test.ps1`). Results, logs and screenshots go to
+`output/sandbox/results`; the script exits non-zero when a check fails. Closing the sandbox
+window discards it. It checks localization
 assets, import, thumbnails, sidecar writes and validated JSON format conversion.
 
 Release 0.1.7 verification: 63 Python tests and the JavaScript localization test
