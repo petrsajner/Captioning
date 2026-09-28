@@ -59,3 +59,23 @@ test('saved keys and the running server are visible at a glance', async ({ page 
   await expect(page.locator('#key-status')).toHaveText('Key saved for this address. Leave the field empty to keep it.');
   await expect(page.locator('#connection-summary')).toContainText('Cloud · saved keys: 1');
 });
+
+test('a first setup without an NVIDIA card preselects the cloud; with one, local', async ({ page }) => {
+  // The state tells whether this computer has an NVIDIA driver; answer both ways for a first setup.
+  for (const [nvidia, mode] of [
+    [false, 'cloud'],
+    [true, 'local'],
+  ]) {
+    await page.route('**/api/state', async (route) => {
+      const response = await route.fetch();
+      const body = await response.json();
+      body.nvidia_gpu = nvidia;
+      body.settings.setup_complete = false;
+      await route.fulfill({ response, json: body });
+    });
+    await page.reload();
+    await expect(page.locator('#settings-dialog')).toBeVisible();
+    await expect(page.locator(`[data-mode=${mode}]`)).toHaveClass(/active/);
+    await page.unroute('**/api/state');
+  }
+});

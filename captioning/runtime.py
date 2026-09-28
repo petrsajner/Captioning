@@ -87,6 +87,11 @@ CPU_PROJECTOR = {"q3"}
 VC_RUNTIME = ("msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll")
 
 
+def nvidia_driver_installed() -> bool:
+    """The NVIDIA driver installs nvcuda.dll into System32; without it the CUDA backend cannot run."""
+    return Path(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "nvcuda.dll").is_file()
+
+
 def bundled_vc_runtime() -> Path | None:
     """The Visual C++ runtime inside a built app; a source checkout uses the system's copy."""
     base = getattr(sys, "_MEIPASS", None)

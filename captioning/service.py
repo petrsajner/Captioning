@@ -19,7 +19,7 @@ from .bria import CaptionValidationError, normalize_json
 from .errors import ProviderUnavailableError, UserError
 from .media import is_video, probe
 from .models import MEDIA_OUTPUTS, OUTPUT_NAMES, OUTPUT_SUFFIX, VIDEO_OUTPUTS, Settings, outputs_for
-from .runtime import Runtime
+from .runtime import Runtime, nvidia_driver_installed
 from .storage import KeyStore, fingerprint, preserve_damaged, read_json, save_json, write_caption
 from .training import ALL_TYPES, TYPE_DEFAULTS, details_for
 from .video import I2V_WORDS, validate_h3
@@ -167,6 +167,8 @@ class Studio:
         self.settings = self._load_settings()
         self.keys = KeyStore(root / "keys.json", self.recovered)
         self.runtime = Runtime(root)
+        # Without an NVIDIA card the setup starts on the cloud; the local model stays optional.
+        self.nvidia_gpu = nvidia_driver_installed()
         self.rows: list[Row] = self._load_rows()
         self.job: Job = {
             "running": False,
@@ -310,6 +312,7 @@ class Studio:
             "job": self.job,
             "importing": self.importing,
             "runtime": self.runtime.snapshot(self.settings.model_profile, self.settings.backend),
+            "nvidia_gpu": self.nvidia_gpu,
             "data_dir": str(self.root),
             "recovered": self.recovered,
             "notices": self.notices,

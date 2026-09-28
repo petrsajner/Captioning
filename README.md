@@ -12,7 +12,9 @@ beside the originals: `image.txt` or `image.json`.
    the Visual C++ runtime that the local model needs, and if Windows lacks Microsoft Edge
    WebView2 Runtime (for the application window), the installer downloads and installs it.
 2. Launch **Caption Studio** from the Start menu or desktop shortcut.
-3. Choose **Local** or **Cloud API** in Setup and save your settings.
+3. Choose **Local** or **Cloud API** in Setup and save your settings. No graphics card is
+   needed for Cloud API; on a computer without an NVIDIA card the setup starts there. The
+   local model is optional and runs best on an NVIDIA card.
 
 The interface defaults to English. Choose **Interface language** in Setup to switch
 between English and Czech immediately. **Caption language** is a separate recipe

@@ -281,3 +281,14 @@ def test_runtime_endpoints_respect_running_batches_and_readiness(tmp_path):
             assert busy.status_code == 400 and busy.json()["detail"].startswith("Wait for the operation")
         studio.job["running"] = False
     assert studio.runtime.process is None and not studio.runtime.installing
+
+
+def test_the_nvidia_driver_is_recognised_by_its_cuda_library(tmp_path, monkeypatch):
+    # Without an NVIDIA card the setup preselects the cloud; nothing is blocked either way.
+    monkeypatch.setenv("SystemRoot", str(tmp_path))
+    assert runtime_module.nvidia_driver_installed() is False
+    (tmp_path / "System32").mkdir()
+    (tmp_path / "System32" / "nvcuda.dll").write_bytes(b"")
+    assert runtime_module.nvidia_driver_installed() is True
+    studio = Studio(tmp_path / "app")
+    assert studio.snapshot()["nvidia_gpu"] is True

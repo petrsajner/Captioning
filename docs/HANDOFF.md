@@ -1,6 +1,14 @@
 # Caption Studio development handoff
 
-## Current release: 0.2.7 (2026-09-28)
+## Current release: 0.2.8 (2026-09-28)
+
+- A graphics card is never required (Petr, 2026-09-28): the app, import and Cloud API captions
+  run without one; only the optional local model's CUDA backend needs an NVIDIA driver. A first
+  setup on a computer without the NVIDIA driver (`runtime.nvidia_driver_installed()`: no
+  `System32\nvcuda.dll`) preselects **Cloud API**; the state carries `nvidia_gpu`. Local stays
+  one click away and nothing is saved until the user confirms the setup.
+
+## Previous release: 0.2.7 (2026-09-28)
 
 The installer works on a clean Windows with nothing installed (Petr, 2026-09-28, preparing the
 first release). Checked with a static import scan of every `.exe`, `.dll` and `.pyd`:

@@ -132,7 +132,8 @@ export function openSettings() {
   const { state } = ui;
   if (!state) return;
   fillForm(settingsForm, state.settings);
-  switchMode(state.settings.mode);
+  // A first setup on a computer without an NVIDIA card starts on the cloud; Local stays one click away.
+  switchMode(!state.settings.setup_complete && !state.nvidia_gpu ? 'cloud' : state.settings.mode);
   $('api-key').value = '';
   $('clear-key').checked = false;
   clearLocalKeyInput();
