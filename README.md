@@ -1,8 +1,19 @@
 # Caption Studio
 
-A standalone Windows application for preparing image captions for LoRA training.
-Set a shared recipe, select images or a folder, and save matching UTF-8 captions
-beside the originals: `image.txt` or `image.json`.
+**LoRA captions that know what you are training.** A standalone Windows app that turns a folder of
+images and video clips into training captions for FLUX.2, Qwen-Image, SDXL, BRIA FIBO, WAN 2.2,
+LTX-2.5 and MiniMax H3: one recipe for the whole dataset, a separate caption file per model, on your
+own GPU with [Marvin](https://github.com/petrsajner/marvin), any local server or a cloud API.
+
+![Caption Studio with the Clover character dataset](docs/images/Caption-Studio-Clover.jpg)
+
+## Download for Windows
+
+- **[Latest release](https://github.com/petrsajner/Captioning/releases/latest)**: the installer
+  (recommended), the portable ZIP and checksums.
+- User manual as PDF in [English](https://github.com/petrsajner/Captioning/releases/latest/download/Caption-Studio-Manual-EN.pdf)
+  and [Czech](https://github.com/petrsajner/Captioning/releases/latest/download/Caption-Studio-Manual-CS.pdf);
+  both are also installed with the application (Start menu).
 
 ## Install
 

@@ -427,6 +427,13 @@ model in the manual): when nothing listens on 127.0.0.1:8080, the script answers
 `dist/Caption-Studio-Manual-<version>-{en,cs}.pdf` with Edge. Update the texts when the interface
 changes, then retake the screenshots and rebuild.
 
+GitHub releases (the repository is public since 0.2.9, the first public release): the notes are
+`docs/releases/RELEASE-NOTES-<version>.md`, published without their first heading, which becomes the
+release title; the screenshots are in `docs/images` (taken from the installed app on the Clover
+character dataset, which LORA Train and GIS present too). Assets: the installer, the portable ZIP,
+`SHA256SUMS.txt` and both manuals under the stable names `Caption-Studio-Manual-{EN,CS}.pdf` from
+`dist\CaptionStudio\manuals`, because README links to `releases/latest/download/…`.
+
 Release 0.1.7 verification: 63 Python tests and the JavaScript localization test
 passed. The browser workflow passed in both languages. Both the build output and
 installed executable passed the clean-profile package test. The installer completed
