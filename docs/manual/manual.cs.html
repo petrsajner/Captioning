@@ -1,0 +1,1436 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <title>Caption Studio – Uživatelská příručka</title>
+    <link rel="stylesheet" href="manual.css" />
+  </head>
+  <body>
+    <section class="cover">
+      <div class="logo">C</div>
+      <h1>Caption Studio</h1>
+      <p class="subtitle">Uživatelská příručka</p>
+      <p class="meta">Verze 0.2.8 · září 2026 · Windows 10 a 11 (64bitové)</p>
+      <img src="img/cs/main.jpg" alt="Hlavní okno Caption Studia" />
+    </section>
+
+    <section class="contents">
+      <h1>Obsah</h1>
+      <ol>
+        <li><a href="#intro">1 Co Caption Studio dělá</a></li>
+        <li><a href="#install">2 Instalace</a></li>
+        <li>
+          <a href="#setup">3 Nastavení: připojení modelu</a>
+          <ol>
+            <li><a href="#cloud">3.1 Cloudové API</a></li>
+            <li><a href="#server">3.2 Existující lokální server</a></li>
+            <li><a href="#own">3.3 Vlastní stažený model</a></li>
+            <li><a href="#gpu">3.4 Podporované grafické karty</a></li>
+            <li><a href="#setup-rest">3.5 Zbytek nastavení</a></li>
+          </ol>
+        </li>
+        <li><a href="#window">4 Hlavní okno</a></li>
+        <li><a href="#workflow">5 Krok za krokem: od obrázků k popiskům</a></li>
+        <li><a href="#dataset">6 Příprava datasetu</a></li>
+        <li>
+          <a href="#recipe">7 Nastavení sady (recept)</a>
+          <ol>
+            <li><a href="#types">7.1 Co trénujete?</a></li>
+            <li><a href="#outputs">7.2 Výstup popisků</a></li>
+            <li><a href="#text">7.3 Formát, jazyk a délka</a></li>
+            <li><a href="#details">7.4 Co přidat do popisu</a></li>
+            <li><a href="#extras">7.5 Další volby</a></li>
+          </ol>
+        </li>
+        <li><a href="#models">8 Podporované obrazové a video modely</a></li>
+        <li><a href="#images">9 Práce s obrázky a klipy</a></li>
+        <li><a href="#batch">10 Vytváření popisků</a></li>
+        <li><a href="#review">11 Kontrola a úprava popisků</a></li>
+        <li><a href="#files">12 Soubory, data a soukromí</a></li>
+        <li><a href="#loratrain">13 Trénink v LORA Train</a></li>
+        <li><a href="#trouble">14 Řešení problémů</a></li>
+        <li><a href="#reference">15 Stručný přehled</a></li>
+      </ol>
+    </section>
+
+    <!-- 1 -->
+    <h1 id="intro"><span class="number">1</span>Co Caption Studio dělá</h1>
+    <p class="lead">
+      Caption Studio píše tréninkové popisky pro LoRA datasety. Nastavíte jeden recept pro celou sadu, vyberete obrázky
+      nebo videoklipy a aplikace uloží ke každému originálu soubor s popiskem.
+    </p>
+    <ul>
+      <li>
+        <strong>Obrazové modely:</strong> prosté popisy nebo tagy v <code>.txt</code> (FLUX.2, Klein, Z-Image, Krea 2,
+        Qwen-Image, SDXL a každý trenér, který čte k obrázku soubor <code>.txt</code>) a strukturovaný
+        <code>.json</code> pro BRIA FIBO.
+      </li>
+      <li>
+        <strong>Video modely:</strong> samostatný soubor popisku pro WAN 2.2 (text na video i obrázek na video), LTX-2.5
+        a MiniMax H3, každý v podobě, jakou používají jeho prompty. Fotky a klipy mohou být v jednom datasetu.
+      </li>
+      <li>
+        <strong>Čtyři druhy LoRA:</strong> postava nebo osoba, objekt nebo produkt, vizuální styl nebo obecný dataset.
+        Každý druh pojmenovává svůj subjekt po svém a nabízí vlastní výběr detailů.
+      </li>
+      <li>
+        <strong>Tři způsoby, jak spustit obrazový model:</strong> cloudové API, lokální server, který už používáte
+        (Ollama, LM Studio, llama.cpp a další), nebo model, který si Caption Studio stáhne a spouští samo.
+      </li>
+    </ul>
+    <h2>Rychlý start</h2>
+    <ol class="steps">
+      <li>Nainstalujte a spusťte Caption Studio (kapitola <a href="#install">2</a>).</li>
+      <li>
+        V nastavení připojte cloudové API nebo lokální server, případně stáhněte model (kapitola
+        <a href="#setup">3</a>).
+      </li>
+      <li>Klikněte na <span class="ui">＋ Otevřít složku</span> a vyberte složku s datasetem.</li>
+      <li>
+        V receptu zvolte <span class="ui">Co trénujete?</span>, <span class="ui">Výstup popisků</span> a jméno, které se
+        má LoRA naučit.
+      </li>
+      <li>Klikněte na <span class="ui">Vytvořit popisky</span> a výsledky zkontrolujte v pravém panelu.</li>
+    </ol>
+    <div class="tip">
+      <strong>Grafická karta není potřeba</strong>
+      Caption Studio běží na každém počítači s Windows 10 nebo 11. S cloudovým API analyzuje obrázky poskytovatel, takže
+      výkonnou grafickou kartu nepotřebujete. Karta je nutná, jen pokud chcete model spouštět na vlastním počítači.
+    </div>
+
+    <!-- 2 -->
+    <h1 id="install"><span class="number">2</span>Instalace</h1>
+    <h2>Systémové požadavky</h2>
+    <table>
+      <tr>
+        <th>Položka</th>
+        <th>Požadavek</th>
+      </tr>
+      <tr>
+        <td>Operační systém</td>
+        <td>Windows 10 nebo Windows 11, 64bitové (x64)</td>
+      </tr>
+      <tr>
+        <td>Grafická karta</td>
+        <td>Pro cloudové API žádná. Pro vlastní model viz <a href="#gpu">3.4 Podporované grafické karty</a>.</td>
+      </tr>
+      <tr>
+        <td>Místo na disku</td>
+        <td>Asi 130 MB pro aplikaci; o 13–23 GB víc, pokud si stáhnete vlastní model</td>
+      </tr>
+      <tr>
+        <td>Internet</td>
+        <td>Pro cloudové API a stažení modelu; lokální model pak funguje i offline</td>
+      </tr>
+      <tr>
+        <td>Další software</td>
+        <td>
+          Nic. Python, knihovny Visual C++ i vše ostatní je součástí balíku. Microsoft Edge WebView2 (okno aplikace) se
+          nainstaluje automaticky, pokud chybí.
+        </td>
+      </tr>
+    </table>
+
+    <h2>Instalátor, nebo přenosný ZIP</h2>
+    <table>
+      <tr>
+        <th></th>
+        <th>Instalátor</th>
+        <th>Přenosný ZIP</th>
+      </tr>
+      <tr>
+        <td>Soubor</td>
+        <td><code>Caption-Studio-Setup-0.2.8-Windows-x64.exe</code> (46 MB)</td>
+        <td><code>Caption-Studio-0.2.8-Windows-x64-Portable.zip</code> (59 MB)</td>
+      </tr>
+      <tr>
+        <td>Umístění</td>
+        <td><code>%LOCALAPPDATA%\Programs\Caption Studio</code></td>
+        <td>Libovolná složka nebo disk, i USB disk</td>
+      </tr>
+      <tr>
+        <td>Zástupci</td>
+        <td>Nabídka Start; ikona na ploše volitelně</td>
+        <td>Žádní; spusťte <code>CaptionStudio.exe</code></td>
+      </tr>
+      <tr>
+        <td>WebView2</td>
+        <td>Doinstaluje se, když chybí</td>
+        <td>Musí už být ve Windows (je ve Windows 11 a aktualizovaných Windows 10); jinak se použije prohlížeč</td>
+      </tr>
+      <tr>
+        <td>Odinstalace</td>
+        <td>Nastavení Windows → Aplikace, nebo nabídka Start</td>
+        <td>Smazat složku</td>
+      </tr>
+    </table>
+    <p>
+      Obě edice jsou stejný program a všechna data ukládají do složky <code>data</code> vedle
+      <code>CaptionStudio.exe</code>.
+    </p>
+
+    <h2>Instalace krok za krokem</h2>
+    <ol class="steps">
+      <li>Spusťte <code>Caption-Studio-Setup-0.2.8-Windows-x64.exe</code>. Práva správce nejsou potřeba.</li>
+      <li>
+        Pokud Windows zobrazí <em>Systém Windows ochránil váš počítač</em> (SmartScreen), klikněte na
+        <span class="ui">Další informace</span> a pak na <span class="ui">Přesto spustit</span>. Soubor zatím není
+        digitálně podepsaný.
+      </li>
+      <li>
+        Projděte instalátor: zvolte jeho jazyk, ponechte nebo změňte složku, případně zaškrtněte ikonu na ploše a
+        klikněte na Instalovat.
+      </li>
+      <li>
+        Pokud chybí WebView2, instalátor ho stáhne a nainstaluje (je potřeba internet). Pak instalátor dokončete a
+        spusťte Caption Studio; při prvním spuštění se otevře nastavení (kapitola <a href="#setup">3</a>).
+      </li>
+    </ol>
+    <p>
+      <strong>Přenosný ZIP:</strong> rozbalte <em>celý</em> archiv a spusťte <code>CaptionStudio.exe</code>. Složku
+      <code>_internal</code> nechte vedle něj.
+    </p>
+    <p>
+      <strong>Aktualizace:</strong> spusťte instalátor nové verze. Nastavení, klíče, dataset i stažený model ve složce
+      <code>data</code> zůstanou. <strong>Odinstalace</strong> složku <code>data</code> také ponechá; pokud chcete
+      odstranit stažený model a všechna nastavení, smažte ji sami.
+    </p>
+
+    <!-- 3 -->
+    <h1 id="setup"><span class="number">3</span>Nastavení: připojení modelu</h1>
+    <p>
+      Caption Studio potřebuje obrazový model: jazykový model, který umí číst obrázky. Dialog nastavení určuje, kde
+      tento model běží. Otevře se při prvním spuštění; později ho otevřete tlačítkem <span class="ui">⚙</span> nebo
+      tlačítkem modelu vpravo nahoře. Nastavení lze kdykoli změnit.
+    </p>
+    <table>
+      <tr>
+        <th></th>
+        <th>Cloudové API</th>
+        <th>Existující lokální server</th>
+        <th>Vlastní stažený model</th>
+      </tr>
+      <tr>
+        <td>Potřebujete</td>
+        <td>Účet a API klíč u poskytovatele</td>
+        <td>Aplikaci jako LM Studio nebo Ollama s obrazovým modelem</td>
+        <td>Grafickou kartu s 16 GB a víc, 13–23 GB na disku</td>
+      </tr>
+      <tr>
+        <td>Cena</td>
+        <td>Účtuje poskytovatel za požadavky</td>
+        <td>Zdarma</td>
+        <td>Zdarma</td>
+      </tr>
+      <tr>
+        <td>Vaše obrázky</td>
+        <td>Zmenšené kopie se posílají poskytovateli</td>
+        <td>Zůstávají na počítači</td>
+        <td>Zůstávají na počítači</td>
+      </tr>
+      <tr>
+        <td>Náročnost</td>
+        <td>Nejnižší</td>
+        <td>Nízká, pokud server už běží</td>
+        <td>Jedno stažení, dál automaticky</td>
+      </tr>
+    </table>
+    <p>
+      Nahoře v dialogu zvolte <span class="ui">◎ Lokálně</span> (existující server nebo vlastní model), nebo
+      <span class="ui">☁ Cloudové API</span>. Řádek nad nimi ukazuje obojí najednou, například
+      <em>Local · model běží</em> a <em>Cloud · uložené klíče: 1</em>. Na počítači bez karty NVIDIA začne první
+      nastavení rovnou na cloudovém API.
+    </p>
+
+    <div class="side keep">
+      <div>
+        <h2 id="cloud">3.1 Cloudové API</h2>
+        <ol class="steps">
+          <li>Klikněte na <span class="ui">☁ Cloudové API</span>.</li>
+          <li>
+            Zvolte <span class="ui">Poskytovatele</span>: OpenRouter, OpenAI, Google Gemini, nebo
+            <span class="ui">Jiné kompatibilní API</span>. <span class="ui">Adresa API</span> se vyplní sama; u jiného
+            poskytovatele zadejte jeho základní adresu (HTTPS, obvykle končí na <code>/v1</code>).
+          </li>
+          <li>
+            Vložte <span class="ui">API klíč</span>. Získáte ho v účtu poskytovatele, například v Google AI Studiu
+            (Gemini), na platformě OpenAI nebo v OpenRouteru v části Keys.
+          </li>
+          <li>
+            Klikněte na <span class="ui">Načíst dostupné modely</span> a vyberte
+            <span class="ui">Model s podporou obrázků</span>, například <code>gemini-3.8-flash</code>. Přesné ID modelu
+            můžete také napsat.
+          </li>
+          <li>Klikněte na <span class="ui">Uložit a pokračovat →</span>.</li>
+        </ol>
+        <p>
+          Klíč se ukládá šifrovaně pro váš účet Windows a jen pro danou adresu API; každý poskytovatel má vlastní klíč.
+          Když je klíč uložený, prázdné pole ho ponechá. Smažete ho zaškrtnutím
+          <span class="ui">Odstranit uložený klíč tohoto poskytovatele</span> a uložením.
+        </p>
+        <div class="note">
+          <strong>Vyberte model, který přijímá obrázky</strong>
+          Seznam může obsahovat i čistě textové modely. Pokud model obrázky odmítne, zvolte jiný. U videoklipů dostane
+          model v jednom požadavku až 30 snímků.
+        </div>
+      </div>
+      <figure class="dialog" style="flex-basis: 76mm">
+        <img src="img/cs/setup-cloud.jpg" alt="Nastavení cloudového API" style="width: 76mm" />
+        <figcaption>Nastavení cloudového API</figcaption>
+      </figure>
+    </div>
+
+    <div class="side keep">
+      <div>
+        <h2 id="server">3.2 Existující lokální server</h2>
+        <p>
+          Pokud už obrazový model spouštíte v jiné aplikaci, Caption Studio ho může použít. Model zůstává ve své
+          aplikaci; Caption Studio se k němu jen připojí a nikdy ho nespouští ani neukončuje.
+        </p>
+        <ol class="steps">
+          <li>Ve své aplikaci spusťte API server a načtěte v ní obrazový model.</li>
+          <li>V nastavení klikněte na <span class="ui">◎ Lokálně</span>.</li>
+          <li>
+            Klikněte na <span class="ui">Najít lokální servery</span>. Caption Studio projde obvyklé adresy a vypíše
+            servery, které odpovídají. Kliknutím jeden vyberte.
+          </li>
+          <li>
+            Nebo zvolte <span class="ui">Způsob připojení</span> → <span class="ui">Existující lokální server</span> a
+            <span class="ui">Adresu lokálního API</span> zadejte sami.
+          </li>
+          <li>Pokud server vyžaduje klíč (například Unsloth), zadejte <span class="ui">Lokální API klíč</span>.</li>
+          <li>
+            Klikněte na <span class="ui">Načíst modely</span>, vyberte
+            <span class="ui">Model s podporou obrázků</span> a klikněte na
+            <span class="ui">Uložit a pokračovat →</span>.
+          </li>
+        </ol>
+        <table>
+          <tr>
+            <th>Aplikace</th>
+            <th>Obvyklá adresa</th>
+          </tr>
+          <tr>
+            <td>Ollama</td>
+            <td><code>http://127.0.0.1:11434/v1</code></td>
+          </tr>
+          <tr>
+            <td>LM Studio</td>
+            <td><code>http://127.0.0.1:1234/v1</code></td>
+          </tr>
+          <tr>
+            <td>llama.cpp (llama-server)</td>
+            <td><code>http://127.0.0.1:8080/v1</code></td>
+          </tr>
+          <tr>
+            <td>Unsloth, vLLM</td>
+            <td><code>http://127.0.0.1:8000/v1</code>, <code>:8888/v1</code></td>
+          </tr>
+        </table>
+      </div>
+      <figure class="dialog" style="flex-basis: 76mm">
+        <img src="img/cs/setup-server.jpg" alt="Nastavení existujícího lokálního serveru" style="width: 76mm" />
+        <figcaption>Existující lokální server (LM Studio)</figcaption>
+      </figure>
+    </div>
+    <div class="note">
+      <strong>Co musí lokální model zvládnout</strong>
+      V lokálním režimu jsou povolené jen lokální adresy (<code>localhost</code>, <code>127.0.0.1</code>). Model v
+      seznamu nemusí umět obrázky, proto vyberte obrazový model. Pro klipy musí přijmout až 30 obrázků v jednom
+      požadavku; dejte mu velký kontext (vlastní model Caption Studia používá 64k tokenů).
+    </div>
+
+    <div class="side keep">
+      <div>
+        <h2 id="own">3.3 Vlastní stažený model</h2>
+        <p>
+          Caption Studio si umí stáhnout a spouštět vlastní model: Qwen3.8 27B s obrazovou částí, běžící na přibaleném
+          prostředí llama.cpp. Nic dalšího není třeba instalovat.
+        </p>
+        <ol class="steps">
+          <li>
+            Klikněte na <span class="ui">◎ Lokálně</span> a zvolte <span class="ui">Způsob připojení</span> →
+            <span class="ui">Vlastní prostředí Caption Studio</span>.
+          </li>
+          <li>Vyberte profil v poli <span class="ui">Model</span> podle své grafické karty (tabulka níže).</li>
+          <li>
+            Zvolte <span class="ui">Výpočet</span>: <em>NVIDIA · CUDA 13.3</em> pro karty NVIDIA,
+            <em>AMD / Intel / NVIDIA · Vulkan</em> pro ostatní karty, nebo <em>Procesor · pomalé</em> bez vhodné karty.
+          </li>
+          <li>
+            Klikněte na <span class="ui">Stáhnout prostředí a model</span>. Průběh ukazuje ukazatel;
+            <span class="ui">Pozastavit</span> stahování přeruší a další pokus naváže tam, kde skončilo. Každý soubor se
+            před použitím ověří (SHA-256).
+          </li>
+          <li>
+            Když štítek ukáže <em>Připraveno</em>, klikněte na <span class="ui">Uložit a pokračovat →</span>. Model se
+            spustí sám s první dávkou; <span class="ui">Spustit model</span> ho spustí hned.
+          </li>
+        </ol>
+        <p>
+          <span class="ui">Uvolnit GPU</span> model zastaví a uvolní paměť grafické karty, například před tréninkem.
+          Zavřením Caption Studia se model také zastaví.
+        </p>
+      </div>
+      <figure class="dialog" style="flex-basis: 76mm">
+        <img src="img/cs/setup-local.jpg" alt="Nastavení vlastního prostředí" style="width: 76mm" />
+        <figcaption>Vlastní prostředí Caption Studio</figcaption>
+      </figure>
+    </div>
+
+    <h2 id="gpu">3.4 Podporované grafické karty</h2>
+    <p>
+      Všechny čtyři profily jsou stejný model Qwen3.8 27B v různé přesnosti. Vybírejte podle paměti grafické karty
+      (VRAM):
+    </p>
+    <table>
+      <tr>
+        <th>Profil</th>
+        <th class="num">Stažení</th>
+        <th class="num">Grafická karta</th>
+        <th class="num">Změřená VRAM</th>
+        <th class="num">Volný disk</th>
+        <th>Poznámka</th>
+      </tr>
+      <tr>
+        <td>Q2</td>
+        <td class="num">9,8 GB</td>
+        <td class="num">16 GB</td>
+        <td class="num">13,0 GiB</td>
+        <td class="num">≈ 13 GB</td>
+        <td>Nejmenší; obrázky se zpracují na grafické kartě</td>
+      </tr>
+      <tr>
+        <td>IQ3</td>
+        <td class="num">12 GB</td>
+        <td class="num">16 GB</td>
+        <td class="num">13,6 GiB</td>
+        <td class="num">≈ 15 GB</td>
+        <td>Obrázky se zpracují na procesoru: pomalejší, asi 3 minuty na klip s 30 snímky</td>
+      </tr>
+      <tr>
+        <td><strong>Q4</strong></td>
+        <td class="num">16,5 GB</td>
+        <td class="num">24 GB</td>
+        <td class="num">18,9 GiB</td>
+        <td class="num">≈ 20 GB</td>
+        <td><strong>Výchozí.</strong> Asi 18 s na klip s 30 snímky</td>
+      </tr>
+      <tr>
+        <td>Q5</td>
+        <td class="num">19,8 GB</td>
+        <td class="num">32 GB</td>
+        <td class="num">–</td>
+        <td class="num">≈ 23 GB</td>
+        <td>Nejvyšší přesnost</td>
+      </tr>
+    </table>
+    <p>
+      VRAM byla změřena na RTX 5090 s kontextem 64k a nezahrnuje jiné programy. Volné místo na disku zahrnuje obrazovou
+      část modelu (0,93 GB) a prostředí (asi 2 GB).
+    </p>
+    <ul>
+      <li>
+        <strong>NVIDIA s 16 GB a víc</strong> (například RTX 4080, 4090, 5080, 5090): výpočet CUDA. Udržujte ovladač
+        NVIDIA aktuální.
+      </li>
+      <li>
+        <strong>AMD Radeon nebo Intel Arc s 16 GB a víc:</strong> výpočet Vulkan. Je k dispozici, ale není vyzkoušený na
+        každé kartě.
+      </li>
+      <li>
+        <strong>Méně než 16 GB nebo bez grafické karty:</strong> použijte cloudové API, nebo lokální server s menším
+        obrazovým modelem. Výpočet na procesoru funguje, ale je velmi pomalý.
+      </li>
+    </ul>
+
+    <h2 id="setup-rest">3.5 Zbytek nastavení</h2>
+    <p>
+      <span class="ui">Jazyk rozhraní</span> okamžitě přepne aplikaci mezi angličtinou a češtinou. Jazyk popisků tím
+      nemění; ten se nastavuje v receptu.
+    </p>
+    <figure class="dialog">
+      <img src="img/cs/setup-analysis.jpg" alt="Parametry analýzy" />
+      <figcaption>Parametry analýzy (rozbalíte je kliknutím dole v nastavení)</figcaption>
+    </figure>
+    <table>
+      <tr>
+        <th>Nastavení</th>
+        <th>Volby</th>
+        <th>Co dělá</th>
+      </tr>
+      <tr>
+        <td>Nejdelší strana pro analýzu</td>
+        <td>768, 1 024, <strong>1 536</strong>, 2 048 px</td>
+        <td>
+          Model dostane kopii zmenšenou na tuto velikost. Větší ukáže víc detailů, ale je pomalejší a v cloudu dražší.
+        </td>
+      </tr>
+      <tr>
+        <td>Čas na obrázek (s)</td>
+        <td>30–900, výchozí <strong>240</strong></td>
+        <td>Jak dlouho čekat na jednu odpověď. U pomalého modelu nebo dlouhých klipů hodnotu zvyšte.</td>
+      </tr>
+      <tr>
+        <td>Snímky z klipu pro analýzu</td>
+        <td>Každých 0,25, <strong>0,5</strong> nebo 1 s</td>
+        <td>
+          Jak často se z klipu bere snímek. Nejvýš 30 snímků o velikosti asi jednoho megapixelu; delší klipy dostanou 30
+          rovnoměrně rozložených snímků.
+        </td>
+      </tr>
+    </table>
+    <p>
+      Originály se nikdy nemění: model dostává zmenšenou kopii bez EXIF metadat. Nastavení uložíte tlačítkem
+      <span class="ui">Uložit a pokračovat →</span>.
+    </p>
+
+    <!-- 4 -->
+    <h1 id="window"><span class="number">4</span>Hlavní okno</h1>
+    <figure class="strip">
+      <img src="img/cs/main.jpg" alt="Hlavní okno" />
+      <figcaption>Vlevo recept, uprostřed dataset, vpravo kontrola popisku</figcaption>
+    </figure>
+    <table>
+      <tr>
+        <th>Část</th>
+        <th>K čemu slouží</th>
+      </tr>
+      <tr>
+        <td>Horní lišta</td>
+        <td>
+          Verze, tlačítko modelu (například <em>Cloud · gemini-3.8-flash</em>) a <span class="ui">⚙</span>; obě tlačítka
+          otevírají nastavení.
+        </td>
+      </tr>
+      <tr>
+        <td>01 / Nastavení sady</td>
+        <td>
+          Jeden recept pro celý dataset: co trénujete, jaké soubory popisků vytvořit, jméno, jazyk a detaily, které
+          popsat. Ukládá se automaticky.
+        </td>
+      </tr>
+      <tr>
+        <td>02 / Obrázky</td>
+        <td>Načtení datasetu, počítadla, výběr, hledání a filtry a karta pro každý obrázek nebo klip.</td>
+      </tr>
+      <tr>
+        <td>03 / Kontrola popisku</td>
+        <td>Vybraný obrázek nebo klip, jeho soubory popisků, editor, uložení a nové vygenerování.</td>
+      </tr>
+      <tr>
+        <td>Spodní lišta</td>
+        <td>
+          Stav a průběh dávky, kam obrázky putují (lokálně, nebo ke cloudovému poskytovateli), a tlačítko
+          <span class="ui">Vytvořit popisky</span>.
+        </td>
+      </tr>
+    </table>
+
+    <!-- 5 -->
+    <h1 id="workflow"><span class="number">5</span>Krok za krokem: od obrázků k popiskům</h1>
+    <ol class="steps">
+      <li>
+        <strong>Připravte složku.</strong> Obrázky (a klipy) jednoho datasetu dejte do jedné složky, s jedinečnými názvy
+        souborů. Viz kapitola <a href="#dataset">6</a>.
+      </li>
+      <li>
+        <strong>Načtěte ji.</strong> Klikněte na <span class="ui">＋ Otevřít složku</span>, najděte složku v náhledu a
+        klikněte na <span class="ui">Použít tuto složku</span>. Všechny obrázky se objeví jako karty; už existující
+        popisky jsou označené <em>Existující</em>.
+      </li>
+      <li>
+        <strong>Řekněte, co trénujete.</strong> V poli <span class="ui">Co trénujete?</span> zvolte
+        <em>Postava / osoba</em>, <em>Objekt / produkt</em>, <em>Vizuální styl</em> nebo <em>Obecný dataset</em> a
+        vyplňte jméno (u postavy a objektu také jeho typ).
+      </li>
+      <li>
+        <strong>Zvolte výstup.</strong> V poli <span class="ui">Výstup popisků</span> vyberte soubor pro model, který
+        budete trénovat, například <em>Normal · .txt</em> pro FLUX.2 nebo <em>Všechny video modely</em> pro WAN, LTX a
+        H3.
+      </li>
+      <li>
+        <strong>Zvolte detaily.</strong> Zaškrtněte, co má zůstat měnitelné promptem; odškrtněte, co se má naučit LoRA.
+        <span class="ui">Použít výchozí volby pro tento typ LoRA</span> je dobrý začátek.
+      </li>
+      <li>
+        <strong>Zkontrolujte zadání</strong> (nepovinné). <span class="ui">Zobrazit výsledné zadání ↗</span> ukáže
+        přesně, co model dostane.
+      </li>
+      <li>
+        <strong>Nejdřív vyzkoušejte pár obrázků.</strong> Zrušte <span class="ui">Vybrat vše</span>, zaškrtněte dvě tři
+        karty a klikněte na <span class="ui">Vytvořit popisky</span>. Přečtěte si výsledky; recept podle potřeby
+        upravte.
+      </li>
+      <li>
+        <strong>Popište zbytek.</strong> Zaškrtněte <span class="ui">Vybrat vše</span> a klikněte na
+        <span class="ui">Vytvořit popisky</span>. Se zapnutým <span class="ui">Přeskočit existující popisky</span> se
+        hotové obrázky znovu nezpracují.
+      </li>
+      <li>
+        <strong>Zkontrolujte.</strong> Vyfiltrujte <em>Ke kontrole</em> a <em>Chyby</em>, klikněte na každou kartu,
+        opravte popisek a uložte ho klávesami <kbd>Ctrl</kbd>+<kbd>S</kbd>. Pro nový pokus použijte
+        <span class="ui">↻ Znovu</span>.
+      </li>
+      <li>
+        <strong>Trénujte.</strong> Soubory popisků leží vedle obrázků; nasměrujte trenér (například LORA Train) na
+        složku. Viz kapitola <a href="#loratrain">13</a>.
+      </li>
+    </ol>
+
+    <!-- 6 -->
+    <h1 id="dataset"><span class="number">6</span>Příprava datasetu</h1>
+    <p>
+      Caption Studio obrázky popisuje; neořezává je, nemění jejich velikost ani je nepřevádí. Dataset připravte před
+      popisováním. Úplný návod k dobrému LoRA datasetu (kolik obrázků, pestrost, rozlišení pro jednotlivé modely) je v
+      příručce LORA Train; tady je to podstatné.
+    </p>
+    <h2>Obrázky</h2>
+    <ul>
+      <li>
+        <strong>Nejlépe fungují čtvercové obrázky</strong>, například 1024 × 1024 px. Většina trenérů zvládne i jiné
+        poměry stran (bucketing), ale čtvercový výřez drží subjekt velký a jednotný.
+      </li>
+      <li>Ostré, dobře nasvícené obrázky bez vodoznaků, rámečků a koláží. Odstraňte téměř shodné snímky.</li>
+      <li>
+        Pestrost v tom, co má zůstat volné: u postavy různá pozadí, světla, pózy a oblečení; u stylu různé motivy.
+      </li>
+      <li>
+        Podporované formáty: JPG, JPEG, PNG, WEBP, BMP, TIF, TIFF. Vícesnímkové (animované) obrázky podporované nejsou.
+      </li>
+      <li>
+        <strong>Jedinečné názvy:</strong> <code>foto.jpg</code> a <code>foto.png</code> by sdílely
+        <code>foto.txt</code>. Caption Studio takový konflikt ohlásí před zápisem; jeden ze souborů přejmenujte.
+      </li>
+    </ul>
+    <h2>Videoklipy</h2>
+    <p>
+      Podporované formáty: MP4, MOV, WEBM, MKV, M4V, AVI. Klipy před popisováním zkraťte na délku, na které se model
+      trénuje; Caption Studio je jen čte a nikdy je nemění.
+    </p>
+    <table>
+      <tr>
+        <th>Model</th>
+        <th>Trénuje se na</th>
+      </tr>
+      <tr>
+        <td>WAN 2.2 (A14B)</td>
+        <td>16 fps, nejvýš 81 snímků, asi 5 s</td>
+      </tr>
+      <tr>
+        <td>WAN 2.2 I2V (A14B)</td>
+        <td>16 fps, nejvýš 81 snímků, asi 5 s; první snímek je výchozí obrázek</td>
+      </tr>
+      <tr>
+        <td>LTX-2.5</td>
+        <td>24–25 fps, nejvýš 121 snímků, asi 5 s</td>
+      </tr>
+      <tr>
+        <td>MiniMax H3</td>
+        <td>24 fps, klipy dlouhé 5–15 s</td>
+      </tr>
+    </table>
+    <h2>Jméno, které se LoRA naučí (trigger)</h2>
+    <ul>
+      <li>
+        Použijte jedno vymyšlené, čitelné slovo, které základní model nezná: <em>Velmira</em> pro postavu,
+        <em>Zorbo</em> pro objekt, <em>Zorvak</em> pro styl.
+      </li>
+      <li>
+        Vyhněte se krátkým tokenům jako <code>sks</code>; trenéry je najdou i uvnitř jiných slov. Nepoužívejte jména
+        skutečných lidí ani značek.
+      </li>
+      <li>V Caption Studiu i v trenéru používejte stejné jméno.</li>
+    </ul>
+    <h2>Existující popisky</h2>
+    <p>
+      Pokud složka už obsahuje soubory popisků, načtou se a zobrazí jako <em>Existující</em>. Se zapnutým
+      <span class="ui">Přeskočit existující popisky</span> se zpracují jen obrázky bez souboru zvoleného výstupu.
+    </p>
+
+    <!-- 7 -->
+    <h1 id="recipe"><span class="number">7</span>Nastavení sady (recept)</h1>
+    <p>
+      Recept v levém panelu platí pro všechny vybrané obrázky. Každá změna se ukládá automaticky (dole v panelu se
+      objeví <em>Nastavení uloženo</em>).
+    </p>
+
+    <div class="side keep">
+      <div>
+        <h2 id="types">7.1 Co trénujete?</h2>
+        <p>
+          Tato volba určuje, jak každý popisek pojmenuje to, co se LoRA učí, která pole vyplňujete a z jakých detailů
+          vybíráte.
+        </p>
+        <table>
+          <tr>
+            <th>Typ</th>
+            <th>Pole</th>
+            <th>Popisek začíná</th>
+          </tr>
+          <tr>
+            <td>Postava / osoba</td>
+            <td>Jméno postavy, Typ postavy</td>
+            <td><code>Velmira, a woman, sits…</code>; dál „the woman“ nebo „she“</td>
+          </tr>
+          <tr>
+            <td>Objekt / produkt</td>
+            <td>Název předmětu, Typ předmětu</td>
+            <td><code>Zorbo, a backpack, hangs…</code>; dál „the backpack“ nebo „it“</td>
+          </tr>
+          <tr>
+            <td>Vizuální styl</td>
+            <td>Název stylu</td>
+            <td><code>Zorvak style, a woman sits…</code></td>
+          </tr>
+          <tr>
+            <td>Obecný dataset</td>
+            <td>Trigger slovo (nepovinné)</td>
+            <td><code>ohwx, a woman sits…</code></td>
+          </tr>
+        </table>
+        <p>
+          <strong>Postava a objekt:</strong> jméno a typ se zapíšou jednou, tam, kde je subjekt poprvé zmíněn. Typ
+          (<code>a woman</code>, <code>a man</code>, <code>a backpack</code>) modelu říká i to, jaká zájmena použít.
+          Pište ho v jazyce popisků; popisky pro video jsou vždy anglicky.
+        </p>
+        <p>
+          <strong>Vizuální styl:</strong> popisek popisuje jen obsah (lidi obecně), nikdy médium ani techniku, takže
+          styl patří ke jménu. Název, který už končí slovem „style“, se použije tak, jak je.
+        </p>
+        <p><strong>Obecný:</strong> prostý popis; trigger slovo, pokud ho zadáte, stojí na začátku.</p>
+      </div>
+      <figure class="panel">
+        <img src="img/cs/recipe-character.jpg" alt="Recept pro postavu" />
+        <figcaption>Recept pro postavu</figcaption>
+      </figure>
+    </div>
+
+    <div class="block">
+      <h2 id="outputs">7.2 Výstup popisků</h2>
+      <p>Zvolte soubor pro model, který budete trénovat. Každý výstup má vlastní soubor vedle obrázku:</p>
+      <table>
+        <tr>
+          <th>Výstup</th>
+          <th>Soubor</th>
+          <th>Pro</th>
+          <th>Obsah</th>
+        </tr>
+        <tr>
+          <td>Normal</td>
+          <td><code>název.txt</code></td>
+          <td>fotky</td>
+          <td>Popis nebo tagy, anglicky nebo česky</td>
+        </tr>
+        <tr>
+          <td>BRIA JSON (FIBO)</td>
+          <td><code>název.json</code></td>
+          <td>fotky</td>
+          <td>Strukturovaná pole BRIA: subjekt, objekty, scéna, osvětlení, kompozice…</td>
+        </tr>
+        <tr>
+          <td>WAN 2.2</td>
+          <td><code>název.wan.txt</code></td>
+          <td>fotky, klipy</td>
+          <td>Prosté věty: subjekt a děj, detaily, prostředí, světlo, záběr</td>
+        </tr>
+        <tr>
+          <td>WAN 2.2 I2V</td>
+          <td><code>název.wan-i2v.txt</code></td>
+          <td>klipy</td>
+          <td>Jen pohyb a pohyb kamery; zbytek ukazuje výchozí obrázek</td>
+        </tr>
+        <tr>
+          <td>LTX-2.5</td>
+          <td><code>název.ltx.txt</code></td>
+          <td>fotky, klipy</td>
+          <td>Jeden odstavec v přítomném čase, který začíná záběrem</td>
+        </tr>
+        <tr>
+          <td>MiniMax H3</td>
+          <td><code>název.h3.txt</code></td>
+          <td>fotky, klipy</td>
+          <td>Tři oficiální pole, začátek <code>[Shot 1]</code>; zvuk je <code>N/A</code></td>
+        </tr>
+        <tr>
+          <td>Všechny video modely</td>
+          <td>všechny čtyři výše</td>
+          <td>fotky, klipy</td>
+          <td>V jedné dávce vytvoří každý video soubor, který se hodí</td>
+        </tr>
+      </table>
+    </div>
+    <p>
+      Soubory existují vedle sebe: vytvoření jednoho nikdy nezmění jiný, takže jedna složka poslouží více trenérům.
+      Normal a BRIA popisují jen fotky; klipy tam mají štítek <em>Jen video modely</em>.
+    </p>
+
+    <h2 id="text">7.3 Formát, jazyk a délka</h2>
+    <ul>
+      <li>
+        <span class="ui">Formát</span>: <em>Popis</em> (věty) nebo <em>Tagy</em> (oddělené čárkou). Platí pro popisky
+        Normal.
+      </li>
+      <li>
+        <span class="ui">Jazyk popisků</span>: English nebo Čeština, pro Normal a pro hodnoty v BRIA JSON (klíče
+        zůstávají anglicky). Popisky pro video jsou vždy anglicky.
+      </li>
+      <li>
+        <span class="ui">Cílová délka</span>: 20–300 slov, výchozí 100, včetně jména. Je orientační: popisky do 120 %
+        zůstanou celé; delší model zkrátí. Text se nikdy mechanicky neořezává. BRIA JSON cílovou délku nemá.
+      </li>
+    </ul>
+
+    <h2 id="details">7.4 Co přidat do popisu</h2>
+    <p>
+      Tohle je nejdůležitější část receptu. Pravidlo:
+      <strong>co popisek popisuje, zůstane měnitelné promptem; co vynechá, to se naučí LoRA.</strong>
+    </p>
+    <ul>
+      <li><strong>ON</strong> (zaškrtnuto) = popsáno v každém popisku = volně měnitelné v budoucích promptech.</li>
+      <li><strong>OFF</strong> (nezaškrtnuto) = vynecháno = fixováno v LoRA.</li>
+    </ul>
+    <p>
+      Příklad: u postavy vynecháte obličej a barvu vlasů (naučí se je LoRA), ale popíšete účes, oblečení a pozadí, takže
+      později můžete zadat „Velmira s culíkem, v červeném kabátě, na pláži“.
+    </p>
+    <p>
+      Každý typ má vlastní detaily a pamatuje si vlastní volby: přepnutí typu ukáže detaily daného typu a návrat obnoví,
+      co jste pro něj zvolili. <span class="ui">Použít výchozí volby pro tento typ LoRA</span> vynechá detaily vyznačené
+      níže tučně. Řádek nad seznamem ukazuje, kolik detailů je v popisu.
+    </p>
+    <table>
+      <tr>
+        <th>Typ</th>
+        <th>Detaily (<strong>tučně</strong> = výchozí OFF)</th>
+      </tr>
+      <tr>
+        <td>Postava / osoba</td>
+        <td>
+          <strong>Identita / vzhled subjektu</strong>, <strong>Barva vlasů</strong>, Účes, Oblečení, Doplňky, Póza a
+          činnost, Výraz obličeje, Prostředí a pozadí, Osvětlení, Kompozice a kamera, Vizuální styl
+        </td>
+      </tr>
+      <tr>
+        <td>Obecný dataset</td>
+        <td>Stejné detaily jako u postavy; ve výchozím stavu jsou všechny ON</td>
+      </tr>
+      <tr>
+        <td>Objekt / produkt</td>
+        <td>
+          <strong>Vzhled předmětu</strong>, <strong>Logo a text na předmětu</strong>, Varianta a stav, Umístění a
+          natočení, Použití a interakce, Prostředí a pozadí, Osvětlení, Kompozice a kamera, Médium
+        </td>
+      </tr>
+      <tr>
+        <td>Vizuální styl</td>
+        <td>
+          Co je na obrázku, Póza a činnost, Prostředí a pozadí, Světelná situace, Kompozice a kamera,
+          <strong>Médium a technika</strong>, <strong>Barevná paleta a grading</strong>
+        </td>
+      </tr>
+      <tr>
+        <td>Klipy (každý typ)</td>
+        <td>Pohyb v čase, Pohyb kamery: zobrazí se, když je zvolen video výstup</td>
+      </tr>
+    </table>
+    <div class="trio">
+      <figure>
+        <img src="img/cs/details-character.jpg" alt="Detaily postavy" />
+        <figcaption>Postava: obličej a barvu vlasů se naučí LoRA</figcaption>
+      </figure>
+      <figure>
+        <img src="img/cs/details-object.jpg" alt="Detaily objektu" />
+        <figcaption>Objekt: vzhled a logo se naučí LoRA</figcaption>
+      </figure>
+      <figure>
+        <img src="img/cs/details-style.jpg" alt="Detaily stylu" />
+        <figcaption>Styl: médium, techniku a paletu se naučí LoRA</figcaption>
+      </figure>
+    </div>
+    <h3>Tipy pro jednotlivé typy</h3>
+    <ul>
+      <li>
+        <strong>Postava:</strong> barva vlasů a účes jsou oddělené. Barva vlasů postavy obvykle patří do LoRA; účes
+        (rozpuštěné vlasy, culík, ofina) zůstává volný. Pokud postava nosí pořád stejný oděv a má být součástí LoRA,
+        vypněte Oblečení.
+      </li>
+      <li>
+        <strong>Objekt:</strong> lidé, kteří předmět drží nebo používají, se popisují obecně. Pokud produkt existuje v
+        několika barevných variantách, které mají zůstat měnitelné, napište to do
+        <span class="ui">Vlastních pokynů</span>; <em>Varianta a stav</em> pak variantu pojmenuje.
+      </li>
+      <li>
+        <strong>Vizuální styl:</strong> <em>Světelná situace</em> popisuje denní dobu a zdroje světla; způsob, jak je
+        světlo vykreslené, patří ke stylu. Barvy jednotlivých věcí se popisují i s vypnutou paletou.
+      </li>
+    </ul>
+
+    <div class="block">
+      <h2 id="extras">7.5 Další volby</h2>
+      <table>
+        <tr>
+          <th>Volba</th>
+          <th>Co dělá</th>
+        </tr>
+        <tr>
+          <td>Čitelný text v obrázku</td>
+          <td>Čitelný text v obrázku (nápisy, štítky) se zapíše do popisku.</td>
+        </tr>
+        <tr>
+          <td>Vlastní pokyny</td>
+          <td>
+            Vaše pokyny pro celý dataset, například „Batoh existuje ve třech barevných variantách; pojmenuj variantu.“
+            nebo „Nehodnoť estetickou kvalitu.“
+          </td>
+        </tr>
+        <tr>
+          <td>Zobrazit výsledné zadání ↗</td>
+          <td>Ukáže úplné zadání, které model pro aktuální recept dostane.</td>
+        </tr>
+        <tr>
+          <td>Přeskočit existující popisky</td>
+          <td>Obrázky, které už soubor zvoleného výstupu mají, se znovu nezpracují.</td>
+        </tr>
+        <tr>
+          <td>Automaticky ukládat popisky</td>
+          <td>
+            ON: každý hotový popisek se zapíše vedle obrázku. OFF: výsledky zůstanou jako návrhy, dokud je neuložíte.
+          </td>
+        </tr>
+      </table>
+      <p>
+        Jméno v zadání není: model napíše zástupný znak a Caption Studio vloží jméno a typ do hotového popisku, takže se
+        jméno objeví právě jednou.
+      </p>
+    </div>
+    <figure class="dialog">
+      <img src="img/cs/prompt.jpg" alt="Zadání pro model" style="width: 128mm" />
+      <figcaption>Zobrazit výsledné zadání: o co je model pro tento recept požádán</figcaption>
+    </figure>
+
+    <!-- 8 -->
+    <h1 id="models"><span class="number">8</span>Podporované obrazové a video modely</h1>
+    <table>
+      <tr>
+        <th>Model, který trénujete</th>
+        <th>Výstup popisků</th>
+        <th>Soubor, který trenér čte</th>
+      </tr>
+      <tr>
+        <td>FLUX.2, FLUX.2 Klein, Z-Image, Krea 2, Qwen-Image (2512, 2.1), SDXL</td>
+        <td>Normal</td>
+        <td><code>název.txt</code></td>
+      </tr>
+      <tr>
+        <td>Jakýkoli jiný obrazový model, jehož trenér čte k obrázku textový soubor</td>
+        <td>Normal</td>
+        <td><code>název.txt</code></td>
+      </tr>
+      <tr>
+        <td>BRIA FIBO</td>
+        <td>BRIA JSON (FIBO)</td>
+        <td><code>název.json</code></td>
+      </tr>
+      <tr>
+        <td>WAN 2.2 text na video (A14B, TI2V-5B)</td>
+        <td>WAN 2.2</td>
+        <td><code>název.wan.txt</code> (fotky i klipy)</td>
+      </tr>
+      <tr>
+        <td>WAN 2.2 obrázek na video (A14B)</td>
+        <td>WAN 2.2 I2V</td>
+        <td><code>název.wan-i2v.txt</code> (jen klipy)</td>
+      </tr>
+      <tr>
+        <td>LTX-2.5</td>
+        <td>LTX-2.5</td>
+        <td><code>název.ltx.txt</code> (fotky i klipy)</td>
+      </tr>
+      <tr>
+        <td>MiniMax H3</td>
+        <td>MiniMax H3</td>
+        <td><code>název.h3.txt</code> (fotky i klipy)</td>
+      </tr>
+    </table>
+    <p>
+      V ai-toolkitu a musubi-tuneru nastavte příponu popisků na soubor daného modelu, například
+      <code>caption_ext: "wan.txt"</code> nebo <code>caption_extension = ".wan.txt"</code>.
+    </p>
+    <figure class="strip">
+      <img src="img/cs/video-models.jpg" alt="Všechny video modely" style="width: 136mm" />
+      <figcaption>
+        Všechny video modely: karty ukazují, které soubory modelů existují (WAN, I2V, LTX, H3); klip má vlastní detaily
+      </figcaption>
+    </figure>
+    <h2>Čím se popisky pro video liší</h2>
+    <ul>
+      <li><strong>WAN 2.2</strong> začíná jménem, pak následuje subjekt a děj, detaily, prostředí, světlo a záběr.</li>
+      <li>
+        <strong>WAN 2.2 I2V</strong> popisuje jen to, co se hýbe, a jak se pohybuje kamera (nejvýš 100 slov), protože
+        vše ostatní už ukazuje výchozí obrázek. Vytváří se jen pro klipy.
+      </li>
+      <li><strong>LTX-2.5</strong> začíná záběrem, pak jménem, v jednom odstavci v přítomném čase.</li>
+      <li>
+        <strong>MiniMax H3</strong> používá svá tři pole; popis začíná <code>[Shot 1]</code>, fotka je statický záběr a
+        zvuk i hudba jsou <code>N/A</code>.
+      </li>
+    </ul>
+
+    <!-- 9 -->
+    <h1 id="images"><span class="number">9</span>Práce s obrázky a klipy</h1>
+    <h2>Načtení</h2>
+    <ul>
+      <li>
+        <span class="ui">＋ Otevřít složku</span> otevře náhled složky s miniaturami, stromem složek, řádkem s cestou a
+        tlačítky <span class="ui">← Zpět</span>, <span class="ui">Vpřed →</span>,
+        <span class="ui">↑ O složku výš</span>, <span class="ui">⌂ Domů</span> a <span class="ui">↻ Obnovit</span>.
+        Složku načtete tlačítkem <span class="ui">Použít tuto složku</span>.
+      </li>
+      <li><span class="ui">＋ Vybrat obrázky</span> otevře výběr souborů Windows pro jednotlivé soubory.</li>
+      <li><span class="ui">Cesta…</span> umožní vložit cestu ke složce přímo.</li>
+      <li><span class="ui">Včetně podsložek</span> načte i obrázky v podsložkách.</li>
+      <li>
+        <span class="ui">Přidat k otevřené sadě</span> přidá nové obrázky k aktuálnímu seznamu; bez něj nová složka
+        seznam nahradí (žádné soubory se nemažou).
+      </li>
+    </ul>
+    <p>Jeden dataset pojme až 20 000 souborů. Dataset i neuložené návrhy zůstanou zachované i po zavření aplikace.</p>
+    <h2>Počítadla, výběr a filtry</h2>
+    <p>
+      Počítadla ukazují, kolik obrázků <em>čeká</em>, kolik je <em>s popiskem</em>, kolik má <em>chyby</em> a kolik je
+      <em>ke kontrole</em>. Zaškrtávací políčko na kartě ji vybere do dávky; kliknutí na kartu ji otevře v panelu
+      kontroly. <span class="ui">Vybrat vše</span> vybere vše, co ukazuje aktuální filtr. Hledat můžete podle názvu
+      souboru a filtrovat podle <em>Všechny</em>, <em>Bez popisku</em>, <em>S popiskem</em>, <em>Chyby</em> nebo
+      <em>Ke kontrole</em>. Velké datasety se zobrazují po 60 kartách na stránku.
+    </p>
+    <h2>Stavy karet</h2>
+    <table>
+      <tr>
+        <th>Stav</th>
+        <th>Význam</th>
+      </tr>
+      <tr>
+        <td>Čeká</td>
+        <td>Pro zvolený výstup zatím nemá popisek</td>
+      </tr>
+      <tr>
+        <td>Ve frontě, Analyzuje…</td>
+        <td>V běžící dávce</td>
+      </tr>
+      <tr>
+        <td>Uloženo</td>
+        <td>Popisek byl vytvořen a uložen</td>
+      </tr>
+      <tr>
+        <td>Existující</td>
+        <td>Soubor popisku už existoval při načtení datasetu</td>
+      </tr>
+      <tr>
+        <td>Přeskočeno</td>
+        <td>Nezpracováno, protože je zapnuté <span class="ui">Přeskočit existující popisky</span></td>
+      </tr>
+      <tr>
+        <td>K uložení</td>
+        <td>Vytvořeno, ale zatím neuloženo (automatické ukládání je vypnuté)</td>
+      </tr>
+      <tr>
+        <td>Ke kontrole</td>
+        <td>Odpověď modelu potřebuje vaši kontrolu, například neúplný konec nebo JSON, který se nepodařilo opravit</td>
+      </tr>
+      <tr>
+        <td>Chyba, Konflikt / chyba</td>
+        <td>Zpracování nebo uložení selhalo, například se soubor změnil mimo aplikaci; panel kontroly řekne proč</td>
+      </tr>
+    </table>
+    <p>
+      Klip ukazuje na kartě svou délku a rozměry. Když je zvolen video výstup, každá karta nese štítky souborů modelů,
+      které existují (WAN, I2V, LTX, H3).
+    </p>
+
+    <!-- 10 -->
+    <h1 id="batch"><span class="number">10</span>Vytváření popisků</h1>
+    <ol class="steps">
+      <li>Vyberte obrázky a klipy (zaškrtávací políčka nebo <span class="ui">Vybrat vše</span>).</li>
+      <li>
+        Klikněte na tlačítko vpravo dole. Jeho popis se řídí výstupem: <em>Vytvořit popisky (5)</em>,
+        <em>Vytvořit BRIA JSON</em>, <em>Vytvořit popisky WAN 2.2</em>,
+        <em>Vytvořit popisky pro všechny video modely</em>. Číslo je počet vybraných položek.
+      </li>
+      <li>
+        Obrázky se zpracovávají jeden po druhém. Spodní lišta ukazuje aktuální soubor a průběh; karty mění stav, jak se
+        dokončují.
+      </li>
+    </ol>
+    <ul>
+      <li>
+        <span class="ui">Zastavit dávku</span> dávku zastaví. Uložené popisky zůstanou; dosud přijatá odpověď se zachová
+        jako návrh.
+      </li>
+      <li>
+        Když selže spojení s modelem, dávka se pozastaví. Odstraňte příčinu a klikněte na
+        <span class="ui">Pokračovat</span>: hotové obrázky se neopakují. <span class="ui">Zahodit dávku</span> ji místo
+        toho ukončí. I po restartu lze přerušenou dávku stejně dokončit.
+      </li>
+      <li>S vlastním modelem první dávka model spustí; jeho načtení do paměti grafické karty chvíli trvá.</li>
+    </ul>
+    <h2>Co se děje automaticky</h2>
+    <ul>
+      <li>
+        <strong>Délka:</strong> popisek delší než 120 % cíle se pošle zpět ke zkrácení (nejvýš dva pokusy). Pokud je
+        pořád dlouhý, zůstane nejkratší úplná verze s upozorněním.
+      </li>
+      <li><strong>Neúplné konce</strong> model doplní; pokud se to nepodaří, návrh zůstane <em>Ke kontrole</em>.</li>
+      <li>
+        <strong>BRIA JSON</strong> se ověří a v případě potřeby opraví; neopravená odpověď zůstane návrhem ke kontrole.
+      </li>
+      <li>
+        <strong>Jméno</strong> se vloží tam, kde je subjekt poprvé zmíněn. Pokud ho model pojmenoval víckrát, další
+        zmínky použijí jeho typ.
+      </li>
+      <li>Existující popisky se nikdy neztratí: nahrazovaný soubor se nejprve zazálohuje.</li>
+    </ul>
+
+    <!-- 11 -->
+    <h1 id="review"><span class="number">11</span>Kontrola a úprava popisků</h1>
+    <div class="side keep">
+      <div>
+        <p>Kliknutím na kartu ji otevřete v pravém panelu.</p>
+        <ul>
+          <li>
+            <strong>Záložky</strong> nad editorem ukazují všechny soubory popisků obrázku (<code>.txt</code>,
+            <code>.json</code>, <code>.wan.txt</code>…); fajfka znamená, že soubor existuje. Vpravo je počet slov.
+          </li>
+          <li>
+            <strong>Upravte</strong> text a klikněte na <span class="ui">Uložit popisek</span> nebo stiskněte
+            <kbd>Ctrl</kbd>+<kbd>S</kbd>. Předchozí verze zůstane ve složce <code>.caption-backups</code> vedle obrázků.
+          </li>
+          <li><span class="ui">↻ Znovu</span> vytvoří popisek otevřené záložky znovu, jen pro tento obrázek.</li>
+          <li>
+            <strong>Odpovědi modelu</strong> uchovávají každou odpověď, kterou model vrátil (původní i zkrácenou).
+            Vyberte jednu a klikněte na <span class="ui">Vložit do editoru</span>.
+          </li>
+          <li>
+            <strong>Upozornění</strong> pod editorem vysvětlují, co se stalo, například „Jméno bylo doplněno na
+            začátek.“, nebo varují: „Trigger je v tomto popisku víckrát.“
+          </li>
+          <li>
+            <strong>BRIA JSON:</strong> <span class="ui">Naformátovat JSON</span> JSON odsadí. Při uložení se ověří.
+          </li>
+          <li><strong>MiniMax H3</strong>: při uložení se ověří jeho tři pole.</li>
+        </ul>
+        <p>Když přepnete na jiný obrázek s neuloženými úpravami, Caption Studio se zeptá, zda je zahodit.</p>
+      </div>
+      <figure class="panel">
+        <img src="img/cs/bria.jpg" alt="Popisek BRIA JSON" />
+        <figcaption>Popisek BRIA JSON</figcaption>
+      </figure>
+    </div>
+    <div class="side keep">
+      <div>
+        <h2>Klipy</h2>
+        <p>U klipu panel kontroly ukazuje:</p>
+        <ul>
+          <li>přehrávač,</li>
+          <li>rozměry, délku, snímkovou frekvenci, počet snímků a zvuk,</li>
+          <li>
+            na čem se zvolený video model trénuje (například „WAN 2.2 (A14B) se trénuje při 16 fps s nejvýš 81 snímky,
+            asi 5 s.“),
+          </li>
+          <li>snímky poslané modelu, každý se svým časem,</li>
+          <li>záložku pro každý video soubor popisku.</li>
+        </ul>
+        <p>
+          Snímky ukazují přesně to, co model viděl. Pokud mu uniká rychlý pohyb, nastavte
+          <span class="ui">Snímky z klipu pro analýzu</span> na každých 0,25 s (kapitola <a href="#setup-rest">3.5</a>).
+        </p>
+      </div>
+      <figure class="panel">
+        <img src="img/cs/clip.jpg" alt="Kontrola klipu" />
+        <figcaption>Klip se snímky a soubory popisků</figcaption>
+      </figure>
+    </div>
+
+    <!-- 12 -->
+    <h1 id="files"><span class="number">12</span>Soubory, data a soukromí</h1>
+    <h2>Soubory popisků</h2>
+    <ul>
+      <li>Popisky se ukládají vedle obrázků v kódování UTF-8: <code>obrazek.jpg → obrazek.txt</code>.</li>
+      <li>Každý výstup má vlastní soubor; uložení jednoho nikdy nezmění ostatní.</li>
+      <li>Nahrazovaný popisek se nejprve bajt po bajtu zazálohuje do <code>.caption-backups</code>.</li>
+      <li>
+        Pokud se soubor popisku změní mimo Caption Studio (v jiném editoru), nepřepíše se. Pro pokračování načtěte
+        dataset znovu.
+      </li>
+      <li>Původní obrázky a klipy se nikdy nemění.</li>
+    </ul>
+    <h2>Datová složka</h2>
+    <p>
+      Vše, co aplikace ukládá, je ve složce <code>data</code> vedle <code>CaptionStudio.exe</code> (instalátor:
+      <code>%LOCALAPPDATA%\Programs\Caption Studio\data</code>).
+    </p>
+    <table>
+      <tr>
+        <th>Položka</th>
+        <th>Obsah</th>
+      </tr>
+      <tr>
+        <td><code>settings.json</code></td>
+        <td>Recept, připojení a jazyk rozhraní (bez klíčů)</td>
+      </tr>
+      <tr>
+        <td><code>keys.json</code></td>
+        <td>API klíče, šifrované pro váš účet Windows</td>
+      </tr>
+      <tr>
+        <td><code>session.json</code></td>
+        <td>Otevřený dataset, návrhy a odpovědi modelu</td>
+      </tr>
+      <tr>
+        <td><code>runtime\models</code></td>
+        <td>Stažený model a jeho obrazová část</td>
+      </tr>
+      <tr>
+        <td><code>runtime\model.log</code></td>
+        <td>Diagnostika vlastního modelu</td>
+      </tr>
+      <tr>
+        <td><code>logs</code>, <code>app.log</code></td>
+        <td>Záznamy aplikace, bez popisků, obrázků a klíčů</td>
+      </tr>
+    </table>
+    <p>
+      Datová složka přežije aktualizace i odinstalaci. Uložené klíče fungují jen pro váš účet Windows; na jiném počítači
+      je zadejte znovu. Pokud do složky programu nelze zapisovat, data se ukládají do
+      <code>%LOCALAPPDATA%\CaptionStudio</code> a aplikace to oznámí.
+    </p>
+    <h2>Soukromí</h2>
+    <ul>
+      <li>
+        <strong>Lokální režim</strong> (vlastní model nebo lokální server): obrázky nikdy neopustí váš počítač. Spodní
+        lišta píše <em>Lokální režim · obrázky zůstávají na tomto počítači</em>.
+      </li>
+      <li>
+        <strong>Cloudový režim:</strong> poskytovateli se posílají zmenšené kopie vybraných obrázků (nebo snímky klipů)
+        bez EXIF metadat a recept. Spodní lišta uvádí, na jakou adresu.
+      </li>
+      <li>Klíče šifruje Windows (DPAPI) a ukládají se zvlášť pro každou adresu.</li>
+      <li>Aplikace běží jen na vašem počítači (<code>127.0.0.1</code>) a ze sítě není dostupná.</li>
+    </ul>
+
+    <!-- 13 -->
+    <h1 id="loratrain"><span class="number">13</span>Trénink v LORA Train</h1>
+    <p>
+      LORA Train čte soubory popisků přímo ze složky datasetu; nic se neexportuje. Každý tréninkový profil čte svůj
+      soubor:
+    </p>
+    <table>
+      <tr>
+        <th>Profil LORA Train</th>
+        <th>Soubor</th>
+        <th>Používá</th>
+      </tr>
+      <tr>
+        <td>FLUX.2, Klein, Z-Image, Krea 2, Qwen-Image, SDXL</td>
+        <td><code>název.txt</code></td>
+        <td>fotky</td>
+      </tr>
+      <tr>
+        <td>BRIA FIBO</td>
+        <td><code>název.json</code></td>
+        <td>fotky</td>
+      </tr>
+      <tr>
+        <td>WAN 2.2 T2V</td>
+        <td><code>název.wan.txt</code></td>
+        <td>fotky i klipy</td>
+      </tr>
+      <tr>
+        <td>WAN 2.2 I2V</td>
+        <td><code>název.wan-i2v.txt</code></td>
+        <td>jen klipy</td>
+      </tr>
+      <tr>
+        <td>LTX-2.5</td>
+        <td><code>název.ltx.txt</code></td>
+        <td>fotky i klipy</td>
+      </tr>
+      <tr>
+        <td>MiniMax H3</td>
+        <td><code>název.h3.txt</code></td>
+        <td>fotky i klipy</td>
+      </tr>
+    </table>
+    <ul>
+      <li>V obou aplikacích používejte <strong>stejný trigger</strong>, aby se jméno nepřidalo dvakrát.</li>
+      <li>
+        Každý obrázek potřebuje soubor profilu, který trénujete; LORA Train chybějící soubory vypíše ještě před startem.
+      </li>
+      <li>
+        Pokud obě aplikace používají stejnou grafickou kartu, klikněte před tréninkem v nastavení Caption Studia na
+        <span class="ui">Uvolnit GPU</span> (nebo Caption Studio zavřete).
+      </li>
+      <li>Jak sestavit dobrý dataset pro jednotlivé modely, popisuje příručka LORA Train.</li>
+    </ul>
+
+    <!-- 14 -->
+    <h1 id="trouble"><span class="number">14</span>Řešení problémů</h1>
+    <table>
+      <tr>
+        <th>Problém nebo hlášení</th>
+        <th>Co udělat</th>
+      </tr>
+      <tr>
+        <td><em>Systém Windows ochránil váš počítač</em> při instalaci</td>
+        <td>Klikněte na <span class="ui">Další informace</span> → <span class="ui">Přesto spustit</span>.</td>
+      </tr>
+      <tr>
+        <td>Aplikace se otevře ve webovém prohlížeči místo vlastního okna</td>
+        <td>
+          Chybí Microsoft Edge WebView2 (například instalátor neměl internet). Nainstalujte od Microsoftu „Microsoft
+          Edge WebView2 Runtime“, nebo pracujte dál v prohlížeči. Zavřením záložky aplikace neskončí.
+        </td>
+      </tr>
+      <tr>
+        <td><em>Caption Studio už běží.</em></td>
+        <td>Přepněte do otevřeného okna; najednou běží jen jedna kopie.</td>
+      </tr>
+      <tr>
+        <td><em>Caption Studio se nepodařilo spustit.</em></td>
+        <td>Podrobnosti jsou v souboru <code>app.log</code> v datové složce.</td>
+      </tr>
+      <tr>
+        <td><em>Model se nespustil</em> nebo <em>se neočekávaně ukončil</em></td>
+        <td>
+          Aktualizujte ovladač grafické karty, zavřete programy, které používají její paměť, zvolte menší profil nebo
+          zkuste výpočet Vulkan. Podrobnosti jsou v <code>runtime\model.log</code>.
+        </td>
+      </tr>
+      <tr>
+        <td><em>Nedostatek místa</em>, <em>Stahování selhalo</em>, <em>Kontrolní součet nesouhlasí</em></td>
+        <td>Uvolněte místo nebo zkontrolujte připojení a klikněte znovu na stažení; naváže na staženou část.</td>
+      </tr>
+      <tr>
+        <td><em>Nebyl nalezen běžící server.</em></td>
+        <td>Spusťte API server ve své aplikaci, nebo zadejte jeho adresu u Existujícího lokálního serveru.</td>
+      </tr>
+      <tr>
+        <td><em>Připojeno, ale seznam je prázdný.</em></td>
+        <td>Nejprve načtěte model v aplikaci serveru, pak klikněte na Načíst modely.</td>
+      </tr>
+      <tr>
+        <td><em>Neplatný API klíč.</em>, <em>Nedostatečný kredit.</em></td>
+        <td>Zkontrolujte klíč a kredit v účtu poskytovatele a klikněte na Pokračovat.</td>
+      </tr>
+      <tr>
+        <td><em>Byl překročen limit požadavků.</em></td>
+        <td>Chvíli počkejte a klikněte na Pokračovat.</td>
+      </tr>
+      <tr>
+        <td><em>Model nepřijal obrazový požadavek</em></td>
+        <td>Model nejspíš neumí obrázky. Zvolte obrazový model.</td>
+      </tr>
+      <tr>
+        <td><em>Spojení s modelem se nedokončilo včas.</em></td>
+        <td>Zvyšte Čas na obrázek nebo snižte Nejdelší stranu pro analýzu.</td>
+      </tr>
+      <tr>
+        <td><em>Popisek byl změněn mimo aplikaci.</em></td>
+        <td>Načtěte dataset znovu (Otevřít složku).</td>
+      </tr>
+      <tr>
+        <td><em>Dva soubory by sdílely soubor popisku…</em></td>
+        <td>Dva obrázky mají stejný název s jinou příponou. Jeden přejmenujte.</td>
+      </tr>
+      <tr>
+        <td><em>Stávající popisek není text v UTF-8.</em></td>
+        <td>Uložte soubor v textovém editoru jako UTF-8, nebo ho odstraňte, a dataset načtěte znovu.</td>
+      </tr>
+      <tr>
+        <td>Mnoho popisků <em>Ke kontrole</em></td>
+        <td>
+          Otevřete je, opravte a uložte, nebo použijte Znovu. U malého nebo pomalého modelu zvyšte čas na obrázek nebo
+          použijte silnější model.
+        </td>
+      </tr>
+    </table>
+
+    <!-- 15 -->
+    <h1 id="reference"><span class="number">15</span>Stručný přehled</h1>
+    <h2>Klávesové zkratky</h2>
+    <table>
+      <tr>
+        <th>Klávesy</th>
+        <th>Kde</th>
+        <th>Akce</th>
+      </tr>
+      <tr>
+        <td><kbd>Ctrl</kbd>+<kbd>S</kbd></td>
+        <td>Hlavní okno</td>
+        <td>Uloží popisek v editoru</td>
+      </tr>
+      <tr>
+        <td><kbd>Enter</kbd> / <kbd>Mezerník</kbd></td>
+        <td>Karta s fokusem</td>
+        <td>Otevře ji v panelu kontroly</td>
+      </tr>
+      <tr>
+        <td><kbd>Alt</kbd>+<kbd>←</kbd> / <kbd>Alt</kbd>+<kbd>→</kbd></td>
+        <td>Náhled složky</td>
+        <td>Zpět / vpřed</td>
+      </tr>
+      <tr>
+        <td><kbd>Alt</kbd>+<kbd>↑</kbd></td>
+        <td>Náhled složky</td>
+        <td>O složku výš</td>
+      </tr>
+      <tr>
+        <td><kbd>Ctrl</kbd>+<kbd>L</kbd></td>
+        <td>Náhled složky</td>
+        <td>Zadání cesty</td>
+      </tr>
+      <tr>
+        <td><kbd>F5</kbd></td>
+        <td>Náhled složky</td>
+        <td>Obnoví obsah složky</td>
+      </tr>
+    </table>
+    <h2>Soubory v kostce</h2>
+    <table>
+      <tr>
+        <th>Soubor vedle obrázku</th>
+        <th>Vytváří ho výstup</th>
+      </tr>
+      <tr>
+        <td><code>název.txt</code></td>
+        <td>Normal</td>
+      </tr>
+      <tr>
+        <td><code>název.json</code></td>
+        <td>BRIA JSON (FIBO)</td>
+      </tr>
+      <tr>
+        <td><code>název.wan.txt</code>, <code>název.wan-i2v.txt</code></td>
+        <td>WAN 2.2, WAN 2.2 I2V</td>
+      </tr>
+      <tr>
+        <td><code>název.ltx.txt</code></td>
+        <td>LTX-2.5</td>
+      </tr>
+      <tr>
+        <td><code>název.h3.txt</code></td>
+        <td>MiniMax H3</td>
+      </tr>
+      <tr>
+        <td><code>.caption-backups\</code></td>
+        <td>Zálohy nahrazených popisků</td>
+      </tr>
+    </table>
+    <h2>O obrázcích v této příručce</h2>
+    <p>
+      Snímky obrazovky ukazují dřevoryty Utagawy Hirošigeho ze souboru <em>Sto slavných pohledů na Edo</em>
+      (1856–1859), které jsou volným dílem (Wikimedia Commons). Velmira, Zorbo a Zorvak jsou vymyšlená jména.
+    </p>
+    <p class="meta">Caption Studio 0.2.8 · © Petr Sajner 2026</p>
+  </body>
+</html>

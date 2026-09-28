@@ -1,0 +1,5 @@
+integrated_multimodal_description: [Shot 1] Zorvak style, a wide shot at eye level captures a street scene during rain. A figure in a long purple robe stands in the foreground, facing away from the viewer. Further down the road, a group of people walks together, some wearing red and dark robes. The street is flanked by traditional buildings with dark roofs. Tall trees with sparse leaves line the right side of the path, enclosed by a simple wooden fence. The sky is dark and overcast, indicating rainy weather. The camera holds a static shot.
+
+overall_soundscape: N/A
+
+non_diegetic_music: N/A

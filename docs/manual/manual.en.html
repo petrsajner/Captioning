@@ -1,0 +1,1445 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Caption Studio – User Manual</title>
+    <link rel="stylesheet" href="manual.css" />
+  </head>
+  <body>
+    <section class="cover">
+      <div class="logo">C</div>
+      <h1>Caption Studio</h1>
+      <p class="subtitle">User manual</p>
+      <p class="meta">Version 0.2.8 · September 2026 · Windows 10 and 11 (64-bit)</p>
+      <img src="img/en/main.jpg" alt="Caption Studio main window" />
+    </section>
+
+    <section class="contents">
+      <h1>Contents</h1>
+      <ol>
+        <li><a href="#intro">1 What Caption Studio does</a></li>
+        <li><a href="#install">2 Installation</a></li>
+        <li>
+          <a href="#setup">3 Setup: connecting a model</a>
+          <ol>
+            <li><a href="#cloud">3.1 Cloud API</a></li>
+            <li><a href="#server">3.2 An existing local server</a></li>
+            <li><a href="#own">3.3 Your own downloaded model</a></li>
+            <li><a href="#gpu">3.4 Supported graphics cards</a></li>
+            <li><a href="#setup-rest">3.5 The rest of the setup</a></li>
+          </ol>
+        </li>
+        <li><a href="#window">4 The main window</a></li>
+        <li><a href="#workflow">5 Step by step: from images to captions</a></li>
+        <li><a href="#dataset">6 Preparing the dataset</a></li>
+        <li>
+          <a href="#recipe">7 The dataset recipe</a>
+          <ol>
+            <li><a href="#types">7.1 What are you training?</a></li>
+            <li><a href="#outputs">7.2 Caption output</a></li>
+            <li><a href="#text">7.3 Format, language and length</a></li>
+            <li><a href="#details">7.4 Choosing what to include</a></li>
+            <li><a href="#extras">7.5 Additional options</a></li>
+          </ol>
+        </li>
+        <li><a href="#models">8 Supported image and video models</a></li>
+        <li><a href="#images">9 Working with images and clips</a></li>
+        <li><a href="#batch">10 Creating captions</a></li>
+        <li><a href="#review">11 Reviewing and editing captions</a></li>
+        <li><a href="#files">12 Files, data and privacy</a></li>
+        <li><a href="#loratrain">13 Training with LORA Train</a></li>
+        <li><a href="#trouble">14 Troubleshooting</a></li>
+        <li><a href="#reference">15 Quick reference</a></li>
+      </ol>
+    </section>
+
+    <!-- 1 -->
+    <h1 id="intro"><span class="number">1</span>What Caption Studio does</h1>
+    <p class="lead">
+      Caption Studio writes training captions for LoRA datasets. You set one recipe for the whole dataset, select images
+      or video clips, and the application saves a caption file next to every original.
+    </p>
+    <ul>
+      <li>
+        <strong>Image models:</strong> plain <code>.txt</code> descriptions or tags (FLUX.2, Klein, Z-Image, Krea 2,
+        Qwen-Image, SDXL and any trainer that reads a <code>.txt</code> file per image) and structured
+        <code>.json</code> for BRIA FIBO.
+      </li>
+      <li>
+        <strong>Video models:</strong> a separate caption file for WAN 2.2 (text-to-video and image-to-video), LTX-2.5
+        and MiniMax H3, each in the shape its prompts use. Photos and clips can be in the same dataset.
+      </li>
+      <li>
+        <strong>Four kinds of LoRA:</strong> a character or person, an object or product, a visual style, or a general
+        dataset. Each kind names its subject in its own way and offers its own choice of details.
+      </li>
+      <li>
+        <strong>Three ways to run the vision model:</strong> a cloud API, a local server you already use (Ollama, LM
+        Studio, llama.cpp and others), or a model that Caption Studio downloads and runs itself.
+      </li>
+    </ul>
+    <h2>Quick start</h2>
+    <ol class="steps">
+      <li>Install Caption Studio and start it (chapter <a href="#install">2</a>).</li>
+      <li>In the setup, connect a cloud API, a local server or download the model (chapter <a href="#setup">3</a>).</li>
+      <li>Click <span class="ui">＋ Open folder</span> and choose the folder with your dataset.</li>
+      <li>
+        In the recipe, choose <span class="ui">What are you training?</span>, the
+        <span class="ui">Caption output</span> and the name the LoRA should learn.
+      </li>
+      <li>Click <span class="ui">Create captions</span>, then review the results in the right panel.</li>
+    </ol>
+    <div class="tip">
+      <strong>No graphics card required</strong>
+      Caption Studio runs on any Windows 10 or 11 computer. With a cloud API the images are analyzed by the provider, so
+      you do not need a powerful graphics card. A card is needed only if you want to run the model on your own computer.
+    </div>
+
+    <!-- 2 -->
+    <h1 id="install"><span class="number">2</span>Installation</h1>
+    <h2>System requirements</h2>
+    <table>
+      <tr>
+        <th>Item</th>
+        <th>Requirement</th>
+      </tr>
+      <tr>
+        <td>Operating system</td>
+        <td>Windows 10 or Windows 11, 64-bit (x64)</td>
+      </tr>
+      <tr>
+        <td>Graphics card</td>
+        <td>None for a cloud API. For your own model, see <a href="#gpu">3.4 Supported graphics cards</a>.</td>
+      </tr>
+      <tr>
+        <td>Disk space</td>
+        <td>About 130 MB for the application; 13–23 GB more if you download your own model</td>
+      </tr>
+      <tr>
+        <td>Internet</td>
+        <td>For a cloud API and for downloading the model; a local model then works offline</td>
+      </tr>
+      <tr>
+        <td>Other software</td>
+        <td>
+          Nothing. Python, the Visual C++ runtime and everything else is included. Microsoft Edge WebView2 (the
+          application window) is installed automatically if it is missing.
+        </td>
+      </tr>
+    </table>
+
+    <h2>Installer or portable ZIP</h2>
+    <table>
+      <tr>
+        <th></th>
+        <th>Installer</th>
+        <th>Portable ZIP</th>
+      </tr>
+      <tr>
+        <td>File</td>
+        <td><code>Caption-Studio-Setup-0.2.8-Windows-x64.exe</code> (46 MB)</td>
+        <td><code>Caption-Studio-0.2.8-Windows-x64-Portable.zip</code> (59 MB)</td>
+      </tr>
+      <tr>
+        <td>Location</td>
+        <td><code>%LOCALAPPDATA%\Programs\Caption Studio</code></td>
+        <td>Any folder or drive, including a USB drive</td>
+      </tr>
+      <tr>
+        <td>Shortcuts</td>
+        <td>Start menu; desktop icon optional</td>
+        <td>None; run <code>CaptionStudio.exe</code></td>
+      </tr>
+      <tr>
+        <td>WebView2</td>
+        <td>Installed when missing</td>
+        <td>Must already be in Windows (it is in Windows 11 and updated Windows 10); otherwise the browser is used</td>
+      </tr>
+      <tr>
+        <td>Uninstall</td>
+        <td>Windows Settings → Apps, or the Start menu</td>
+        <td>Delete the folder</td>
+      </tr>
+    </table>
+    <p>
+      Both editions are the same program. Both keep all their data in a <code>data</code> folder next to
+      <code>CaptionStudio.exe</code>. Use the installer unless you want to carry the application with you.
+    </p>
+
+    <h2>Installing</h2>
+    <ol class="steps">
+      <li>Run <code>Caption-Studio-Setup-0.2.8-Windows-x64.exe</code>. No administrator rights are needed.</li>
+      <li>
+        If Windows shows <em>Windows protected your PC</em> (SmartScreen), click <span class="ui">More info</span> and
+        then <span class="ui">Run anyway</span>. The warning appears because the file is new and not code-signed.
+      </li>
+      <li>
+        Follow the installer: choose its language, keep or change the folder, optionally tick the desktop icon, and
+        click Install.
+      </li>
+      <li>
+        If WebView2 is missing, the installer downloads and installs it (this needs internet). Then finish the installer
+        and start Caption Studio.
+      </li>
+    </ol>
+    <p>
+      <strong>Portable ZIP:</strong> extract the <em>whole</em> archive and run <code>CaptionStudio.exe</code>. Keep the
+      <code>_internal</code> folder next to it.
+    </p>
+    <p>
+      <strong>Updating:</strong> run the installer of the new version. Your settings, keys, dataset and downloaded model
+      in the <code>data</code> folder are kept. <strong>Uninstalling</strong> also keeps the <code>data</code> folder;
+      delete it yourself if you want to remove the downloaded model and all settings.
+    </p>
+    <p>On the first start the setup opens automatically. Continue with the next chapter.</p>
+
+    <!-- 3 -->
+    <h1 id="setup"><span class="number">3</span>Setup: connecting a model</h1>
+    <p>
+      Caption Studio needs a vision model: a language model that can look at images. The setup dialog decides where that
+      model runs. It opens on the first start; later you open it with the <span class="ui">⚙</span> button or the model
+      button in the top right corner. You can change the setup at any time.
+    </p>
+    <table>
+      <tr>
+        <th></th>
+        <th>Cloud API</th>
+        <th>Existing local server</th>
+        <th>Your own downloaded model</th>
+      </tr>
+      <tr>
+        <td>You need</td>
+        <td>An account and API key with a provider</td>
+        <td>An application such as LM Studio or Ollama with a vision model</td>
+        <td>A graphics card with 16 GB or more, 13–23 GB of disk</td>
+      </tr>
+      <tr>
+        <td>Cost</td>
+        <td>Billed by the provider per request</td>
+        <td>Free</td>
+        <td>Free</td>
+      </tr>
+      <tr>
+        <td>Your images</td>
+        <td>Resized copies are sent to the provider</td>
+        <td>Stay on your computer</td>
+        <td>Stay on your computer</td>
+      </tr>
+      <tr>
+        <td>Setup effort</td>
+        <td>Lowest</td>
+        <td>Low, if the server already runs</td>
+        <td>One download, then automatic</td>
+      </tr>
+    </table>
+    <p>
+      At the top of the dialog, choose <span class="ui">◎ Local</span> (an existing server or your own model) or
+      <span class="ui">☁ Cloud API</span>. A line above the tabs shows both at a glance, for example
+      <em>Local · the model is running</em> and <em>Cloud · saved keys: 1</em>. On a computer without an NVIDIA card,
+      the first setup starts on the Cloud API tab.
+    </p>
+
+    <div class="side keep">
+      <div>
+        <h2 id="cloud">3.1 Cloud API</h2>
+        <ol class="steps">
+          <li>Click <span class="ui">☁ Cloud API</span>.</li>
+          <li>
+            Choose the <span class="ui">Provider</span>: OpenRouter, OpenAI, Google Gemini, or
+            <span class="ui">Other compatible API</span>. The <span class="ui">API address</span> fills in by itself;
+            for another provider, enter its base address (HTTPS, usually ending in <code>/v1</code>).
+          </li>
+          <li>
+            Paste your <span class="ui">API key</span>. You get it in the provider's account, for example in Google AI
+            Studio (Gemini), on the OpenAI platform or in OpenRouter under Keys.
+          </li>
+          <li>
+            Click <span class="ui">Load available models</span> and choose an
+            <span class="ui">Image-capable model</span>, for example <code>gemini-3.8-flash</code>. You can also type
+            the exact model ID.
+          </li>
+          <li>Click <span class="ui">Save and continue →</span>.</li>
+        </ol>
+        <p>
+          The key is stored encrypted for your Windows account and only for this API address; every provider keeps its
+          own key. When a key is saved, leave the field empty to keep it. To delete it, tick
+          <span class="ui">Remove this provider's saved key</span> and save.
+        </p>
+        <div class="note">
+          <strong>Choose a model that accepts images</strong>
+          The model list can include text-only models. If the model rejects images, choose another one. For video clips
+          the model receives up to 30 frames in one request.
+        </div>
+      </div>
+      <figure class="dialog" style="flex-basis: 76mm">
+        <img src="img/en/setup-cloud.jpg" alt="Cloud API setup" style="width: 76mm" />
+        <figcaption>Cloud API setup</figcaption>
+      </figure>
+    </div>
+
+    <div class="side keep">
+      <div>
+        <h2 id="server">3.2 An existing local server</h2>
+        <p>
+          If you already run a vision model in another application, Caption Studio can use it. The model stays in its
+          application; Caption Studio connects to it but never starts or stops it.
+        </p>
+        <ol class="steps">
+          <li>Start the API server in your application and load a vision model there.</li>
+          <li>In the setup, click <span class="ui">◎ Local</span>.</li>
+          <li>
+            Click <span class="ui">Find local servers</span>. Caption Studio checks the usual addresses and lists the
+            servers that answer. Click one to select it.
+          </li>
+          <li>
+            Or choose <span class="ui">Connection type</span> → <span class="ui">Existing local server</span> and enter
+            the <span class="ui">Local API address</span> yourself.
+          </li>
+          <li>If the server needs a key (for example Unsloth), enter the <span class="ui">Local API key</span>.</li>
+          <li>
+            Click <span class="ui">Load models</span>, choose the <span class="ui">Image-capable model</span> and click
+            <span class="ui">Save and continue →</span>.
+          </li>
+        </ol>
+        <table>
+          <tr>
+            <th>Application</th>
+            <th>Usual address</th>
+          </tr>
+          <tr>
+            <td>Ollama</td>
+            <td><code>http://127.0.0.1:11434/v1</code></td>
+          </tr>
+          <tr>
+            <td>LM Studio</td>
+            <td><code>http://127.0.0.1:1234/v1</code></td>
+          </tr>
+          <tr>
+            <td>llama.cpp (llama-server)</td>
+            <td><code>http://127.0.0.1:8080/v1</code></td>
+          </tr>
+          <tr>
+            <td>Unsloth, vLLM</td>
+            <td><code>http://127.0.0.1:8000/v1</code>, <code>:8888/v1</code></td>
+          </tr>
+        </table>
+      </div>
+      <figure class="dialog" style="flex-basis: 76mm">
+        <img src="img/en/setup-server.jpg" alt="Existing local server setup" style="width: 76mm" />
+        <figcaption>An existing local server (LM Studio)</figcaption>
+      </figure>
+    </div>
+    <div class="note">
+      <strong>What the local model must handle</strong>
+      Only local addresses (<code>localhost</code>, <code>127.0.0.1</code>) are accepted in Local mode. A model in the
+      list does not have to support images, so choose a vision model. For clips it must accept up to 30 images in one
+      request; give it a large context (Caption Studio's own model uses 64k tokens).
+    </div>
+
+    <div class="side keep">
+      <div>
+        <h2 id="own">3.3 Your own downloaded model</h2>
+        <p>
+          Caption Studio can download and run its own model: Qwen3.8 27B with a vision projector, running on a bundled
+          llama.cpp runtime. Nothing else has to be installed.
+        </p>
+        <ol class="steps">
+          <li>
+            Click <span class="ui">◎ Local</span> and choose <span class="ui">Connection type</span> →
+            <span class="ui">Caption Studio managed runtime</span>.
+          </li>
+          <li>Choose the <span class="ui">Model</span> profile that fits your graphics card (table below).</li>
+          <li>
+            Choose the <span class="ui">Compute backend</span>: <em>NVIDIA · CUDA 13.3</em> for NVIDIA cards,
+            <em>AMD / Intel / NVIDIA · Vulkan</em> for other cards, or <em>CPU · slow</em> without a suitable card.
+          </li>
+          <li>
+            Click <span class="ui">Download runtime and model</span>. The progress bar shows the download;
+            <span class="ui">Pause</span> interrupts it and the next attempt resumes where it stopped. Every file is
+            checked (SHA-256) before use.
+          </li>
+          <li>
+            When the badge shows <em>Ready</em>, click <span class="ui">Save and continue →</span>. The model starts
+            automatically with your first batch; <span class="ui">Start model</span> starts it right away.
+          </li>
+        </ol>
+        <p>
+          <span class="ui">Release GPU</span> stops the model and frees the graphics memory, for example before you
+          train. Closing Caption Studio stops it too.
+        </p>
+      </div>
+      <figure class="dialog" style="flex-basis: 76mm">
+        <img src="img/en/setup-local.jpg" alt="Managed runtime setup" style="width: 76mm" />
+        <figcaption>Caption Studio managed runtime</figcaption>
+      </figure>
+    </div>
+
+    <h2 id="gpu">3.4 Supported graphics cards</h2>
+    <p>All four profiles are the same Qwen3.8 27B model with different precision. Choose by graphics memory (VRAM):</p>
+    <table>
+      <tr>
+        <th>Profile</th>
+        <th class="num">Download</th>
+        <th class="num">Graphics card</th>
+        <th class="num">Measured VRAM</th>
+        <th class="num">Free disk</th>
+        <th>Notes</th>
+      </tr>
+      <tr>
+        <td>Q2</td>
+        <td class="num">9.8 GB</td>
+        <td class="num">16 GB</td>
+        <td class="num">13.0 GiB</td>
+        <td class="num">≈ 13 GB</td>
+        <td>Smallest; images are analyzed on the graphics card</td>
+      </tr>
+      <tr>
+        <td>IQ3</td>
+        <td class="num">12 GB</td>
+        <td class="num">16 GB</td>
+        <td class="num">13.6 GiB</td>
+        <td class="num">≈ 15 GB</td>
+        <td>Images are analyzed on the processor: slower, about 3 minutes per 30-frame clip</td>
+      </tr>
+      <tr>
+        <td><strong>Q4</strong></td>
+        <td class="num">16.5 GB</td>
+        <td class="num">24 GB</td>
+        <td class="num">18.9 GiB</td>
+        <td class="num">≈ 20 GB</td>
+        <td><strong>Default.</strong> About 18 s per 30-frame clip</td>
+      </tr>
+      <tr>
+        <td>Q5</td>
+        <td class="num">19.8 GB</td>
+        <td class="num">32 GB</td>
+        <td class="num">–</td>
+        <td class="num">≈ 23 GB</td>
+        <td>Highest precision</td>
+      </tr>
+    </table>
+    <p>
+      VRAM was measured on an RTX 5090 with a 64k context and does not include other programs. The free disk space
+      includes the vision projector (0.93 GB) and the runtime (about 2 GB).
+    </p>
+    <ul>
+      <li>
+        <strong>NVIDIA with 16 GB or more</strong> (for example RTX 4080, 4090, 5080, 5090): CUDA backend. Keep the
+        NVIDIA driver up to date.
+      </li>
+      <li>
+        <strong>AMD Radeon or Intel Arc with 16 GB or more:</strong> Vulkan backend. It is offered but not tested on
+        every card.
+      </li>
+      <li>
+        <strong>Less than 16 GB or no graphics card:</strong> use a cloud API, or a local server with a smaller vision
+        model. The CPU backend works but is very slow.
+      </li>
+    </ul>
+
+    <h2 id="setup-rest">3.5 The rest of the setup</h2>
+    <p>
+      <span class="ui">Interface language</span> switches the application between English and Czech immediately. It does
+      not change the language of your captions; that is set in the recipe.
+    </p>
+    <figure class="dialog">
+      <img src="img/en/setup-analysis.jpg" alt="Analysis settings" />
+      <figcaption>Analysis settings (click to expand at the bottom of the setup)</figcaption>
+    </figure>
+    <table>
+      <tr>
+        <th>Setting</th>
+        <th>Choices</th>
+        <th>What it does</th>
+      </tr>
+      <tr>
+        <td>Longest side for analysis</td>
+        <td>768, 1 024, <strong>1 536</strong>, 2 048 px</td>
+        <td>
+          The model receives a copy resized to this size. Larger sees more detail but is slower and, in the cloud, costs
+          more.
+        </td>
+      </tr>
+      <tr>
+        <td>Request timeout (s)</td>
+        <td>30–900, default <strong>240</strong></td>
+        <td>How long to wait for one answer. Raise it for a slow model or long clips.</td>
+      </tr>
+      <tr>
+        <td>Clip frames for analysis</td>
+        <td>Every 0.25, <strong>0.5</strong> or 1 s</td>
+        <td>
+          How often a frame is taken from a clip. At most 30 frames of about one megapixel; longer clips get 30 frames
+          spread evenly.
+        </td>
+      </tr>
+    </table>
+    <p>
+      The originals never change: the model receives a resized copy without EXIF metadata. Click
+      <span class="ui">Save and continue →</span> to store the setup.
+    </p>
+
+    <!-- 4 -->
+    <h1 id="window"><span class="number">4</span>The main window</h1>
+    <figure class="strip">
+      <img src="img/en/main.jpg" alt="Main window" />
+      <figcaption>The recipe on the left, the dataset in the middle, the caption review on the right</figcaption>
+    </figure>
+    <table>
+      <tr>
+        <th>Part</th>
+        <th>What it is for</th>
+      </tr>
+      <tr>
+        <td>Top bar</td>
+        <td>
+          The version, the model button (for example <em>Cloud · gemini-3.8-flash</em>) and <span class="ui">⚙</span>;
+          both buttons open the setup.
+        </td>
+      </tr>
+      <tr>
+        <td>01 / Dataset recipe</td>
+        <td>
+          One recipe for the whole dataset: what you train, which caption files to create, the name, the language and
+          the details to include. It is saved automatically.
+        </td>
+      </tr>
+      <tr>
+        <td>02 / Images</td>
+        <td>Loading the dataset, counters, selection, search and filters, and a card for every image or clip.</td>
+      </tr>
+      <tr>
+        <td>03 / Caption review</td>
+        <td>The selected image or clip, its caption files, the editor, saving and regenerating.</td>
+      </tr>
+      <tr>
+        <td>Bottom bar</td>
+        <td>
+          The batch status and progress, where the images go (local or the cloud host), and the
+          <span class="ui">Create captions</span> button.
+        </td>
+      </tr>
+    </table>
+
+    <!-- 5 -->
+    <h1 id="workflow"><span class="number">5</span>Step by step: from images to captions</h1>
+    <ol class="steps">
+      <li>
+        <strong>Prepare the folder.</strong> Put the images (and clips) of one dataset into one folder, with unique file
+        names. See chapter <a href="#dataset">6</a>.
+      </li>
+      <li>
+        <strong>Load it.</strong> Click <span class="ui">＋ Open folder</span>, find the folder in the preview and click
+        <span class="ui">Use this folder</span>. All images appear as cards; captions that already exist are marked
+        <em>Existing</em>.
+      </li>
+      <li>
+        <strong>Say what you train.</strong> In <span class="ui">What are you training?</span> choose
+        <em>Character / person</em>, <em>Object / product</em>, <em>Visual style</em> or <em>General dataset</em>, and
+        fill in the name (and, for a character or an object, its type).
+      </li>
+      <li>
+        <strong>Choose the output.</strong> In <span class="ui">Caption output</span> choose the file for the model you
+        will train, for example <em>Normal · .txt</em> for FLUX.2 or <em>All video models</em> for WAN, LTX and H3.
+      </li>
+      <li>
+        <strong>Choose the details.</strong> Tick what should stay changeable with prompts; untick what the LoRA should
+        learn. <span class="ui">Apply defaults for this LoRA type</span> gives a good start.
+      </li>
+      <li>
+        <strong>Check the instructions</strong> (optional). <span class="ui">Preview model instructions ↗</span> shows
+        exactly what the model will be asked.
+      </li>
+      <li>
+        <strong>Try a few images first.</strong> Untick <span class="ui">Select all</span>, tick two or three cards and
+        click <span class="ui">Create captions</span>. Read the results; adjust the recipe if needed.
+      </li>
+      <li>
+        <strong>Caption the rest.</strong> Tick <span class="ui">Select all</span> and click
+        <span class="ui">Create captions</span>. With <span class="ui">Skip existing captions</span> on, finished images
+        are not processed again.
+      </li>
+      <li>
+        <strong>Review.</strong> Filter <em>To review</em> and <em>Errors</em>, click each card, fix the caption and
+        save it with <kbd>Ctrl</kbd>+<kbd>S</kbd>. Use <span class="ui">↻ Regenerate</span> for a new attempt.
+      </li>
+      <li>
+        <strong>Train.</strong> The caption files are next to the images; point your trainer (for example LORA Train) at
+        the folder. See chapter <a href="#loratrain">13</a>.
+      </li>
+    </ol>
+
+    <!-- 6 -->
+    <h1 id="dataset"><span class="number">6</span>Preparing the dataset</h1>
+    <p>
+      Caption Studio describes images; it does not crop, resize or convert them. Prepare the dataset before captioning.
+      The full guide to a good LoRA dataset (how many images, variety, resolution per model) is in the LORA Train
+      manual; here are the essentials.
+    </p>
+    <h2>Images</h2>
+    <ul>
+      <li>
+        <strong>Square images work best</strong>, for example 1024 × 1024 px. Most trainers handle other aspect ratios
+        with buckets, but square crops keep the subject large and consistent.
+      </li>
+      <li>Sharp, well-lit images without watermarks, frames or collages. Remove near-duplicates.</li>
+      <li>
+        Variety in what should stay free: different backgrounds, lighting, poses and clothing for a character; different
+        subjects for a style.
+      </li>
+      <li>Supported formats: JPG, JPEG, PNG, WEBP, BMP, TIF, TIFF. Multi-frame images (animated) are not supported.</li>
+      <li>
+        <strong>Unique names:</strong> <code>photo.jpg</code> and <code>photo.png</code> would share
+        <code>photo.txt</code>. Caption Studio reports such conflicts before writing; rename one of the files.
+      </li>
+    </ul>
+    <h2>Video clips</h2>
+    <p>
+      Supported formats: MP4, MOV, WEBM, MKV, M4V, AVI. Cut the clips to the length the model trains on before
+      captioning; Caption Studio reads them and never changes them.
+    </p>
+    <table>
+      <tr>
+        <th>Model</th>
+        <th>Trains on</th>
+      </tr>
+      <tr>
+        <td>WAN 2.2 (A14B)</td>
+        <td>16 fps, up to 81 frames, about 5 s</td>
+      </tr>
+      <tr>
+        <td>WAN 2.2 I2V (A14B)</td>
+        <td>16 fps, up to 81 frames, about 5 s; the first frame is the start image</td>
+      </tr>
+      <tr>
+        <td>LTX-2.5</td>
+        <td>24–25 fps, up to 121 frames, about 5 s</td>
+      </tr>
+      <tr>
+        <td>MiniMax H3</td>
+        <td>24 fps, clips of 5–15 s</td>
+      </tr>
+    </table>
+    <h2>The name the LoRA learns (trigger)</h2>
+    <ul>
+      <li>
+        Use one invented, readable word that the base model does not know: <em>Velmira</em> for a character,
+        <em>Zorbo</em> for an object, <em>Zorvak</em> for a style.
+      </li>
+      <li>
+        Avoid short tokens such as <code>sks</code>; trainers also find them inside other words. Avoid names of real
+        people and brands.
+      </li>
+      <li>Use the same name in Caption Studio and in your trainer.</li>
+    </ul>
+    <h2>Existing captions</h2>
+    <p>
+      If the folder already contains caption files, they are loaded and shown as <em>Existing</em>. With
+      <span class="ui">Skip existing captions</span> on, only images without the selected caption file are processed.
+    </p>
+
+    <!-- 7 -->
+    <h1 id="recipe"><span class="number">7</span>The dataset recipe</h1>
+    <p>
+      The recipe in the left panel applies to every selected image. All changes are saved automatically (<em
+        >Settings saved</em
+      >
+      appears at the bottom of the panel).
+    </p>
+
+    <div class="side keep">
+      <div>
+        <h2 id="types">7.1 What are you training?</h2>
+        <p>
+          This choice decides how every caption names what the LoRA learns, which fields you fill in and which details
+          you can choose.
+        </p>
+        <table>
+          <tr>
+            <th>Type</th>
+            <th>Fields</th>
+            <th>A caption starts</th>
+          </tr>
+          <tr>
+            <td>Character / person</td>
+            <td>Character name, Character type</td>
+            <td><code>Velmira, a woman, sits…</code>; later “the woman” or “she”</td>
+          </tr>
+          <tr>
+            <td>Object / product</td>
+            <td>Object name, Object type</td>
+            <td><code>Zorbo, a backpack, hangs…</code>; later “the backpack” or “it”</td>
+          </tr>
+          <tr>
+            <td>Visual style</td>
+            <td>Style name</td>
+            <td><code>Zorvak style, a woman sits…</code></td>
+          </tr>
+          <tr>
+            <td>General dataset</td>
+            <td>Trigger word (optional)</td>
+            <td><code>ohwx, a woman sits…</code></td>
+          </tr>
+        </table>
+        <p>
+          <strong>Character and object:</strong> the name and the type are written once, where the subject is first
+          mentioned. The type (<code>a woman</code>, <code>a man</code>, <code>a backpack</code>) also tells the model
+          which pronouns to use. Write it in the caption language; video captions are always English.
+        </p>
+        <p>
+          <strong>Visual style:</strong> the caption describes only the content (people generically), never the medium
+          or technique, so the style belongs to the name. A name that already ends in “style” is used as it is.
+        </p>
+        <p><strong>General:</strong> a plain description; the trigger word, if any, is placed at the start.</p>
+      </div>
+      <figure class="panel">
+        <img src="img/en/recipe-character.jpg" alt="Character recipe" />
+        <figcaption>A character recipe</figcaption>
+      </figure>
+    </div>
+
+    <div class="block">
+      <h2 id="outputs">7.2 Caption output</h2>
+      <p>Choose the file for the model you will train. Every output has its own file next to the image:</p>
+      <table>
+        <tr>
+          <th>Output</th>
+          <th>File</th>
+          <th>For</th>
+          <th>Content</th>
+        </tr>
+        <tr>
+          <td>Normal</td>
+          <td><code>name.txt</code></td>
+          <td>photos</td>
+          <td>A description or tags, in English or Czech</td>
+        </tr>
+        <tr>
+          <td>BRIA JSON (FIBO)</td>
+          <td><code>name.json</code></td>
+          <td>photos</td>
+          <td>BRIA's structured fields: subject, objects, scene, lighting, composition…</td>
+        </tr>
+        <tr>
+          <td>WAN 2.2</td>
+          <td><code>name.wan.txt</code></td>
+          <td>photos, clips</td>
+          <td>Plain sentences: subject and action, details, setting, lighting, shot</td>
+        </tr>
+        <tr>
+          <td>WAN 2.2 I2V</td>
+          <td><code>name.wan-i2v.txt</code></td>
+          <td>clips</td>
+          <td>Only the motion and the camera movement; the start image shows the rest</td>
+        </tr>
+        <tr>
+          <td>LTX-2.5</td>
+          <td><code>name.ltx.txt</code></td>
+          <td>photos, clips</td>
+          <td>One present-tense paragraph that opens with the shot</td>
+        </tr>
+        <tr>
+          <td>MiniMax H3</td>
+          <td><code>name.h3.txt</code></td>
+          <td>photos, clips</td>
+          <td>The three official fields, starting with <code>[Shot 1]</code>; sound is <code>N/A</code></td>
+        </tr>
+        <tr>
+          <td>All video models</td>
+          <td>all four above</td>
+          <td>photos, clips</td>
+          <td>Creates every video file that applies in one batch</td>
+        </tr>
+      </table>
+    </div>
+    <p>
+      The files coexist: creating one never changes another, so one folder can serve several trainers. Normal and BRIA
+      describe photos only; clips show <em>Video models only</em> there.
+    </p>
+
+    <h2 id="text">7.3 Format, language and length</h2>
+    <ul>
+      <li>
+        <span class="ui">Format</span>: <em>Description</em> (sentences) or <em>Tags</em> (comma-separated). Applies to
+        Normal captions.
+      </li>
+      <li>
+        <span class="ui">Caption language</span>: English or Czech, for Normal and for the values in BRIA JSON (its keys
+        stay English). Video captions are always English.
+      </li>
+      <li>
+        <span class="ui">Target length</span>: 20–300 words, default 100, including the name. It is a soft target:
+        captions up to 120 % are kept; a longer one is sent back to the model for a shorter version. Text is never cut
+        off mechanically. BRIA JSON has no word target.
+      </li>
+    </ul>
+
+    <h2 id="details">7.4 Choosing what to include</h2>
+    <p>
+      This is the most important part of the recipe. The rule:
+      <strong>what the caption describes stays changeable with prompts; what it leaves out, the LoRA learns.</strong>
+    </p>
+    <ul>
+      <li><strong>ON</strong> (ticked) = described in every caption = free to change in future prompts.</li>
+      <li><strong>OFF</strong> (unticked) = left out = fixed in the LoRA.</li>
+    </ul>
+    <p>
+      Example: for a character you leave out the face and hair color (the LoRA learns them) but describe the hairstyle,
+      clothing and background, so you can later prompt “Velmira with a ponytail, in a red coat, on a beach”.
+    </p>
+    <p>
+      Every type has its own details and remembers its own choices: switching the type shows that type's details, and
+      switching back restores what you chose. <span class="ui">Apply defaults for this LoRA type</span> leaves out the
+      details in bold below. The line above the list shows how many details are included.
+    </p>
+    <table>
+      <tr>
+        <th>Type</th>
+        <th>Details (<strong>bold</strong> = OFF by default)</th>
+      </tr>
+      <tr>
+        <td>Character / person</td>
+        <td>
+          <strong>Identity / subject appearance</strong>, <strong>Hair color</strong>, Hairstyle, Clothing, Accessories,
+          Pose and action, Facial expression, Environment and background, Lighting, Composition and camera, Visual style
+        </td>
+      </tr>
+      <tr>
+        <td>General dataset</td>
+        <td>The same details as a character; all are ON by default</td>
+      </tr>
+      <tr>
+        <td>Object / product</td>
+        <td>
+          <strong>Object appearance</strong>, <strong>Logo and text on the object</strong>, Variant and state, Placement
+          and orientation, Use and interaction, Environment and background, Lighting, Composition and camera, Medium
+        </td>
+      </tr>
+      <tr>
+        <td>Visual style</td>
+        <td>
+          What is depicted, Pose and action, Environment and background, Light situation, Composition and camera,
+          <strong>Medium and technique</strong>, <strong>Color palette and grading</strong>
+        </td>
+      </tr>
+      <tr>
+        <td>Clips (any type)</td>
+        <td>Motion over time, Camera movement: shown when a video output is selected</td>
+      </tr>
+    </table>
+    <div class="trio">
+      <figure>
+        <img src="img/en/details-character.jpg" alt="Character details" />
+        <figcaption>Character: face and hair color are learned</figcaption>
+      </figure>
+      <figure>
+        <img src="img/en/details-object.jpg" alt="Object details" />
+        <figcaption>Object: appearance and logo are learned</figcaption>
+      </figure>
+      <figure>
+        <img src="img/en/details-style.jpg" alt="Style details" />
+        <figcaption>Style: medium, technique and palette are learned</figcaption>
+      </figure>
+    </div>
+    <h3>Tips per type</h3>
+    <ul>
+      <li>
+        <strong>Character:</strong> hair color and hairstyle are separate. A character's hair color usually belongs to
+        the LoRA; its hairstyle (loose, ponytail, bangs) stays free. If the character always wears the same outfit and
+        it should be part of the LoRA, turn Clothing OFF.
+      </li>
+      <li>
+        <strong>Object:</strong> people who hold or use the object are described generically. If the product comes in
+        several colorways that should stay promptable, say so in <span class="ui">Additional instructions</span>;
+        <em>Variant and state</em> then names the colorway.
+      </li>
+      <li>
+        <strong>Visual style:</strong> <em>Light situation</em> describes the time of day and light sources; how light
+        is rendered belongs to the style. Colors of single things are still described even with the palette OFF.
+      </li>
+    </ul>
+
+    <div class="block">
+      <h2 id="extras">7.5 Additional options</h2>
+      <table>
+        <tr>
+          <th>Option</th>
+          <th>What it does</th>
+        </tr>
+        <tr>
+          <td>Include readable image text</td>
+          <td>Readable text in the image (signs, labels) is written into the caption.</td>
+        </tr>
+        <tr>
+          <td>Additional instructions</td>
+          <td>
+            Your own instructions for the whole dataset, for example “The backpack comes in three colorways; name the
+            colorway.” or “Do not judge aesthetic quality.”
+          </td>
+        </tr>
+        <tr>
+          <td>Preview model instructions ↗</td>
+          <td>Shows the complete instructions the model receives for the current recipe.</td>
+        </tr>
+        <tr>
+          <td>Skip existing captions</td>
+          <td>Images that already have the selected output's file are not processed again.</td>
+        </tr>
+        <tr>
+          <td>Save captions automatically</td>
+          <td>
+            ON: every finished caption is written next to its image. OFF: results stay as drafts until you save them.
+          </td>
+        </tr>
+      </table>
+      <p>
+        The name is not in the instructions: the model writes a placeholder, and Caption Studio inserts the name and
+        type into the finished caption, so the name appears exactly once.
+      </p>
+    </div>
+    <figure class="dialog">
+      <img src="img/en/prompt.jpg" alt="Model instructions" style="width: 128mm" />
+      <figcaption>Preview model instructions: what the model is asked for this recipe</figcaption>
+    </figure>
+
+    <!-- 8 -->
+    <h1 id="models"><span class="number">8</span>Supported image and video models</h1>
+    <table>
+      <tr>
+        <th>Model you train</th>
+        <th>Caption output</th>
+        <th>File the trainer reads</th>
+      </tr>
+      <tr>
+        <td>FLUX.2, FLUX.2 Klein, Z-Image, Krea 2, Qwen-Image (2512, 2.1), SDXL</td>
+        <td>Normal</td>
+        <td><code>name.txt</code></td>
+      </tr>
+      <tr>
+        <td>Any other image model whose trainer reads a text file per image</td>
+        <td>Normal</td>
+        <td><code>name.txt</code></td>
+      </tr>
+      <tr>
+        <td>BRIA FIBO</td>
+        <td>BRIA JSON (FIBO)</td>
+        <td><code>name.json</code></td>
+      </tr>
+      <tr>
+        <td>WAN 2.2 text-to-video (A14B, TI2V-5B)</td>
+        <td>WAN 2.2</td>
+        <td><code>name.wan.txt</code> (photos and clips)</td>
+      </tr>
+      <tr>
+        <td>WAN 2.2 image-to-video (A14B)</td>
+        <td>WAN 2.2 I2V</td>
+        <td><code>name.wan-i2v.txt</code> (clips only)</td>
+      </tr>
+      <tr>
+        <td>LTX-2.5</td>
+        <td>LTX-2.5</td>
+        <td><code>name.ltx.txt</code> (photos and clips)</td>
+      </tr>
+      <tr>
+        <td>MiniMax H3</td>
+        <td>MiniMax H3</td>
+        <td><code>name.h3.txt</code> (photos and clips)</td>
+      </tr>
+    </table>
+    <p>
+      In ai-toolkit and musubi-tuner, point the caption extension at the model's file, for example
+      <code>caption_ext: "wan.txt"</code> or <code>caption_extension = ".wan.txt"</code>.
+    </p>
+    <figure class="strip">
+      <img src="img/en/video-models.jpg" alt="All video models" style="width: 136mm" />
+      <figcaption>
+        All video models: the cards show which model files exist (WAN, I2V, LTX, H3); the clip has its own details
+      </figcaption>
+    </figure>
+    <h2>How the video captions differ</h2>
+    <ul>
+      <li>
+        <strong>WAN 2.2</strong> starts with the name, then the subject and action, details, setting, lighting and the
+        shot.
+      </li>
+      <li>
+        <strong>WAN 2.2 I2V</strong> describes only what moves and how the camera moves (at most 100 words), because the
+        start image already shows everything else. It is created for clips only.
+      </li>
+      <li><strong>LTX-2.5</strong> opens with the shot, then the name, in one paragraph in the present tense.</li>
+      <li>
+        <strong>MiniMax H3</strong> uses its three fields; the description starts with <code>[Shot 1]</code>, a photo is
+        a static shot, and sound and music are <code>N/A</code>.
+      </li>
+    </ul>
+
+    <!-- 9 -->
+    <h1 id="images"><span class="number">9</span>Working with images and clips</h1>
+    <h2>Loading</h2>
+    <ul>
+      <li>
+        <span class="ui">＋ Open folder</span> opens a folder preview with thumbnails, a folder tree, a path bar and
+        <span class="ui">← Back</span>, <span class="ui">Forward →</span>, <span class="ui">↑ Up one folder</span>,
+        <span class="ui">⌂ Home</span> and <span class="ui">↻ Refresh</span>. Click
+        <span class="ui">Use this folder</span> to load it.
+      </li>
+      <li><span class="ui">＋ Select images</span> opens the Windows file dialog for single files.</li>
+      <li><span class="ui">Path…</span> lets you paste a folder path directly.</li>
+      <li><span class="ui">Include subfolders</span> also loads the images in subfolders.</li>
+      <li>
+        <span class="ui">Add to the open dataset</span> adds the new images to the current list; without it, the new
+        folder replaces the list (no files are deleted).
+      </li>
+    </ul>
+    <p>
+      One dataset can hold up to 20 000 files. The dataset and unsaved drafts are kept when you close the application.
+    </p>
+    <h2>Counters, selection and filters</h2>
+    <p>
+      The counters show how many images are <em>waiting</em>, <em>captioned</em>, have <em>errors</em> or are
+      <em>to review</em>. The tick box on a card selects it for the batch; clicking the card opens it in the review
+      panel. <span class="ui">Select all</span> selects everything that the current filter shows. Search by file name,
+      filter by <em>All</em>, <em>Without captions</em>, <em>With captions</em>, <em>Errors</em> or <em>To review</em>.
+      Large datasets are shown 60 cards per page.
+    </p>
+    <h2>Card states</h2>
+    <table>
+      <tr>
+        <th>State</th>
+        <th>Meaning</th>
+      </tr>
+      <tr>
+        <td>Waiting</td>
+        <td>No caption for the selected output yet</td>
+      </tr>
+      <tr>
+        <td>Queued, Analyzing…</td>
+        <td>In the running batch</td>
+      </tr>
+      <tr>
+        <td>Saved</td>
+        <td>The caption was created and saved</td>
+      </tr>
+      <tr>
+        <td>Existing</td>
+        <td>The caption file was already there when the dataset was loaded</td>
+      </tr>
+      <tr>
+        <td>Skipped</td>
+        <td>Not processed because <span class="ui">Skip existing captions</span> is on</td>
+      </tr>
+      <tr>
+        <td>Draft</td>
+        <td>Created but not saved yet (automatic saving is off)</td>
+      </tr>
+      <tr>
+        <td>To review</td>
+        <td>
+          The model's answer needs your check, for example an incomplete ending or JSON that could not be repaired
+        </td>
+      </tr>
+      <tr>
+        <td>Error, Conflict / error</td>
+        <td>
+          Processing or saving failed, for example the file was changed outside the application; the review panel says
+          why
+        </td>
+      </tr>
+    </table>
+    <p>
+      A clip shows its length and size on the card. With a video output selected, each card shows badges for the model
+      files that exist (WAN, I2V, LTX, H3).
+    </p>
+
+    <!-- 10 -->
+    <h1 id="batch"><span class="number">10</span>Creating captions</h1>
+    <ol class="steps">
+      <li>Select the images and clips (tick boxes or <span class="ui">Select all</span>).</li>
+      <li>
+        Click the button in the bottom right. Its label follows the output: <em>Create captions (5)</em>,
+        <em>Create BRIA JSON</em>, <em>Create WAN 2.2 captions</em>, <em>Create captions for all video models</em>. The
+        number is the count of selected items.
+      </li>
+      <li>
+        Images are processed one at a time. The bottom bar shows the current file and progress; the cards change state
+        as they finish.
+      </li>
+    </ol>
+    <ul>
+      <li>
+        <span class="ui">Stop batch</span> stops the batch. Saved captions stay; an answer received so far is kept as a
+        draft.
+      </li>
+      <li>
+        If the connection to the model fails, the batch pauses. Fix the cause and click
+        <span class="ui">Continue</span>: finished images are not repeated. <span class="ui">Discard batch</span> ends
+        it instead. After a restart, an interrupted batch can be continued the same way.
+      </li>
+      <li>With your own model, the first batch starts the model; loading it into graphics memory takes a moment.</li>
+    </ul>
+    <h2>What happens automatically</h2>
+    <ul>
+      <li>
+        <strong>Length:</strong> a caption over 120 % of the target is sent back for a shorter version (up to two
+        attempts). If it is still long, the shortest complete version is kept with a notice.
+      </li>
+      <li>
+        <strong>Incomplete endings</strong> are completed by the model; if that fails, the draft is kept
+        <em>To review</em>.
+      </li>
+      <li>
+        <strong>BRIA JSON</strong> is checked and repaired when needed; an unrepaired answer stays a draft to review.
+      </li>
+      <li>
+        <strong>The name</strong> is inserted where the subject is first mentioned. If the model named the subject more
+        than once, later mentions use its type.
+      </li>
+      <li>Existing captions are never lost: a replaced file is backed up first.</li>
+    </ul>
+
+    <!-- 11 -->
+    <h1 id="review"><span class="number">11</span>Reviewing and editing captions</h1>
+    <div class="side keep">
+      <div>
+        <p>Click a card to open it in the right panel.</p>
+        <ul>
+          <li>
+            <strong>Tabs</strong> above the editor show every caption file of the image (<code>.txt</code>,
+            <code>.json</code>, <code>.wan.txt</code>…); a tick means the file exists. The word count is shown on the
+            right.
+          </li>
+          <li>
+            <strong>Edit</strong> the text and click <span class="ui">Save caption</span> or press
+            <kbd>Ctrl</kbd>+<kbd>S</kbd>. The previous version is kept in the <code>.caption-backups</code> folder next
+            to the images.
+          </li>
+          <li><span class="ui">↻ Regenerate</span> creates the caption of the open tab again, for this image only.</li>
+          <li>
+            <strong>Model responses</strong> keeps every answer the model returned (original and shortened). Choose one
+            and click <span class="ui">Use in editor</span>.
+          </li>
+          <li>
+            <strong>Notices</strong> below the editor explain what was done, for example “The name was added at the
+            start.”, or warn: “The trigger appears more than once in this caption.”
+          </li>
+          <li>
+            <strong>BRIA JSON:</strong> <span class="ui">Format JSON</span> indents the JSON. It is checked when saved.
+          </li>
+          <li><strong>MiniMax H3</strong> files are checked for their three fields when saved.</li>
+        </ul>
+        <p>If you switch to another image with unsaved edits, Caption Studio asks whether to discard them.</p>
+      </div>
+      <figure class="panel">
+        <img src="img/en/bria.jpg" alt="BRIA JSON caption" />
+        <figcaption>A BRIA JSON caption</figcaption>
+      </figure>
+    </div>
+    <div class="side keep">
+      <div>
+        <h2>Clips</h2>
+        <p>For a clip the review panel shows:</p>
+        <ul>
+          <li>a player,</li>
+          <li>size, length, frame rate, frame count and audio,</li>
+          <li>
+            what the selected video model trains on (for example “WAN 2.2 (A14B) trains at 16 fps with up to 81 frames,
+            about 5 s.”),
+          </li>
+          <li>the frames sent to the model, each with its time,</li>
+          <li>a tab for every video caption file.</li>
+        </ul>
+        <p>
+          The frames show exactly what the model saw. If a quick movement is missed, set
+          <span class="ui">Clip frames for analysis</span> to every 0.25 s (chapter <a href="#setup-rest">3.5</a>).
+        </p>
+      </div>
+      <figure class="panel">
+        <img src="img/en/clip.jpg" alt="Clip review" />
+        <figcaption>A clip with its frames and caption files</figcaption>
+      </figure>
+    </div>
+
+    <!-- 12 -->
+    <h1 id="files"><span class="number">12</span>Files, data and privacy</h1>
+    <h2>Caption files</h2>
+    <ul>
+      <li>Captions are saved next to the images, in UTF-8: <code>image.jpg → image.txt</code>.</li>
+      <li>Every output has its own file; saving one never changes the others.</li>
+      <li>A replaced caption is first backed up byte for byte into <code>.caption-backups</code>.</li>
+      <li>
+        If a caption file changes outside Caption Studio (in another editor), it is not overwritten. Load the dataset
+        again to continue.
+      </li>
+      <li>Original images and clips are never changed.</li>
+    </ul>
+    <h2>The data folder</h2>
+    <p>
+      Everything the application stores is in the <code>data</code> folder next to
+      <code>CaptionStudio.exe</code> (installer: <code>%LOCALAPPDATA%\Programs\Caption Studio\data</code>).
+    </p>
+    <table>
+      <tr>
+        <th>Item</th>
+        <th>Contents</th>
+      </tr>
+      <tr>
+        <td><code>settings.json</code></td>
+        <td>Recipe, connections and interface language (without keys)</td>
+      </tr>
+      <tr>
+        <td><code>keys.json</code></td>
+        <td>API keys, encrypted for your Windows account</td>
+      </tr>
+      <tr>
+        <td><code>session.json</code></td>
+        <td>The open dataset, drafts and model answers</td>
+      </tr>
+      <tr>
+        <td><code>runtime\models</code></td>
+        <td>The downloaded model and vision projector</td>
+      </tr>
+      <tr>
+        <td><code>runtime\model.log</code></td>
+        <td>Diagnostics of your own model</td>
+      </tr>
+      <tr>
+        <td><code>logs</code>, <code>app.log</code></td>
+        <td>Application logs, without captions, images or keys</td>
+      </tr>
+    </table>
+    <p>
+      The data folder survives updates and uninstalling. Saved keys work only for your Windows account; on another
+      computer, enter them again. If the program folder cannot be written to, the data is kept in
+      <code>%LOCALAPPDATA%\CaptionStudio</code> and the application tells you.
+    </p>
+    <h2>Privacy</h2>
+    <ul>
+      <li>
+        <strong>Local mode</strong> (your own model or a local server): images never leave your computer. The bottom bar
+        says <em>Local mode · images stay on this computer</em>.
+      </li>
+      <li>
+        <strong>Cloud mode:</strong> resized copies of the selected images (or clip frames) without EXIF metadata, and
+        the recipe, are sent to the provider. The bottom bar names the host they go to.
+      </li>
+      <li>Keys are encrypted with Windows (DPAPI) and kept separately for every address.</li>
+      <li>
+        The application runs only on your computer (<code>127.0.0.1</code>) and is not reachable from the network.
+      </li>
+    </ul>
+
+    <!-- 13 -->
+    <h1 id="loratrain"><span class="number">13</span>Training with LORA Train</h1>
+    <p>
+      LORA Train reads the caption files straight from the dataset folder; there is nothing to export. Each training
+      profile reads its own file:
+    </p>
+    <table>
+      <tr>
+        <th>LORA Train profile</th>
+        <th>File</th>
+        <th>Uses</th>
+      </tr>
+      <tr>
+        <td>FLUX.2, Klein, Z-Image, Krea 2, Qwen-Image, SDXL</td>
+        <td><code>name.txt</code></td>
+        <td>photos</td>
+      </tr>
+      <tr>
+        <td>BRIA FIBO</td>
+        <td><code>name.json</code></td>
+        <td>photos</td>
+      </tr>
+      <tr>
+        <td>WAN 2.2 T2V</td>
+        <td><code>name.wan.txt</code></td>
+        <td>photos and clips</td>
+      </tr>
+      <tr>
+        <td>WAN 2.2 I2V</td>
+        <td><code>name.wan-i2v.txt</code></td>
+        <td>clips only</td>
+      </tr>
+      <tr>
+        <td>LTX-2.5</td>
+        <td><code>name.ltx.txt</code></td>
+        <td>photos and clips</td>
+      </tr>
+      <tr>
+        <td>MiniMax H3</td>
+        <td><code>name.h3.txt</code></td>
+        <td>photos and clips</td>
+      </tr>
+    </table>
+    <ul>
+      <li>Use the <strong>same trigger</strong> in both applications, so the name is not added twice.</li>
+      <li>Every image needs the file of the profile you train; LORA Train lists missing files before it starts.</li>
+      <li>
+        If both applications use the same graphics card, click <span class="ui">Release GPU</span> in the Caption Studio
+        setup (or close Caption Studio) before training.
+      </li>
+      <li>How to build a good dataset for each model is described in the LORA Train manual.</li>
+    </ul>
+
+    <!-- 14 -->
+    <h1 id="trouble"><span class="number">14</span>Troubleshooting</h1>
+    <table>
+      <tr>
+        <th>Problem or message</th>
+        <th>What to do</th>
+      </tr>
+      <tr>
+        <td><em>Windows protected your PC</em> when installing</td>
+        <td>Click <span class="ui">More info</span> → <span class="ui">Run anyway</span>.</td>
+      </tr>
+      <tr>
+        <td>The application opens in the web browser instead of its own window</td>
+        <td>
+          Microsoft Edge WebView2 is missing (for example the installer had no internet). Install “Microsoft Edge
+          WebView2 Runtime” from Microsoft, or keep working in the browser. Closing the tab leaves the application
+          running.
+        </td>
+      </tr>
+      <tr>
+        <td><em>Caption Studio is already running.</em></td>
+        <td>Switch to the open window; only one copy runs at a time.</td>
+      </tr>
+      <tr>
+        <td><em>Caption Studio could not start.</em></td>
+        <td>The details are in <code>app.log</code> in the data folder.</td>
+      </tr>
+      <tr>
+        <td><em>The model did not start</em> or <em>stopped unexpectedly</em></td>
+        <td>
+          Update the graphics driver, close programs that use graphics memory, choose a smaller profile, or try the
+          Vulkan backend. Details are in <code>runtime\model.log</code>.
+        </td>
+      </tr>
+      <tr>
+        <td><em>Insufficient disk space</em>, <em>Download failed</em>, <em>Checksum mismatch</em></td>
+        <td>Free up space or check the connection and click the download button again; it resumes.</td>
+      </tr>
+      <tr>
+        <td><em>No running server was found.</em></td>
+        <td>Start the API server in your application, or enter its address under Existing local server.</td>
+      </tr>
+      <tr>
+        <td><em>Connected, but the list is empty.</em></td>
+        <td>Load a model in the server's own application first, then click Load models.</td>
+      </tr>
+      <tr>
+        <td><em>Invalid API key.</em>, <em>Insufficient credit.</em></td>
+        <td>Check the key and the credit in the provider's account, then click Continue.</td>
+      </tr>
+      <tr>
+        <td><em>The request rate limit was reached.</em></td>
+        <td>Wait a moment and click Continue.</td>
+      </tr>
+      <tr>
+        <td><em>The model rejected the image request</em></td>
+        <td>The model probably does not accept images. Choose a vision model.</td>
+      </tr>
+      <tr>
+        <td><em>The model connection timed out.</em></td>
+        <td>Raise the Request timeout or lower the Longest side for analysis.</td>
+      </tr>
+      <tr>
+        <td><em>The caption was changed outside the app.</em></td>
+        <td>Load the dataset again (Open folder).</td>
+      </tr>
+      <tr>
+        <td><em>Two files would share the caption file…</em></td>
+        <td>Two images have the same name with different extensions. Rename one.</td>
+      </tr>
+      <tr>
+        <td><em>The existing caption is not UTF-8 text.</em></td>
+        <td>Save that file as UTF-8 in a text editor, or remove it, and load the dataset again.</td>
+      </tr>
+      <tr>
+        <td>Many captions <em>To review</em></td>
+        <td>
+          Open them, fix and save, or use Regenerate. With a small or slow model, raise the timeout or use a stronger
+          model.
+        </td>
+      </tr>
+    </table>
+
+    <!-- 15 -->
+    <h1 id="reference"><span class="number">15</span>Quick reference</h1>
+    <h2>Keyboard shortcuts</h2>
+    <table>
+      <tr>
+        <th>Keys</th>
+        <th>Where</th>
+        <th>Action</th>
+      </tr>
+      <tr>
+        <td><kbd>Ctrl</kbd>+<kbd>S</kbd></td>
+        <td>Main window</td>
+        <td>Save the caption in the editor</td>
+      </tr>
+      <tr>
+        <td><kbd>Enter</kbd> / <kbd>Space</kbd></td>
+        <td>A focused card</td>
+        <td>Open it in the review panel</td>
+      </tr>
+      <tr>
+        <td><kbd>Alt</kbd>+<kbd>←</kbd> / <kbd>Alt</kbd>+<kbd>→</kbd></td>
+        <td>Folder preview</td>
+        <td>Back / forward</td>
+      </tr>
+      <tr>
+        <td><kbd>Alt</kbd>+<kbd>↑</kbd></td>
+        <td>Folder preview</td>
+        <td>Up one folder</td>
+      </tr>
+      <tr>
+        <td><kbd>Ctrl</kbd>+<kbd>L</kbd></td>
+        <td>Folder preview</td>
+        <td>Type a path</td>
+      </tr>
+      <tr>
+        <td><kbd>F5</kbd></td>
+        <td>Folder preview</td>
+        <td>Refresh the folder</td>
+      </tr>
+    </table>
+    <h2>Files at a glance</h2>
+    <table>
+      <tr>
+        <th>File next to the image</th>
+        <th>Created by the output</th>
+      </tr>
+      <tr>
+        <td><code>name.txt</code></td>
+        <td>Normal</td>
+      </tr>
+      <tr>
+        <td><code>name.json</code></td>
+        <td>BRIA JSON (FIBO)</td>
+      </tr>
+      <tr>
+        <td><code>name.wan.txt</code>, <code>name.wan-i2v.txt</code></td>
+        <td>WAN 2.2, WAN 2.2 I2V</td>
+      </tr>
+      <tr>
+        <td><code>name.ltx.txt</code></td>
+        <td>LTX-2.5</td>
+      </tr>
+      <tr>
+        <td><code>name.h3.txt</code></td>
+        <td>MiniMax H3</td>
+      </tr>
+      <tr>
+        <td><code>.caption-backups\</code></td>
+        <td>Backups of replaced captions</td>
+      </tr>
+    </table>
+    <h2>About the pictures in this manual</h2>
+    <p>
+      The screenshots show prints by Utagawa Hiroshige from <em>One Hundred Famous Views of Edo</em> (1856–1859), which
+      are in the public domain (Wikimedia Commons). Velmira, Zorbo and Zorvak are invented names.
+    </p>
+    <p class="meta">Caption Studio 0.2.8 · © Petr Sajner 2026</p>
+  </body>
+</html>

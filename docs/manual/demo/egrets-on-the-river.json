@@ -1,0 +1,58 @@
+{
+  "short_description": "Zorvak style, white cranes in a marshy landscape with boats and a village under a red sky.",
+  "objects": [
+    {
+      "description": "white cranes",
+      "location": "foreground, midground, and lower right",
+      "relationship": "scattered across the water and reeds",
+      "relative_size": "large",
+      "shape_and_color": "white bodies with black legs and red crowns on some; long curved necks",
+      "appearance_details": "four cranes visible; one flying low with wings spread, one standing in reeds with head lowered, one standing in reeds with head up, one flying low in the midground",
+      "number_of_objects": 4,
+      "pose": "flying, standing, head lowered, head up",
+      "action": "flying, standing, foraging",
+      "orientation": "facing various directions"
+    },
+    {
+      "description": "boats",
+      "location": "midground water",
+      "relationship": "floating on the river",
+      "relative_size": "small",
+      "shape_and_color": "long, narrow wooden boats, brown and tan",
+      "appearance_details": "three boats visible; one in the center with a yellow load, one to the right with figures, one further back",
+      "number_of_objects": 3,
+      "action": "floating",
+      "orientation": "angled across the water"
+    },
+    {
+      "description": "village",
+      "location": "midground, behind the trees",
+      "relationship": "situated on the bank",
+      "relative_size": "medium",
+      "shape_and_color": "thatched-roof houses, brown and green",
+      "appearance_details": "several small houses with thatched roofs clustered together",
+      "orientation": "facing the water"
+    },
+    {
+      "description": "trees",
+      "location": "midground, left and center",
+      "relationship": "lining the bank",
+      "relative_size": "medium",
+      "shape_and_color": "tall, thin trunks with dark green foliage",
+      "appearance_details": "a dense row of slender trees with small, rounded canopies",
+      "orientation": "vertical"
+    }
+  ],
+  "background_setting": "A marshy river landscape with reeds in the foreground, a row of thin trees and a village with thatched roofs in the midground, and distant mountains under a red sky.",
+  "lighting": {
+    "conditions": "dusk or dawn, with a red sky",
+    "direction": "diffuse, from above"
+  },
+  "aesthetics": {
+    "composition": "layered landscape with foreground reeds, midground water and village, and background mountains",
+    "color_scheme": "",
+    "mood_atmosphere": ""
+  },
+  "text_render": [],
+  "context": ""
+}

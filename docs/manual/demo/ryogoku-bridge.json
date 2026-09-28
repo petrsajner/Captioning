@@ -1,0 +1,56 @@
+{
+  "short_description": "Zorvak style, a long wooden bridge over a river with boats and people.",
+  "objects": [
+    {
+      "description": "people",
+      "location": "walking across the bridge and standing in the market area",
+      "relationship": "moving through the scene",
+      "relative_size": "small",
+      "shape_and_color": "various colors including green, red, blue, and white",
+      "texture": "",
+      "appearance_details": "black hair, carrying baskets, umbrellas, and goods",
+      "pose": "standing and walking",
+      "expression": "neutral",
+      "clothing": "traditional robes and hats",
+      "action": "walking and trading",
+      "gender": "mixed",
+      "skin_tone_and_texture": "light",
+      "orientation": "facing various directions"
+    },
+    {
+      "description": "boats",
+      "location": "floating on the river beneath the bridge",
+      "relationship": "moving through the water",
+      "relative_size": "small to medium",
+      "shape_and_color": "brown wooden hulls with white sails on some",
+      "texture": "wooden",
+      "appearance_details": "some carry cargo, others have people rowing",
+      "action": "sailing and rowing",
+      "orientation": "moving across the frame"
+    },
+    {
+      "description": "bridge",
+      "location": "spanning the river diagonally",
+      "relationship": "connecting the banks",
+      "relative_size": "large",
+      "shape_and_color": "brown wood structure with a long span",
+      "texture": "wooden planks and supports",
+      "appearance_details": "supported by many wooden pillars",
+      "number_of_objects": 1,
+      "orientation": "diagonal"
+    }
+  ],
+  "background_setting": "A wide river with a distant shoreline featuring trees and buildings. A red wall or bank is visible in the distance. The sky is a pale blue fading to white at the top.",
+  "lighting": {
+    "conditions": "daylight",
+    "direction": "diffuse",
+    "shadows": "soft shadows under the bridge and boats"
+  },
+  "aesthetics": {
+    "composition": "diagonal leading line created by the bridge, balanced by the horizontal river and market",
+    "color_scheme": "",
+    "mood_atmosphere": ""
+  },
+  "text_render": [],
+  "context": "A busy river scene with a prominent bridge and market activity."
+}

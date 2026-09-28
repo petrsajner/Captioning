@@ -1,0 +1,60 @@
+{
+  "short_description": "Zorvak style, a street scene with figures walking in the rain at dusk, featuring a wooden gate and buildings.",
+  "objects": [
+    {
+      "description": "group of people",
+      "location": "center-left, walking on the street",
+      "relationship": "walking together",
+      "number_of_objects": 5,
+      "clothing": "traditional robes and jackets in muted red, grey, and dark tones",
+      "action": "walking away from the viewer"
+    },
+    {
+      "description": "individual figure",
+      "location": "left foreground",
+      "relationship": "standing near the gate",
+      "pose": "facing forward",
+      "clothing": "long maroon robe",
+      "action": "standing still"
+    },
+    {
+      "description": "wooden gate structure",
+      "location": "left midground",
+      "relationship": "spanning the street entrance",
+      "shape_and_color": "dark grey wood, rectangular frame",
+      "texture": "weathered wood"
+    },
+    {
+      "description": "trees",
+      "location": "right side",
+      "relationship": "lining the street behind a fence",
+      "shape_and_color": "dark trunks with light, sparse foliage",
+      "number_of_objects": 3
+    },
+    {
+      "description": "fence",
+      "location": "right foreground",
+      "relationship": "separating the street from the garden area",
+      "shape_and_color": "thin vertical dark stakes"
+    },
+    {
+      "description": "buildings",
+      "location": "background",
+      "relationship": "lining the street on both sides",
+      "shape_and_color": "dark roofs and walls, traditional architecture"
+    }
+  ],
+  "background_setting": "A narrow street in an urban area, flanked by traditional buildings and enclosed by a wooden gate on the left and a fence with trees on the right. The sky is dark and overcast, suggesting rain or dusk.",
+  "lighting": {
+    "conditions": "dusk or night, rainy weather",
+    "direction": "diffuse ambient light",
+    "shadows": "soft and indistinct"
+  },
+  "aesthetics": {
+    "composition": "linear perspective leading into the distance, balanced by the gate on the left and trees on the right",
+    "color_scheme": "",
+    "mood_atmosphere": ""
+  },
+  "text_render": [],
+  "context": ""
+}

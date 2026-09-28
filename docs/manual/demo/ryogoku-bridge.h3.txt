@@ -1,0 +1,5 @@
+integrated_multimodal_description: [Shot 1] Zorvak style, a high-angle wide shot captures a long wooden bridge spanning a wide river, with a covered market structure visible in the foreground. Numerous small figures walk across the bridge, while several boats navigate the water below. Sailing vessels with white sails drift in the background. The riverbank features green trees and buildings under a sky with a reddish horizon line. Vertical Japanese text appears in the upper right corner. The camera holds a static shot.
+
+overall_soundscape: N/A
+
+non_diegetic_music: N/A

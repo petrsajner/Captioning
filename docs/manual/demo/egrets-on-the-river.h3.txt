@@ -1,0 +1,5 @@
+integrated_multimodal_description: [Shot 1] Zorvak style, a medium close-up at eye level captures a woman in a white floral kimono seated on a wooden platform. Her hands rest gently in her lap, fingers slightly curled, as she gazes downward with a serene expression. Behind her, a bamboo screen with intricate geometric patterns filters soft light. To her left, a small ceramic teapot and matching cup sit on a low wooden table, accompanied by a potted orchid with delicate white blossoms. Warm, diffused lighting suggests an indoor setting with natural light entering from a nearby window. The camera holds a static shot throughout the scene.
+
+overall_soundscape: N/A
+
+non_diegetic_music: N/A

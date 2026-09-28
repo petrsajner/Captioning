@@ -404,6 +404,14 @@ llama.cpp runtime without and with the bundled Visual C++ DLLs
 window discards it. It checks localization
 assets, import, thumbnails, sidecar writes and validated JSON format conversion.
 
+The user manual (English and Czech PDF) is built from `docs/manual/manual.{en,cs}.html` and
+`docs/manual/manual.css`. `node scripts/manual/capture.mjs` retakes the screenshots in
+`docs/manual/img/{en,cs}`: it runs `python -m scripts.manual.prepare` (the demo dataset from
+`docs/manual/demo`, public-domain prints with their captions, plus a generated clip, and two fresh
+profiles under `output/manual`), starts the app from source for each language and imports the
+dataset. `node scripts/manual/build.mjs` prints `dist/Caption-Studio-Manual-<version>-{en,cs}.pdf`
+with Edge. Update the texts when the interface changes, then retake the screenshots and rebuild.
+
 Release 0.1.7 verification: 63 Python tests and the JavaScript localization test
 passed. The browser workflow passed in both languages. Both the build output and
 installed executable passed the clean-profile package test. The installer completed

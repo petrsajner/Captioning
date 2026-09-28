@@ -1,0 +1,278 @@
+/* User manual layout: A4 pages printed to PDF by scripts/manual/build.mjs. */
+@page {
+  size: A4;
+  margin: 18mm 17mm 20mm 17mm;
+}
+:root {
+  --ink: #1d2320;
+  --muted: #5b6660;
+  --line: #d9dfdb;
+  --accent: #3f7d2c;
+  --accent-soft: #eef6e8;
+  --note: #fff7e0;
+  --note-line: #e2c060;
+}
+* {
+  box-sizing: border-box;
+}
+html {
+  font-family: 'Segoe UI', 'Segoe UI Variable Text', Arial, sans-serif;
+  font-size: 10.2pt;
+  line-height: 1.5;
+  color: var(--ink);
+}
+body {
+  margin: 0;
+}
+h1,
+h2,
+h3 {
+  font-weight: 600;
+  line-height: 1.25;
+  break-after: avoid;
+}
+h1 {
+  font-size: 20pt;
+  margin: 0 0 10pt;
+  padding-bottom: 6pt;
+  border-bottom: 2pt solid var(--accent);
+  break-before: page;
+}
+h1 .number {
+  color: var(--accent);
+  margin-right: 6pt;
+}
+h2 {
+  font-size: 13.5pt;
+  margin: 16pt 0 6pt;
+  color: var(--accent);
+}
+h3 {
+  font-size: 11pt;
+  margin: 12pt 0 4pt;
+}
+p {
+  margin: 0 0 7pt;
+}
+ul,
+ol {
+  margin: 0 0 8pt;
+  padding-left: 16pt;
+}
+li {
+  margin-bottom: 3pt;
+}
+code,
+kbd {
+  font-family: Consolas, 'Cascadia Mono', monospace;
+  font-size: 9pt;
+}
+code {
+  background: #f2f4f3;
+  padding: 0 2pt;
+  border-radius: 2pt;
+}
+kbd {
+  border: 0.7pt solid #b8c0bb;
+  border-bottom-width: 1.4pt;
+  border-radius: 3pt;
+  padding: 0 3pt;
+  background: #fafbfa;
+}
+.ui {
+  font-weight: 600;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 4pt 0 10pt;
+  font-size: 9.3pt;
+  break-inside: avoid;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 3.5pt 5pt;
+  border-bottom: 0.6pt solid var(--line);
+}
+th {
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+td.num,
+th.num {
+  text-align: right;
+  white-space: nowrap;
+}
+figure {
+  margin: 8pt 0 12pt;
+  break-inside: avoid;
+  text-align: center;
+}
+figure img {
+  max-width: 100%;
+  border: 0.6pt solid #c9d1cc;
+  border-radius: 4pt;
+}
+/* Screenshots of one panel (320 px wide in the app) and of the setup dialog. */
+figure.panel img {
+  width: 66mm;
+}
+figure.dialog img {
+  width: 122mm;
+}
+figure.strip img {
+  width: 100%;
+}
+figcaption {
+  font-size: 8.8pt;
+  color: var(--muted);
+  margin-top: 4pt;
+}
+.side {
+  display: flex;
+  gap: 12pt;
+  align-items: flex-start;
+  break-inside: avoid;
+}
+.side > div {
+  flex: 1;
+}
+.side > figure {
+  flex: 0 0 68mm;
+  margin-top: 0;
+}
+.side.keep {
+  break-inside: avoid;
+}
+.side {
+  margin-top: 14pt;
+}
+.side > div > h2:first-child {
+  margin-top: 0;
+}
+.side > figure {
+  margin-top: 2pt;
+}
+.block {
+  break-inside: avoid;
+}
+.trio {
+  display: flex;
+  gap: 5mm;
+  justify-content: center;
+  break-inside: avoid;
+}
+.trio figure {
+  flex: 0 0 55mm;
+  margin-top: 4pt;
+}
+.trio img {
+  width: 55mm;
+}
+.side:not(.keep) {
+  break-inside: auto;
+}
+.steps > li {
+  margin-bottom: 5pt;
+}
+.lead {
+  font-size: 11pt;
+  color: var(--muted);
+}
+.pair {
+  display: flex;
+  gap: 8mm;
+  justify-content: center;
+  break-inside: avoid;
+}
+.pair figure {
+  margin-top: 0;
+}
+.tip,
+.note {
+  border-left: 3pt solid var(--accent);
+  background: var(--accent-soft);
+  padding: 6pt 9pt;
+  margin: 6pt 0 10pt;
+  break-inside: avoid;
+}
+.note {
+  border-left-color: var(--note-line);
+  background: var(--note);
+}
+.tip strong:first-child,
+.note strong:first-child {
+  display: block;
+  margin-bottom: 2pt;
+}
+
+/* Cover and contents */
+.cover {
+  height: 250mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.cover .logo {
+  width: 22mm;
+  height: 22mm;
+  border-radius: 5mm;
+  background: #b9e38f;
+  color: #16310f;
+  font-size: 30pt;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10mm;
+}
+.cover h1 {
+  border: 0;
+  font-size: 34pt;
+  margin: 0;
+  padding: 0;
+  break-before: auto;
+}
+.cover .subtitle {
+  font-size: 15pt;
+  color: var(--muted);
+  margin: 4mm 0 14mm;
+}
+.cover .meta {
+  font-size: 10pt;
+  color: var(--muted);
+}
+.cover img {
+  margin-top: 14mm;
+  width: 100%;
+  border-radius: 4pt;
+  border: 0.6pt solid #c9d1cc;
+}
+.contents {
+  break-before: page;
+}
+.contents h1 {
+  break-before: auto;
+}
+.contents ol {
+  list-style: none;
+  padding: 0;
+  font-size: 10.5pt;
+}
+.contents li {
+  margin: 0 0 3pt;
+}
+.contents li li {
+  margin-left: 14pt;
+  font-size: 9.6pt;
+  color: var(--muted);
+}
+.contents a {
+  color: inherit;
+  text-decoration: none;
+}
+a {
+  color: var(--accent);
+}

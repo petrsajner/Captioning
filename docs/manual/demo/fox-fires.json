@@ -1,0 +1,45 @@
+{
+  "short_description": "Zorvak style, a herd of pale deer gathered around a large bare tree in a misty, dark landscape with distant hills and huts.",
+  "objects": [
+    {
+      "description": "deer herd",
+      "location": "foreground, clustered around the base of the tree",
+      "relationship": "standing on the ground, facing various directions",
+      "relative_size": "small to medium",
+      "shape_and_color": "pale beige and white bodies with dark brown patches on their backs",
+      "texture": "smooth fur",
+      "appearance_details": "slender legs, small antlers on some individuals",
+      "number_of_objects": 20,
+      "pose": "standing still, some with heads turned",
+      "expression": "calm",
+      "action": "standing",
+      "orientation": "scattered around the tree trunk"
+    },
+    {
+      "description": "large tree",
+      "location": "left foreground",
+      "relationship": "providing a central anchor for the deer herd",
+      "relative_size": "large",
+      "shape_and_color": "grey-brown trunk and branches, sparse green foliage on the left side",
+      "texture": "rough bark",
+      "appearance_details": "twisted branches extending upwards and outwards, bare branches on the right side",
+      "number_of_objects": 1,
+      "pose": "upright",
+      "action": "standing",
+      "orientation": "vertical"
+    }
+  ],
+  "background_setting": "A dark, misty landscape with a flat field in the middle ground, a line of dark trees and hills in the distance, and small white huts nestled among the trees. The sky is a deep blue-black with faint white specks suggesting stars or snow.",
+  "lighting": {
+    "conditions": "Night or twilight, misty",
+    "direction": "Ambient, diffuse",
+    "shadows": "Soft, indistinct shadows beneath the deer and tree"
+  },
+  "aesthetics": {
+    "composition": "Vertical composition with the tree on the left and the deer herd in the lower center, balancing the dark sky above",
+    "color_scheme": "",
+    "mood_atmosphere": ""
+  },
+  "text_render": [],
+  "context": ""
+}
