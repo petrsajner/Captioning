@@ -30,6 +30,19 @@ if ($LASTEXITCODE -ne 0) { throw 'Application build failed.' }
 # Development tools in .venv must never ship; pydantic's optional mypy plugin would pull mypy in.
 $bundledTools = 'mypy', 'ruff', 'pytest', '_pytest', 'PyInstaller' | Where-Object { Test-Path -LiteralPath "dist\CaptionStudio\_internal\$_" }
 if ($bundledTools) { throw "Development tools were bundled: $($bundledTools -join ', ')" }
+# llama.cpp needs the Visual C++ runtime, which a clean Windows lacks; the app copies these next to
+# llama-server.exe when it extracts the runtime (captioning/runtime.py). Its CUDA build needs 14.44+.
+$vcRuntime = 'dist\CaptionStudio\_internal\vcredist'
+New-Item -ItemType Directory -Force -Path $vcRuntime | Out-Null
+foreach ($dll in 'msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll') {
+    $source = Join-Path "$env:SystemRoot\System32" $dll
+    if (-not (Test-Path -LiteralPath $source)) { throw "Building needs the Visual C++ 2015-2022 x64 runtime: $dll is missing." }
+    $info = (Get-Item -LiteralPath $source).VersionInfo
+    if ([version]('{0}.{1}' -f $info.FileMajorPart, $info.FileMinorPart) -lt [version]'14.44') {
+        throw "$dll is version $($info.FileVersion); llama.cpp needs 14.44 or newer. Update the Visual C++ runtime."
+    }
+    Copy-Item -LiteralPath $source -Destination $vcRuntime -Force
+}
 Copy-Item -LiteralPath 'output\licenses' -Destination 'dist\CaptionStudio\licenses' -Recurse -Force
 $candidates = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe", "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe")
 $isccPath = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1

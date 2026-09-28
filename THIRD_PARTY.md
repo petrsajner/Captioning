@@ -9,8 +9,11 @@ The frozen Windows package includes Python (PSF license), FastAPI (MIT), Starlet
 Pillow (MIT-CMU), pywebview (BSD-3-Clause), Python.NET (MIT), PyAV (BSD-3-Clause) with the
 FFmpeg libraries shipped in its wheel (used to read video clips), and their dependencies.
 The `licenses` folder in the installed application contains the license files and
-package metadata collected from the build environment. Microsoft's system
-WebView2 component is used when installed; it is not bundled in this package.
+package metadata collected from the build environment. The package also ships the
+Microsoft Visual C++ runtime DLLs (`msvcp140.dll`, `vcruntime140.dll`,
+`vcruntime140_1.dll`), which the downloaded llama.cpp runtime needs. The installer
+carries Microsoft's Edge WebView2 Runtime bootstrapper and runs it only when the
+WebView2 Runtime is missing; the runtime itself is downloaded from Microsoft.
 
 Downloaded separately on user request:
 

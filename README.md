@@ -8,6 +8,9 @@ beside the originals: `image.txt` or `image.json`.
 
 1. Run `Caption-Studio-Setup-<version>-Windows-x64.exe`. Installation is per user and
    does not require administrator access, Python, Node.js or another AI application.
+   Nothing has to be installed beforehand: the package includes its Python runtime and
+   the Visual C++ runtime that the local model needs, and if Windows lacks Microsoft Edge
+   WebView2 Runtime (for the application window), the installer downloads and installs it.
 2. Launch **Caption Studio** from the Start menu or desktop shortcut.
 3. Choose **Local** or **Cloud API** in Setup and save your settings.
 
@@ -18,7 +21,8 @@ language. The running version appears next to the application name and in the
 desktop title bar.
 
 Windows 10/11 x64 is supported. The desktop window uses Microsoft Edge WebView2;
-if unavailable, the application opens your default browser. In browser mode,
+if it could not be installed (for example without an internet connection during
+setup), the application opens your default browser. In browser mode,
 closing the tab leaves the application running. Launch with `--browser` from a
 terminal and use Ctrl+C to shut it down.
 

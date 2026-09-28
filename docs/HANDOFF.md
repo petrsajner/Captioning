@@ -1,6 +1,27 @@
 # Caption Studio development handoff
 
-## Current release: 0.2.6 (2026-09-27)
+## Current release: 0.2.7 (2026-09-28)
+
+The installer works on a clean Windows with nothing installed (Petr, 2026-09-28, preparing the
+first release). Checked with a static import scan of every `.exe`, `.dll` and `.pyd`:
+
+- The app package itself needs nothing beyond Windows; its own Visual C++ DLLs and Python
+  ship with it. `mscoree.dll` (.NET Framework for pywebview) is part of Windows 10 and 11.
+- The downloaded llama.cpp runtime needs `msvcp140.dll`, `vcruntime140.dll` and
+  `vcruntime140_1.dll` (its CUDA build 14.44 or newer), which a clean Windows lacks, so the
+  managed model would not start. `build.ps1` now bundles them from System32 into
+  `_internal\vcredist` (the build fails below 14.44), and `runtime.py` copies them next to
+  `llama-server.exe` when it extracts a runtime; Windows looks there first. `smoke_package.py`
+  checks that they are packaged.
+- The installer carries Microsoft's WebView2 Evergreen Bootstrapper
+  (`installer\redist\MicrosoftEdgeWebview2Setup.exe`, Microsoft-signed) and runs it with
+  `/silent /install` only when Microsoft's registry check finds no runtime (machine or user
+  key). It installs per user without admin rights; without internet the app still opens in
+  the browser.
+- Not bundled, by nature: the NVIDIA driver for the CUDA backend and the downloads of the
+  runtime and model (internet).
+
+## Previous release: 0.2.6 (2026-09-27)
 
 The setup shows what is available at a glance (Petr, 2026-09-27: choosing a connection must
 not be guessing), instead of hiding the state behind the Find and Load buttons.

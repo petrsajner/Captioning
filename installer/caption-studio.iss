@@ -34,6 +34,7 @@ english.Shortcuts=Shortcuts:
 english.LaunchApp=Launch Caption Studio and set up a model
 english.UninstallApp=Uninstall Caption Studio
 english.AppLanguage=en
+english.InstallingWebView2=Installing Microsoft Edge WebView2 Runtime for the application window...
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:DesktopIcon}"; GroupDescription: "{cm:Shortcuts}"; Flags: unchecked
@@ -47,6 +48,9 @@ Type: filesandordirs; Name: "{app}\licenses"
 [Files]
 Source: "..\dist\CaptionStudio\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
+; The window needs Microsoft Edge WebView2 Runtime; a clean Windows 10 may lack it. The bootstrapper
+; downloads and installs it, per user without admin rights. Without it the app opens in the browser.
+Source: "redist\MicrosoftEdgeWebview2Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Check: NeedsWebView2
 Source: "..\THIRD_PARTY.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
@@ -55,6 +59,25 @@ Name: "{group}\{cm:UninstallApp}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\Caption Studio"; Filename: "{app}\CaptionStudio.exe"; WorkingDir: "{app}"; IconFilename: "{app}\_internal\ui\caption-studio.ico"; Tasks: desktopicon
 
 [Run]
+Filename: "{tmp}\MicrosoftEdgeWebview2Setup.exe"; Parameters: "/silent /install"; StatusMsg: "{cm:InstallingWebView2}"; Flags: waituntilterminated; Check: NeedsWebView2
 Filename: "{app}\CaptionStudio.exe"; Parameters: "--ui-language {cm:AppLanguage}"; Description: "{cm:LaunchApp}"; Flags: nowait postinstall skipifsilent
 
 ; User settings, models and datasets survive uninstall; no UninstallDelete on data.
+
+[Code]
+const
+  WebView2Client = '\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}';
+
+{ Microsoft's documented check: the runtime's version under the machine or the user key. }
+function WebView2Installed(RootKey: Integer; SubKey: String): Boolean;
+var
+  Version: String;
+begin
+  Result := RegQueryStringValue(RootKey, SubKey, 'pv', Version) and (Version <> '') and (Version <> '0.0.0.0');
+end;
+
+function NeedsWebView2: Boolean;
+begin
+  Result := not (WebView2Installed(HKLM, 'SOFTWARE\WOW6432Node' + WebView2Client)
+    or WebView2Installed(HKCU, 'Software' + WebView2Client));
+end;

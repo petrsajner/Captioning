@@ -118,6 +118,25 @@ def test_install_downloads_verifies_extracts_and_is_ready(tmp_path, monkeypatch,
     assert Runtime(tmp_path).ready("q4", "cpu")
 
 
+def test_install_puts_the_bundled_vc_runtime_next_to_llama_server(tmp_path, monkeypatch, tiny):
+    # A clean Windows has no Visual C++ runtime; llama-server finds the bundled copy in its own folder.
+    bundled = tmp_path / "bundle" / "vcredist"
+    bundled.mkdir(parents=True)
+    for name in runtime_module.VC_RUNTIME:
+        (bundled / name).write_bytes(name.encode())
+    monkeypatch.setattr(runtime_module, "bundled_vc_runtime", lambda: bundled)
+    runtime = installed(tmp_path, monkeypatch, tiny)
+    server_dir = runtime.runtime_dir("cpu") / "bin"
+    assert all((server_dir / name).read_bytes() == name.encode() for name in runtime_module.VC_RUNTIME)
+
+
+def test_the_vc_runtime_is_bundled_only_in_a_built_app(tmp_path, monkeypatch):
+    assert runtime_module.bundled_vc_runtime() is None  # a source checkout uses the system's copy
+    (tmp_path / "vcredist").mkdir()
+    monkeypatch.setattr(runtime_module.sys, "_MEIPASS", str(tmp_path), raising=False)
+    assert runtime_module.bundled_vc_runtime() == tmp_path / "vcredist"
+
+
 def test_install_removes_runtimes_of_earlier_releases(tmp_path, monkeypatch, tiny):
     runtime = Runtime(tmp_path)
     old = runtime.root / "llama-b10821-cpu" / "bin"

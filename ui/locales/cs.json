@@ -540,7 +540,8 @@
     "Medium, brushwork, line work, texture and how light and shadow are rendered.": "Médium, tahy štětce, linka, textura a způsob vykreslení světla a stínu.",
     "Color palette and grading": "Barevná paleta a grading",
     "The overall color scheme and grading; colors of single things stay described.": "Celkové barevné ladění a grading; barvy jednotlivých věcí se dál popisují.",
-    "How the object moves or is handled from the start to the end of the clip.": "Jak se předmět od začátku do konce klipu pohybuje nebo jak se s ním zachází."
+    "How the object moves or is handled from the start to the end of the clip.": "Jak se předmět od začátku do konce klipu pohybuje nebo jak se s ním zachází.",
+    "The Visual C++ runtime could not be copied next to the local model server: {v0}": "Knihovny Visual C++ se nepodařilo zkopírovat k lokálnímu model serveru: {v0}"
   },
   "grammar": {
     "dangling_words": [

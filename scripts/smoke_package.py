@@ -129,6 +129,10 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
                 base + "/api/caption/" + clip_row["id"], json={"text": i2v, "output": "wan_i2v"}, headers=headers
             ).raise_for_status()
             assert clip_path.with_suffix(".wan-i2v.txt").read_text(encoding="utf-8") == i2v + "\n"
+            # A clean Windows lacks the Visual C++ runtime that llama.cpp needs; the app ships it.
+            vc_runtime = exe.parent / "_internal" / "vcredist"
+            for name in ("msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll"):
+                assert (vc_runtime / name).is_file(), f"{name} is missing from the package"
             report = {
                 "exe": str(exe),
                 "version": s["version"],
@@ -141,6 +145,7 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
                 "video_model_caption_files": True,
                 "clip_decoding_and_captions": True,
                 "localization_assets_and_preference": True,
+                "vc_runtime_for_llama_cpp": True,
             }
             (output / "package-smoke.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
             print(json.dumps(report, indent=2))

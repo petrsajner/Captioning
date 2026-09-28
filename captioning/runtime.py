@@ -9,6 +9,7 @@ import secrets
 import shutil
 import socket
 import subprocess
+import sys
 import threading
 import zipfile
 from pathlib import Path
@@ -80,6 +81,30 @@ ARCHIVES = {
 # Measured allocations: Q2 12.96 GiB, IQ3 13.57 GiB (projector on the CPU), Q4 18.86 GiB.
 CONTEXT = 65536
 CPU_PROJECTOR = {"q3"}
+# llama.cpp's Windows builds need the Visual C++ runtime (the CUDA build 14.44 or newer), which a
+# clean Windows does not have. The built app ships it (scripts/build.ps1) and puts it next to
+# llama-server.exe, where Windows looks first, so nothing has to be installed system-wide.
+VC_RUNTIME = ("msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll")
+
+
+def bundled_vc_runtime() -> Path | None:
+    """The Visual C++ runtime inside a built app; a source checkout uses the system's copy."""
+    base = getattr(sys, "_MEIPASS", None)
+    folder = Path(base) / "vcredist" if base else None
+    return folder if folder is not None and folder.is_dir() else None
+
+
+def add_vc_runtime(server_dir: Path, source: Path | None) -> None:
+    """Copy the bundled Visual C++ runtime next to llama-server.exe while the runtime is extracted."""
+    if source is None:
+        return
+    for name in VC_RUNTIME:
+        try:
+            shutil.copy2(source / name, server_dir / name)
+        except OSError as exc:
+            raise UserError(
+                f"The Visual C++ runtime could not be copied next to the local model server: {exc}"
+            ) from None
 
 
 class SetupCancelled(Exception):
@@ -261,8 +286,10 @@ class Runtime:
                     )
                     self.state.update({"message": "Extracting the local runtime…", "done": 0, "total": 0})
                     safe_extract(archive, staging)
-                if not any(staging.rglob("llama-server.exe")):
+                server = next(staging.rglob("llama-server.exe"), None)
+                if server is None:
                     raise UserError("The downloaded package does not contain llama-server.exe.")
+                add_vc_runtime(server.parent, bundled_vc_runtime())
                 self.checkpoint()
                 if runtime.exists():
                     # Fixed, application-owned staging target only.
