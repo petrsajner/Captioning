@@ -158,7 +158,6 @@ try {
       await recipe.locator('[name=trigger]').fill('Zorvak');
       await shootSpan(page, img('details-style.jpg'), 'aside.recipe', '.label-heading', textCheck, pairs);
       await page.setViewportSize({ width: WIDTH, height: 940 });
-      await shoot(page, img('recipe-style.jpg'), 'aside.recipe', pairs);
 
       // The instructions the model receives.
       await page.locator('#preview-prompt').click();
