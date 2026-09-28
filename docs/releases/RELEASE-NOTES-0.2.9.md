@@ -10,7 +10,7 @@ other. It is a standalone Windows app: install, pick a model, open a folder, don
 
 ![Caption Studio with the Clover character dataset](https://raw.githubusercontent.com/petrsajner/Captioning/main/docs/images/Caption-Studio-Clover.jpg)
 
-_The Clover dataset: the same character goes on to LORA Train and GIS._
+_The Clover dataset: the same character goes on to LORA Train and GIS (both coming soon)._
 
 ---
 
@@ -115,9 +115,9 @@ what Caption Studio does as a whole**, and most of the list below we found nowhe
 
 ## Part of one pipeline
 
-**Caption Studio → LORA Train → GIS.** The Clover dataset in the picture is captioned here, trained
-into a LoRA in LORA Train (which reads these caption files straight from the folder, one file per
-training profile) and used for generation in GIS.
+**Caption Studio → LORA Train → GIS.** LORA Train and GIS are coming soon. The Clover dataset in the
+picture is captioned here, trained into a LoRA in LORA Train (which reads these caption files straight
+from the folder, one file per training profile) and used for generation in GIS.
 
 ## Download
 
