@@ -240,6 +240,19 @@ def type_ids(lora_type: str) -> set[str]:
     return {a["id"] for a in ATTRIBUTES if lora_type in a["types"]}
 
 
+def _policy_details(settings, media: str, only: tuple[str, ...] | None) -> list[dict[str, Any]]:
+    """The details a policy covers: clip-only details for clips, and `only` limits it to some details."""
+    return [
+        a for a in details_for(settings.preset) if a.get("media", media) == media and (only is None or a["id"] in only)
+    ]
+
+
+def described_details(settings, media: str = "image", only: tuple[str, ...] | None = None) -> list[str]:
+    """Instructions of the details the caption describes (CONTROL_WITH_PROMPT), for keeping them when shortening."""
+    omitted = set(settings.omitted_attributes)
+    return [a["instruction"] for a in _policy_details(settings, media, only) if a["id"] not in omitted]
+
+
 def policy_prompt(settings, media: str = "image", only: tuple[str, ...] | None = None):
     """The detail policy; clip-only details appear for clips, and `only` limits it to some details."""
     # The model-facing labels are unchanged: omitted details are the ones the LoRA should learn.
@@ -249,10 +262,11 @@ def policy_prompt(settings, media: str = "image", only: tuple[str, ...] | None =
         "The user is deciding which attributes should be associated with their LoRA concept and which should be described for later prompt control.",
         "For LEARN_WITH_LORA: omit the attribute's visual details from the caption. Keep only a generic subject/category or its provided identifier.",
         "For CONTROL_WITH_PROMPT: explicitly describe the visible attribute so it can be conditioned separately. Do not invent absent or uncertain details.",
+        # Reported 2026-09-28: a character's clothing was missing. The length target must not drop a detail.
+        "Give every visible CONTROL_WITH_PROMPT attribute at least a few words, also in a short caption: shorten other "
+        "wording rather than leave one out.",
     ]
-    for a in details_for(settings.preset):
-        if a.get("media", media) != media or (only is not None and a["id"] not in only):
-            continue
+    for a in _policy_details(settings, media, only):
         lines.append(
             (
                 "LEARN_WITH_LORA — DO NOT DESCRIBE: "

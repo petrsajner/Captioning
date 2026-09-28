@@ -66,6 +66,17 @@ def test_over_120_percent_shortens_same_caption_without_image_resend(image, monk
     assert result.history[0]["text"] == caption(49)
 
 
+def test_shortening_keeps_every_described_detail(image, monkeypatch):
+    # Reported 2026-09-28: a character's clothing was missing; the rewrite must not drop a described detail.
+    calls = responses(monkeypatch, [caption(49), caption(40)])
+    asyncio.run(generate(image, Settings(words=40, preset="character", omitted_attributes=["identity", "hair_color"])))
+    shorten = calls[1]["messages"][0]["content"]
+    assert "shorten the wording, not these facts" in shorten
+    assert "clothing of the main subject" in shorten and "hairstyle of the main person" in shorten
+    assert "facial structure" not in shorten and "hair color and hair tones" not in shorten
+    assert "movement and actions" not in shorten  # a photo has no motion
+
+
 def test_trigger_is_included_in_word_tolerance_and_not_duplicated(image, monkeypatch):
     calls = responses(monkeypatch, [caption(48), "my subject, " + caption(38)])
     result = asyncio.run(generate(image, Settings(words=40, trigger="my subject")))

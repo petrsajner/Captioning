@@ -108,14 +108,18 @@ def wan_prompt(s: Settings, media: str) -> list[str]:
     ]
 
 
+def i2v_details(s: Settings) -> tuple[str, ...]:
+    """WAN I2V describes only motion and camera; every detail the LoRA learns stays forbidden here too."""
+    return ("motion", "camera_motion", *s.omitted_attributes)
+
+
 def wan_i2v_prompt(s: Settings, media: str) -> list[str]:
     # Wan's I2V rewriter keeps motion and camera movement and drops what the first frame shows.
     motion = {
         "character": "Begin with <character>, then describe the character's movement and actions",
         "object": "Begin with <object>, then describe how it moves or is handled",
     }.get(s.preset, "Describe the movement and actions of the main subject and any other motion")
-    # Only motion and camera are described; every detail the LoRA learns stays forbidden here too.
-    only = ("motion", "camera_motion", *s.omitted_attributes)
+    only = i2v_details(s)
     return [
         _purpose(s, "WAN 2.2 image-to-video")
         + " The video model receives the clip's first frame, so the caption describes only what happens after it.",

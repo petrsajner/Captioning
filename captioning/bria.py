@@ -91,9 +91,10 @@ def schema_prompt():
         [
             "Return ONLY one valid BRIA FIBO JSON object, without markdown. Use the exact English field names below.",
             "Put the main subject FIRST in objects. Its description is a brief generic category/name, not a catalogue of details.",
-            "Put its identity details in shape_and_color, texture, skin_tone_and_texture; hair and wearable accessories in appearance_details; garments in clothing.",
+            "Put its identity details in shape_and_color, texture, skin_tone_and_texture; hair and wearable accessories in appearance_details; garments in clothing. Fill the field of every detail the caption policy asks to describe and that is visible.",
             "Respect the caption policy in EVERY field, including short_description and context. Do not repeat omitted details in free text.",
-            "Use an empty string for required descriptive fields deliberately omitted by the policy or not observable; use null for optional fields. Do not invent content to fill the schema.",
+            # "use null for optional fields" alone could read as leaving clothing, pose or expression empty.
+            "Use an empty string for required descriptive fields deliberately omitted by the policy or not observable; use null for optional fields only when the policy omits them or they are not observable. Do not invent content to fill the schema.",
             "If background is omitted, list only the main subject in objects. Do not create separate objects for omitted clothing or accessories.",
             "Do not guess gender, camera settings, exact focal length, intended use or aesthetic scores. context may be empty. No total word-count constraint applies to JSON.",
             "Schema: " + json.dumps(FiboCaption.model_json_schema(), ensure_ascii=False),

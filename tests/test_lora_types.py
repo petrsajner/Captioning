@@ -140,6 +140,41 @@ def test_motion_only_captions_forbid_every_learned_detail():
 
 
 @pytest.mark.parametrize("output", PROMPT_OUTPUTS)
+def test_described_clothing_is_not_part_of_the_learned_character(output):
+    # Reported 2026-09-28: a character's clothing was missing from a caption.
+    prompt = make_prompt(
+        settings("character", output, "Velmira", "a woman"), "clip" if output == "wan_i2v" else "image"
+    )
+    assert "main character's appearance" not in prompt and "at least a few words" in prompt
+    if output == "wan_i2v":  # the motion-only caption leaves clothing to the first frame
+        assert "not part of their identity" not in prompt
+    else:
+        assert "The main character's clothing and accessories are not part of their identity" in prompt
+        assert "DESCRIBE IF VISIBLE: clothing of the main subject" in prompt
+    if output == "bria_json":
+        assert "use null for optional fields only when the policy omits them" in prompt
+
+
+def test_the_identity_line_names_only_the_described_worn_details():
+    def prompt(preset, omitted):
+        return make_prompt(Settings(preset=preset, omitted_attributes=omitted))
+
+    only_clothing = prompt("character", ["identity", "accessories"])
+    assert (
+        "The main character's clothing is not part of their identity, even when distinctive; describe it"
+        in only_clothing
+    )
+    assert "The main person's accessories are not part of" in prompt("general", ["identity", "clothing"])
+    for preset, omitted in [
+        ("character", ["hair_color"]),  # the identity is described, so nothing to tell apart
+        ("character", ["identity", "clothing", "accessories"]),
+        ("object", ["identity"]),
+        ("style", ["style", "palette"]),
+    ]:
+        assert "not part of their identity" not in prompt(preset, omitted)
+
+
+@pytest.mark.parametrize("output", PROMPT_OUTPUTS)
 def test_general_prompts_have_no_token_and_leave_the_trigger_to_the_app(output):
     prompt = make_prompt(settings("general", output, "ohwx"))
     assert "<character>" not in prompt and "<object>" not in prompt and "ohwx" not in prompt

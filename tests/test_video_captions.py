@@ -196,6 +196,16 @@ def test_revision_instructions_keep_the_token_and_never_see_the_trigger():
     assert "Keep the token <character> exactly once" in text and "ohwx" not in text
 
 
+def test_revision_lists_only_the_details_its_caption_describes():
+    # The shortening request sees neither the image nor the policy, so it names the details to keep.
+    s = Settings(preset="character", omitted_attributes=["identity"], output_format="wan_i2v")
+    text = revision_instruction(s, "draft", too_long=True, media="clip")
+    assert "keep at least a few words about each one" in text
+    assert "movement and actions of the main subject" in text and "camera movement over the clip" in text
+    assert "clothing" not in text and "facial structure" not in text
+    assert "few words" not in revision_instruction(s, "draft", too_long=False, media="clip")
+
+
 def test_all_video_models_write_their_own_files_and_leave_the_others(tmp_path, monkeypatch):
     async def run():
         image = picture(tmp_path / "images" / "a.png")

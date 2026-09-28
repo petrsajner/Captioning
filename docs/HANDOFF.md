@@ -1,6 +1,30 @@
 # Caption Studio development handoff
 
-## Current release: 0.2.9 (2026-09-28)
+## Current release: 0.2.10 (2026-09-28)
+
+Described details stay in the caption (Petr, 2026-09-28: a user reported a character's clothing
+missing from a caption; neither the LoRA type nor the output is known, so every path that could drop
+a detail switched on in the recipe is covered).
+
+- The detail switches worked: the prompt of every output asked for clothing. What could still drop it:
+  - `provider.py`: a caption over 120 % of the target is rewritten shorter without the image or the
+    policy ("remove secondary wording"). The rewrite now lists the details the caption describes
+    (`training.described_details`, WAN I2V only motion and camera) and keeps a few words about each.
+  - `anchor.py`: a character prompt said the LoRA learns "the main character's appearance", which
+    includes clothing. It now says the LoRA learns the details marked LEARN_WITH_LORA. With the
+    identity learned, character and general prompts add that the described clothing and accessories
+    are not part of it, even when distinctive (`worn_line`; not WAN I2V, and not hair, which could
+    leak a learned hair color).
+  - `training.py`: the policy asks for at least a few words about every visible described detail,
+    also in a short caption.
+  - `bria.py`: "use null for optional fields" could read as leaving `clothing` empty; null is now
+    only for fields the policy omits or that are not visible, and every described detail's field is
+    filled.
+- Not yet checked live. Check on Marvin with `scripts/check_video_captions_live.py` (character
+  photos, `--outputs normal bria_json video_all`, also with `--words 40` so shortening runs):
+  clothing described in every caption, and still no hair color or facial features.
+
+## Previous release: 0.2.9 (2026-09-28)
 
 - The user manual, English and Czech PDF (`docs/manual`, see Verification and release workflow),
   ships with the application: `scripts/build.ps1` prints it and copies it into

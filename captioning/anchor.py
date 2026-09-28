@@ -21,8 +21,9 @@ _WORDS = {"character": ("character", "them", "they are", "their"), "object": ("o
 # One sentence per LoRA type that says what the caption is for.
 PURPOSE = {
     "general": "Everything the caption describes stays controllable by prompts.",
-    "character": "The LoRA learns only the main character's appearance; everything the caption describes stays "
-    "controllable by prompts.",
+    # Not "appearance": clothing is appearance too, so the model could leave out clothing it is asked to describe.
+    "character": "The LoRA learns only the main character's details that the caption policy marks LEARN_WITH_LORA; "
+    "everything the caption describes stays controllable by prompts.",
     "object": "The LoRA learns only the main object's appearance; everything the caption describes stays "
     "controllable by prompts.",
     "style": "The LoRA learns only the visual style the images share; the caption describes their content so it "
@@ -134,6 +135,29 @@ def naming_line(s, where: str = "where {is} first mentioned", language: str = "E
     )
 
 
+def worn_line(s) -> str | None:
+    """With the identity learned, say that the described clothing and accessories are not part of it.
+
+    Hair is left to the policy: naming it here could leak a learned hair color. WAN I2V has no such
+    line, as its caption leaves everything the first frame shows to the image.
+    """
+    if (
+        s.preset not in ("general", "character")
+        or "identity" not in s.omitted_attributes
+        or s.output_format == "wan_i2v"
+    ):
+        return None
+    names = [name for name in ("clothing", "accessories") if name not in s.omitted_attributes]
+    if not names:
+        return None
+    plural = names != ["clothing"]
+    owner = "The main character's" if s.preset == "character" else "The main person's"
+    return (
+        f"{owner} {' and '.join(names)} {'are' if plural else 'is'} not part of their identity, even when distinctive; describe "
+        f"{'them' if plural else 'it'} as the caption policy says."
+    )
+
+
 def subject_lines(s, where: str = "at the start") -> list[str]:
     """What the LoRA type means for the content of any caption; `where` says where the trigger goes."""
     lines = []
@@ -164,6 +188,9 @@ def subject_lines(s, where: str = "at the start") -> list[str]:
         if "palette" in s.omitted_attributes:
             lines.append(STYLE_PALETTE)
         lines.append("Describe people generically, such as a woman or an old man; never say who they are.")
+    worn = worn_line(s)
+    if worn:
+        lines.append(worn)
     if token(s) is None and lead_phrase(s):
         lines.append(
             f"Do not write a style name; the application adds it {where}."
