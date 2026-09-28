@@ -31,6 +31,10 @@ try {
       [...document.images].filter((img) => !img.complete || img.naturalWidth === 0).map((img) => img.src),
     );
     if (broken.length) throw new Error(`${language}: images not found: ${broken.join(', ')}`);
+    // The version in the text (cover, file names) is always the one being built.
+    await page.evaluate((version) => {
+      for (const el of document.querySelectorAll('[data-version]')) el.textContent = version;
+    }, version);
     // Czech typography: a one-letter preposition or conjunction never ends a line.
     if (language === 'cs')
       await page.evaluate(() => {

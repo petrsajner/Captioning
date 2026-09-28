@@ -1,6 +1,18 @@
 # Caption Studio development handoff
 
-## Current release: 0.2.8 (2026-09-28)
+## Current release: 0.2.9 (2026-09-28)
+
+- The user manual, English and Czech PDF (`docs/manual`, see Verification and release workflow),
+  ships with the application: `scripts/build.ps1` prints it and copies it into
+  `dist\CaptionStudio\manuals\Caption-Studio-Manual-{EN,CS}.pdf`, so the installer and the portable
+  ZIP both carry it. The installer adds Start menu shortcuts for both languages (names from the
+  installer language) and replaces `{app}\manuals` on update. `scripts/smoke_package.py` and the
+  sandbox test check the files; the sandbox test also checks the shortcuts.
+- Marvin (`github.com/petrsajner/marvin`, Petr's published local Qwen harness) is the recommended
+  local model: the manual features it, README names it, and server search labels 127.0.0.1:8080
+  "Typical Marvin / llama.cpp address"; the search hint lists Marvin first.
+
+## Previous release: 0.2.8 (2026-09-28)
 
 - A graphics card is never required (Petr, 2026-09-28): the app, import and Cloud API captions
   run without one; only the optional local model's CUDA backend needs an NVIDIA driver. A first

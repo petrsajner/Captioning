@@ -10,7 +10,7 @@ from .models import MANAGED_URL, Settings
 CANDIDATES = [
     ("http://127.0.0.1:11434/v1", "Typical Ollama address"),
     ("http://127.0.0.1:1234/v1", "Typical LM Studio address"),
-    ("http://127.0.0.1:8080/v1", "Typical llama.cpp address"),
+    ("http://127.0.0.1:8080/v1", "Typical Marvin / llama.cpp address"),
     ("http://127.0.0.1:8000/v1", "Typical Unsloth / vLLM address"),
     ("http://127.0.0.1:8888/v1", "Typical Unsloth address"),
     (MANAGED_URL, "Caption Studio runtime address"),

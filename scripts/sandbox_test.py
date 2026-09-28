@@ -30,6 +30,9 @@ SANDBOX_WORK = r"C:\CaptionStudioTest"
 EXPECTED = {
     "installer_exit": lambda v: v == 0,
     "installed": lambda v: v is True,
+    "manuals": lambda v: v == 2,
+    # Caption Studio, both manuals and the uninstaller; the silent install uses the English names.
+    "start_menu": lambda v: isinstance(v, list) and {"User manual (English)", "User manual (Czech)"} <= set(v),
     "app_started": lambda v: v is True,
     "app_process_running": lambda v: v is True,
     "webview2_processes": lambda v: isinstance(v, int) and v > 0,

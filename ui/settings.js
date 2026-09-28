@@ -142,7 +142,7 @@ export function openSettings() {
   $('local-server-results').replaceChildren();
   localServers = [];
   $('local-discovery-message').textContent = t(
-    'Check common local addresses for Ollama, LM Studio, Unsloth and llama.cpp.',
+    'Check common local addresses for Marvin, Ollama, LM Studio, Unsloth and llama.cpp.',
   );
   $('cloud-provider').value = [...$('cloud-provider').options].some((o) => o.value === state.settings.cloud_url)
     ? state.settings.cloud_url

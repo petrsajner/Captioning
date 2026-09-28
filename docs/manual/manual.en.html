@@ -10,7 +10,7 @@
       <div class="logo">C</div>
       <h1>Caption Studio</h1>
       <p class="subtitle">User manual</p>
-      <p class="meta">Version 0.2.8 · September 2026 · Windows 10 and 11 (64-bit)</p>
+      <p class="meta">Version <span data-version>0.2.9</span> · September 2026 · Windows 10 and 11 (64-bit)</p>
       <img src="img/en/main.jpg" alt="Caption Studio main window" />
     </section>
 
@@ -126,7 +126,7 @@
       </tr>
       <tr>
         <td>Disk space</td>
-        <td>About 130 MB for the application; 13–23 GB more if you download your own model</td>
+        <td>About 135 MB for the application, with this manual; 13–23 GB more if you download your own model</td>
       </tr>
       <tr>
         <td>Internet</td>
@@ -150,8 +150,12 @@
       </tr>
       <tr>
         <td>File</td>
-        <td><code>Caption-Studio-Setup-0.2.8-Windows-x64.exe</code> (46 MB)</td>
-        <td><code>Caption-Studio-0.2.8-Windows-x64-Portable.zip</code> (59 MB)</td>
+        <td>
+          <code>Caption-Studio-Setup-<span data-version>0.2.9</span>-Windows-x64.exe</code> (about 50 MB)
+        </td>
+        <td>
+          <code>Caption-Studio-<span data-version>0.2.9</span>-Windows-x64-Portable.zip</code> (about 65 MB)
+        </td>
       </tr>
       <tr>
         <td>Location</td>
@@ -160,8 +164,8 @@
       </tr>
       <tr>
         <td>Shortcuts</td>
-        <td>Start menu; desktop icon optional</td>
-        <td>None; run <code>CaptionStudio.exe</code></td>
+        <td>Start menu: the application and this manual in English and Czech; desktop icon optional</td>
+        <td>None; run <code>CaptionStudio.exe</code>. This manual is in the <code>manuals</code> folder</td>
       </tr>
       <tr>
         <td>WebView2</td>
@@ -175,24 +179,25 @@
       </tr>
     </table>
     <p>
-      Both editions are the same program. Both keep all their data in a <code>data</code> folder next to
-      <code>CaptionStudio.exe</code>. Use the installer unless you want to carry the application with you.
+      Both editions are the same program and keep all their data in a <code>data</code> folder next to
+      <code>CaptionStudio.exe</code>.
     </p>
 
     <h2>Installing</h2>
     <ol class="steps">
-      <li>Run <code>Caption-Studio-Setup-0.2.8-Windows-x64.exe</code>. No administrator rights are needed.</li>
+      <li>
+        Run <code>Caption-Studio-Setup-<span data-version>0.2.9</span>-Windows-x64.exe</code>. No administrator rights
+        are needed.
+      </li>
       <li>
         If Windows shows <em>Windows protected your PC</em> (SmartScreen), click <span class="ui">More info</span> and
         then <span class="ui">Run anyway</span>. The warning appears because the file is new and not code-signed.
       </li>
-      <li>
-        Follow the installer: choose its language, keep or change the folder, optionally tick the desktop icon, and
-        click Install.
-      </li>
+      <li>Follow the installer: language, folder, optionally a desktop icon, then Install.</li>
       <li>
         If WebView2 is missing, the installer downloads and installs it (this needs internet). Then finish the installer
-        and start Caption Studio.
+        and start Caption Studio; the setup opens on the first start (chapter
+        <a href="#setup">3</a>).
       </li>
     </ol>
     <p>
@@ -204,7 +209,6 @@
       in the <code>data</code> folder are kept. <strong>Uninstalling</strong> also keeps the <code>data</code> folder;
       delete it yourself if you want to remove the downloaded model and all settings.
     </p>
-    <p>On the first start the setup opens automatically. Continue with the next chapter.</p>
 
     <!-- 3 -->
     <h1 id="setup"><span class="number">3</span>Setup: connecting a model</h1>
@@ -294,9 +298,9 @@
             <span class="ui">Find local servers</span>.
           </li>
           <li>
-            Click the server <code>http://127.0.0.1:8080/v1</code>. Caption Studio lists it as the llama.cpp address,
-            because Marvin runs a llama.cpp server. The address and the model (for example <code>q5</code>) fill in by
-            themselves; no key is needed.
+            Click the server <code>http://127.0.0.1:8080/v1</code>. Caption Studio lists it as the typical Marvin /
+            llama.cpp address. The address and the model (for example <code>q5</code>) fill in by themselves; no key is
+            needed.
           </li>
           <li>Click <span class="ui">Save and continue →</span>.</li>
         </ol>
@@ -1514,6 +1518,6 @@
       The screenshots show prints by Utagawa Hiroshige from <em>One Hundred Famous Views of Edo</em> (1856–1859), which
       are in the public domain (Wikimedia Commons). Velmira, Zorbo and Zorvak are invented names.
     </p>
-    <p class="meta">Caption Studio 0.2.8 · © Petr Sajner 2026</p>
+    <p class="meta">Caption Studio <span data-version>0.2.9</span> · © Petr Sajner 2026</p>
   </body>
 </html>

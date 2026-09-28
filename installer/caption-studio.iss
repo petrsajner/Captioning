@@ -35,6 +35,8 @@ english.LaunchApp=Launch Caption Studio and set up a model
 english.UninstallApp=Uninstall Caption Studio
 english.AppLanguage=en
 english.InstallingWebView2=Installing Microsoft Edge WebView2 Runtime for the application window...
+english.ManualEnglish=User manual (English)
+english.ManualCzech=User manual (Czech)
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:DesktopIcon}"; GroupDescription: "{cm:Shortcuts}"; Flags: unchecked
@@ -44,6 +46,7 @@ Name: "desktopicon"; Description: "{cm:DesktopIcon}"; GroupDescription: "{cm:Sho
 ; User data in {app}\data is never touched.
 Type: filesandordirs; Name: "{app}\_internal"
 Type: filesandordirs; Name: "{app}\licenses"
+Type: filesandordirs; Name: "{app}\manuals"
 
 [Files]
 Source: "..\dist\CaptionStudio\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -55,6 +58,9 @@ Source: "..\THIRD_PARTY.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\Caption Studio"; Filename: "{app}\CaptionStudio.exe"; WorkingDir: "{app}"; IconFilename: "{app}\_internal\ui\caption-studio.ico"
+; The user manuals are part of the bundle (scripts/build.ps1 prints them into dist\CaptionStudio\manuals).
+Name: "{group}\{cm:ManualEnglish}"; Filename: "{app}\manuals\Caption-Studio-Manual-EN.pdf"
+Name: "{group}\{cm:ManualCzech}"; Filename: "{app}\manuals\Caption-Studio-Manual-CS.pdf"
 Name: "{group}\{cm:UninstallApp}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\Caption Studio"; Filename: "{app}\CaptionStudio.exe"; WorkingDir: "{app}"; IconFilename: "{app}\_internal\ui\caption-studio.ico"; Tasks: desktopicon
 

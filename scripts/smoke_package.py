@@ -133,6 +133,10 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
             vc_runtime = exe.parent / "_internal" / "vcredist"
             for name in ("msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll"):
                 assert (vc_runtime / name).is_file(), f"{name} is missing from the package"
+            # The user manuals ship next to the application in both languages.
+            for language in ("EN", "CS"):
+                manual = exe.parent / "manuals" / f"Caption-Studio-Manual-{language}.pdf"
+                assert manual.is_file() and manual.read_bytes()[:5] == b"%PDF-", f"{manual.name} is missing"
             report = {
                 "exe": str(exe),
                 "version": s["version"],
@@ -146,6 +150,7 @@ with tempfile.TemporaryDirectory(prefix="clean-package-", dir=output) as temp:
                 "clip_decoding_and_captions": True,
                 "localization_assets_and_preference": True,
                 "vc_runtime_for_llama_cpp": True,
+                "user_manuals": True,
             }
             (output / "package-smoke.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
             print(json.dumps(report, indent=2))

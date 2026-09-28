@@ -53,6 +53,10 @@ $summary.webview2_bootstrapper_ran = [bool](Select-String -Path "$results\instal
 $app = Join-Path $env:LOCALAPPDATA 'Programs\Caption Studio'
 $summary.installed = Test-Path (Join-Path $app 'CaptionStudio.exe')
 Log "installed: $($summary.installed), exit $($summary.installer_exit)"
+# The user manuals and their Start menu shortcuts.
+$summary.manuals = @('EN', 'CS' | Where-Object { Test-Path (Join-Path $app "manuals\Caption-Studio-Manual-$_.pdf") }).Count
+$startMenu = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Caption Studio'
+$summary.start_menu = @(Get-ChildItem $startMenu -Filter '*.lnk' -ErrorAction SilentlyContinue | ForEach-Object { $_.BaseName })
 
 # 3. Start the app the normal way, with its window.
 Start-Process -FilePath (Join-Path $app 'CaptionStudio.exe')

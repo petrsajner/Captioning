@@ -44,6 +44,15 @@ foreach ($dll in 'msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll') {
     Copy-Item -LiteralPath $source -Destination $vcRuntime -Force
 }
 Copy-Item -LiteralPath 'output\licenses' -Destination 'dist\CaptionStudio\licenses' -Recurse -Force
+# The user manuals ship with the application: Start menu shortcuts in the installer, manuals\ in the ZIP.
+node 'scripts\manual\build.mjs'
+if ($LASTEXITCODE -ne 0) { throw 'User manual build failed.' }
+$manuals = 'dist\CaptionStudio\manuals'
+New-Item -ItemType Directory -Force -Path $manuals | Out-Null
+foreach ($language in 'en', 'cs') {
+    $manual = "dist\Caption-Studio-Manual-$version-$language.pdf"
+    Copy-Item -LiteralPath $manual -Destination (Join-Path $manuals "Caption-Studio-Manual-$($language.ToUpperInvariant()).pdf") -Force
+}
 $candidates = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe", "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe")
 $isccPath = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 if (-not $isccPath) { throw 'Building the installer requires Inno Setup 6.' }

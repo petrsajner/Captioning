@@ -60,7 +60,11 @@ on every supported hardware configuration. CPU inference is slow.
 
 ### Use an existing local server
 
-Click **Find local servers** to check common localhost addresses for Ollama,
+The recommended local server is [Marvin](https://github.com/petrsajner/marvin), the local
+Qwen3.8 27B harness: it runs the same vision model on measured profiles and serves it at
+`http://127.0.0.1:8080/v1` (model `q5`, no key), so one model serves both applications.
+
+Click **Find local servers** to check common localhost addresses for Marvin, Ollama,
 LM Studio, llama.cpp, Unsloth and compatible servers. Select a result, choose an
 image-capable model and save. If a key is required, enter **Local API key** and click
 **Load models**. For a custom port, choose **Existing local server** and enter its
