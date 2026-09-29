@@ -20,9 +20,18 @@ a detail switched on in the recipe is covered).
   - `bria.py`: "use null for optional fields" could read as leaving `clothing` empty; null is now
     only for fields the policy omits or that are not visible, and every described detail's field is
     filled.
-- Not yet checked live. Check on Marvin with `scripts/check_video_captions_live.py` (character
-  photos, `--outputs normal bria_json video_all`, also with `--words 40` so shortening runs):
-  clothing described in every caption, and still no hair color or facial features.
+- Checked live on Marvin (Q5, 2026-09-29) against 0.2.9 with `scripts/check_video_captions_live.py`:
+  20 character photos (7 Clover, 3 Holly, 10 free Wikimedia Commons photos of other people,
+  `output/clothing-src/credits.json`), character type with the default details, outputs Normal,
+  BRIA JSON, WAN, LTX and H3, at 100, 40 and 20 words (20: no BRIA), 280 captions per version.
+  - 0.2.10 names clothing in 280 of 280 captions. 0.2.9 dropped it once, at 20 words: after
+    shortening, the LTX caption of a woman in a navy suit kept only the pose and the building.
+  - Share of the visible garments named (dress, jacket, trousers, apron, cap...): at 100 and
+    40 words 97 % in 0.2.10 against 96 % in 0.2.9; at 20 words 90 % against 82 %.
+  - Hair color and facial features: no leaks on the Clover and Holly photos in either version.
+    Both versions sometimes name the hair color on six Commons photos, most often a dark pixie cut
+    and a white cosplay wig: 17 captions in 0.2.10, 13 in 0.2.9. 0.2.10 also named green eyes
+    twice on the cosplay photo; a thick moustache is described in both.
 
 ## Previous release: 0.2.9 (2026-09-28)
 
