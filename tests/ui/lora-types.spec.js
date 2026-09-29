@@ -52,6 +52,6 @@ test('the name fields, notes and detail names follow the LoRA type', async ({ pa
     .toEqual({ general: [], object: ['identity'], style: ['style', 'palette'] });
   await recipe.locator('[name=preset]').selectOption('style');
   await page.locator('#preview-prompt').click();
-  await expect(page.locator('#prompt-text')).toContainText('Never name or describe the medium');
+  await expect(page.locator('#prompt-text')).toContainText('- Medium and technique: never name or describe the medium');
   await expect(page.locator('#prompt-text')).not.toContainText('Kestrin');
 });

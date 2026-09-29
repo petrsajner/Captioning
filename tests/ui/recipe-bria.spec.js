@@ -14,8 +14,8 @@ test('detail choices reach the prompt and BRIA JSON captions are validated on sa
   await page.locator('#preview-prompt').click();
   await expect(page.locator('#prompt-dialog')).toBeVisible();
   const lines = (await page.locator('#prompt-text').textContent()).split('\n');
-  expect(lines.some((line) => line.startsWith('LEARN_WITH_LORA') && line.includes('clothing'))).toBe(true);
-  expect(lines.some((line) => line.startsWith('CONTROL_WITH_PROMPT') && line.includes('clothing'))).toBe(false);
+  expect(lines.some((line) => line.startsWith('- Clothing: nothing the main person wears'))).toBe(true);
+  expect(lines.some((line) => line.startsWith('- Clothing: every garment'))).toBe(false);
   await page.locator('#prompt-dialog .close-dialog').click();
 
   await recipe.locator('[name=output_format]').selectOption('bria_json');

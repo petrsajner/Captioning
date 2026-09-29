@@ -17,8 +17,8 @@ test('switching language keeps drafts, detail choices and caption text', async (
   await page.locator('[data-attribute=identity]').uncheck();
   await page.locator('[data-attribute=background]').uncheck();
   await page.locator('#preview-prompt').click();
-  await expect(prompt).toContainText('LEARN_WITH_LORA — DO NOT DESCRIBE: stable visual identity');
-  await expect(prompt).toContainText('CONTROL_WITH_PROMPT — DESCRIBE IF VISIBLE: clothing');
+  await expect(prompt).toContainText("- Face and body: nothing about the main subject's face");
+  await expect(prompt).toContainText('- Clothing: every garment the main person wears');
   await page.locator('#prompt-dialog .close-dialog').click();
 
   const editor = page.locator('#caption-editor');
