@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 
-from .anchor import KIND, PURPOSE, name_subject, naming_line, subject_lines, token, trigger_warnings
+from .anchor import KIND, PURPOSE, name_subject, naming_line, subject_lines, text_line, token, trigger_warnings
 from .errors import UserError
 from .models import Settings, length_line
 from .training import policy_prompt
@@ -54,7 +54,7 @@ def _facts() -> list[str]:
 
 def _purpose(s: Settings, model: str) -> str:
     article = "an" if model.startswith("LTX") else "a"
-    return f"Write a training caption for {article} {model} {KIND[s.preset]}LoRA. {PURPOSE[s.preset]}"
+    return f"Write a training caption for {article} {model} {KIND[s.preset]}LoRA. {PURPOSE}"
 
 
 def _subject(s: Settings) -> str:
@@ -63,7 +63,33 @@ def _subject(s: Settings) -> str:
 
 
 def _action(s: Settings, media: str) -> str:
-    return _ACTION.get(s.preset, _GENERIC_ACTION)[media == "clip"]
+    """What the subject does, or nothing when the caption rules forbid it."""
+    omitted = set(s.omitted_attributes)
+    if media == "clip":
+        return "" if "motion" in omitted else _ACTION.get(s.preset, _GENERIC_ACTION)[1]
+    if s.preset == "object":
+        parts = [
+            text for d, text in (("pose", "where it is"), ("interaction", "how it is held or used")) if d not in omitted
+        ]
+        return " and ".join(parts)
+    return "" if "pose" in omitted else _ACTION.get(s.preset, _GENERIC_ACTION)[0]
+
+
+def _then(s: Settings, media: str, camera: bool) -> list[str]:
+    """The parts after the subject in their order, without those the caption rules forbid."""
+    omitted = set(s.omitted_attributes)
+    parts = ["the other details the caption rules ask for"]
+    if "background" not in omitted:
+        parts.append("the setting")
+    if "lighting" not in omitted:
+        parts.append("the lighting")
+    if camera:
+        shot = [] if "composition" in omitted else ["the shot size and camera angle"]
+        if media == "clip" and "camera_motion" not in omitted:
+            shot.append("the camera movement")
+        if shot:
+            parts.append(" and ".join(shot))
+    return parts
 
 
 def _naming(s: Settings) -> list[str]:
@@ -78,12 +104,10 @@ def _media(s: Settings, media: str) -> str:
 def _recipe(s: Settings, media: str, only: tuple[str, ...] | None = None) -> list[str]:
     """The dataset recipe: the LoRA type, readable text, the user's instructions and the detail policy."""
     parts = [
-        "The caption policy below decides which details are described. A detail marked LEARN_WITH_LORA must not "
+        "The caption rules at the end decide which details are described. A detail under NEVER DESCRIBE must not "
         "appear anywhere in the caption, not even in passing inside a sentence about something else.",
         *subject_lines(s),
-        "Transcribe readable visible text when relevant."
-        if s.text_in_image
-        else "Do not transcribe text or watermarks.",
+        text_line(s),
     ]
     if s.instructions.strip():
         parts.append("Additional dataset instructions: " + s.instructions.strip())
@@ -92,16 +116,15 @@ def _recipe(s: Settings, media: str, only: tuple[str, ...] | None = None) -> lis
 
 def wan_prompt(s: Settings, media: str) -> list[str]:
     # Wan's own T2V prompt rewriter: subject, action, background, camera (Wan2.2 utils/system_prompt.py).
-    camera = "the shot size, camera angle and camera movement" if media == "clip" else "the shot size and camera angle"
     begin = f" Begin the caption with {token(s)}." if token(s) else ""
+    action = _action(s, media)
+    lead = f"{_subject(s)} and {action}" if action else _subject(s)
     return [
         _purpose(s, "WAN 2.2 text-to-video"),
         *_facts(),
         "Write in English, in plain sentences, the way a WAN text-to-video prompt is written.",
         length_line(s.words),
-        f"Use one paragraph in this order: {_subject(s)} and {_action(s, media)}; then the details the caption policy "
-        f"asks to describe; then the setting; then the lighting; then {camera}. Skip every part the policy omits."
-        + begin,
+        f"Use one paragraph in this order: {lead}; then " + "; then ".join(_then(s, media, camera=True)) + "." + begin,
         *_naming(s),
         _media(s, media),
         *_recipe(s, media),
@@ -136,18 +159,30 @@ def wan_i2v_prompt(s: Settings, media: str) -> list[str]:
 
 def ltx_prompt(s: Settings, media: str) -> list[str]:
     # LTX prompt guide: one flowing present-tense paragraph that opens with the shot.
-    camera = ", and how the camera moves" if media == "clip" else ""
-    example = {"character": "<character> as ...", "object": "<object> resting on ..."}.get(s.preset, "a woman as ...")
-    named = f", and name {'them' if s.preset == 'character' else 'it'} in that first sentence" if token(s) else ""
+    omitted = set(s.omitted_attributes)
+    action = _action(s, media)
+    rest = ([action] if action else []) + _then(s, media, camera=False)
+    if media == "clip" and "camera_motion" not in omitted:
+        rest.append("how the camera moves")
+    if "composition" in omitted:
+        example = {"character": "<character> ...", "object": "<object> ..."}.get(s.preset, "A woman ...")
+        start = f"Begin with {_subject(s)}, for example: {example}"
+    else:
+        example = {"character": "<character> as ...", "object": "<object> resting on ..."}.get(
+            s.preset, "a woman as ..."
+        )
+        named = f", and name {'them' if s.preset == 'character' else 'it'} in that first sentence" if token(s) else ""
+        start = (
+            f"Begin with the shot, its shot size and camera angle{named}, for example: A medium close-up at eye level "
+            f"frames {example}"
+        )
     return [
         _purpose(s, "LTX-2.5"),
         *_facts(),
         "Write in English as one flowing paragraph in the present tense, four to eight sentences, the way an LTX "
         "prompt is written.",
         length_line(s.words),
-        f"Begin with the shot, its shot size and camera angle{named}, for example: A medium close-up at eye level "
-        f"frames {example} Then describe {_action(s, media)}, the details the caption policy asks to describe, the "
-        f"setting and the lighting{camera}. Skip every part the policy omits.",
+        f"{start} Then describe " + ", ".join(rest) + ".",
         "Do not describe sound or music.",
         *_naming(s),
         _media(s, media),
@@ -158,22 +193,29 @@ def ltx_prompt(s: Settings, media: str) -> list[str]:
 def h3_prompt(s: Settings, media: str) -> list[str]:
     # Official H3 prompt skill: [Shot 1] opens with style and composition; the app adds the three fields.
     subject = token(s) or "a woman"
-    if s.preset == "style" or "style" in s.omitted_attributes:
-        # The visual style is learned, so [Shot 1] opens with the composition alone.
-        begin = f"Begin with the initial composition, for example: A medium close-up at eye level frames {subject} ..."
-    else:
+    # A learned visual style or composition is left out of the opening of [Shot 1].
+    style = not (s.preset == "style" or "style" in s.omitted_attributes)
+    composition = "composition" not in s.omitted_attributes
+    if style and composition:
         begin = (
             "Begin with the visual style and the initial composition, for example: Live-action, photographic, a "
             f"medium close-up at eye level frames {subject} ..."
         )
+    elif composition:
+        begin = f"Begin with the initial composition, for example: A medium close-up at eye level frames {subject} ..."
+    elif style:
+        begin = f"Begin with the visual style, for example: Live-action, photographic, {subject} ..."
+    else:
+        begin = f"Begin with {_subject(s)}, for example: {subject} ..."
+    action = _action(s, media)
+    rest = ([action] if action else []) + _then(s, media, camera=False)
     parts = [
         _purpose(s, "MiniMax H3"),
         *_facts(),
         "Write in English only the description of one shot. The application adds the field labels, [Shot 1] and "
         "the sound fields.",
         length_line(s.words),
-        f"{begin} Then describe {_action(s, media)}, the details the caption policy asks to describe, the setting "
-        "and the lighting. Skip every part the policy omits.",
+        f"{begin} Then describe " + ", ".join(rest) + ".",
         "Do not write field labels, timestamps, sound or music.",
         *_naming(s),
     ]

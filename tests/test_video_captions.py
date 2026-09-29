@@ -49,9 +49,9 @@ def test_video_prompts_are_english_descriptions_with_the_character_token(output)
     assert "Write in English" in prompt and "Czech" not in prompt
     assert "comma-separated" not in prompt and "Velmira" not in prompt
     assert "<character>" in prompt and "'a woman'" in prompt and "'the woman'" in prompt
-    assert "not even in passing" in prompt and "hair" not in prompt.split("MANDATORY CAPTION POLICY")[0]
+    assert "not even in passing" in prompt and "hair" not in prompt.split("CAPTION RULES.")[0]
     assert "do not describe motion over time or camera movement" in prompt
-    assert "LEARN_WITH_LORA — DO NOT DESCRIBE: stable visual identity" in prompt
+    assert "- Face and body: nothing about" in prompt.split("NEVER DESCRIBE, ")[1]
     assert ("The camera holds a static shot." in prompt) == (output == "h3")
     assert ("Begin with the shot" in prompt) == (output == "ltx")
     assert ("Begin the caption with <character>" in prompt) == (output == "wan")
@@ -196,14 +196,17 @@ def test_revision_instructions_keep_the_token_and_never_see_the_trigger():
     assert "Keep the token <character> exactly once" in text and "ohwx" not in text
 
 
-def test_revision_lists_only_the_details_its_caption_describes():
-    # The shortening request sees neither the image nor the policy, so it names the details to keep.
+def test_revisions_follow_the_same_caption_rules():
+    # Petr, 2026-09-29: shortening and finishing a caption follow the same rules as writing it.
     s = Settings(preset="character", omitted_attributes=["identity"], output_format="wan_i2v")
-    text = revision_instruction(s, "draft", too_long=True, media="clip")
-    assert "keep at least a few words about each one" in text
-    assert "movement and actions of the main subject" in text and "camera movement over the clip" in text
-    assert "clothing" not in text and "facial structure" not in text
-    assert "few words" not in revision_instruction(s, "draft", too_long=False, media="clip")
+    for too_long in (True, False):
+        text = revision_instruction(s, "draft", too_long=too_long, media="clip")
+        assert "Apply the caption rules below" in text and "delete everything the NEVER DESCRIBE rules forbid" in text
+        must, never = text.split("NEVER DESCRIBE, ")
+        assert "- Motion: what the main subject does" in must and "- Camera movement: how the camera moves" in must
+        assert "- Face and body: nothing about" in never and "Clothing" not in text
+    photo = revision_instruction(Settings(preset="character", omitted_attributes=["clothing"]), "draft", True)
+    assert "- Clothing: nothing the main person wears" in photo and "- Pose and action: the main subject's" in photo
 
 
 def test_all_video_models_write_their_own_files_and_leave_the_others(tmp_path, monkeypatch):

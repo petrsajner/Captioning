@@ -2,11 +2,45 @@
 
 ## Current release: 0.2.10 (2026-09-28)
 
+Exact caption rules per detail (Petr, 2026-09-29: "the model does not have to understand general
+wording, the LoRA learns that; tell it exactly what must be in the caption and forbid outright what
+must not"; and "a shortening rewrite must have the same rules").
+
+- `training.py`: every detail has a `must` text (switched on) and a `never` text (switched off) with
+  concrete words; `policy_prompt` writes them as CAPTION RULES with a MUST DESCRIBE and a NEVER
+  DESCRIBE list, rules for details that touch each other (`_combinations`: hair color without the
+  hairstyle, a learned background with lighting or composition described, and the reverse) and a
+  final check against the NEVER list. The LEARN_WITH_LORA / CONTROL_WITH_PROMPT labels, the "what
+  the LoRA learns" sentences (`anchor.PURPOSE`), `worn_line`, `STYLE_MEDIUM`, `STYLE_PALETTE` and the
+  object's own never-describe lines are gone; `anchor.text_line` lets an object's own logo be
+  transcribed when that detail is on.
+- Examples must never come from the test photos, and lighting, composition and medium get only the
+  options to choose from: the model copies examples word for word ("a dark military uniform" 31
+  times in a first run whose examples came from the test photos).
+- `provider.revision_instruction`: shortening and finishing get the same rules as the caption and
+  delete what the NEVER list forbids (`training.described_details` is gone).
+- `video.py`: WAN, LTX and H3 list only the parts the rules allow (a learned pose, background,
+  lighting or composition is no longer asked for in the order line; LTX and H3 open without the
+  shot when composition is learned).
+- Live on Marvin (Q5, 2026-09-29), every photo detail of every LoRA type switched one at a time from
+  the type's defaults, 10 photos per type (`output/switches-src`, Commons credits in
+  `credits.json`), Normal at 40 and 20 words, 840 captions before and 840 after, each judged by an
+  independent reviewer against the image. Clear leaks of a detail switched off: 194 before, 20 after
+  (character 53 to 2, general 36 to 0, object 52 to 3, style 53 to 15). Leaks of clothing,
+  accessories and background were already in 0.2.9 (12, 5 and 11 of 20), not new in 0.2.10.
+  Details switched on are described more often (character lighting 5 to 16 of 20, composition 9 to
+  16, identity 4 to 14; cube state 3 to 11). Still open: a style LoRA's palette is never described
+  (0 of 20), a photo's medium rarely (5 of 20); a style LoRA still names its subjects (7 of 20) and
+  background (7 of 20) when they are switched off; a blind accuracy check of the default captions
+  found 16 clear errors in 80 captions after against 10 before (wrong pose, camera angle, copied
+  examples such as "square jaw").
+
 Described details stay in the caption (Petr, 2026-09-28: a user reported a character's clothing
 missing from a caption; neither the LoRA type nor the output is known, so every path that could drop
 a detail switched on in the recipe is covered).
 
-- The detail switches worked: the prompt of every output asked for clothing. What could still drop it:
+- The detail switches worked: the prompt of every output asked for clothing. What could still drop it
+  (the rules above later replaced `described_details` and `worn_line`):
   - `provider.py`: a caption over 120 % of the target is rewritten shorter without the image or the
     policy ("remove secondary wording"). The rewrite now lists the details the caption describes
     (`training.described_details`, WAN I2V only motion and camera) and keeps a few words about each.

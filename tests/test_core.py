@@ -193,7 +193,7 @@ def test_prompt_trigger_and_network_boundaries():
         "<character>" in prompt
         and "ohwx" not in prompt
         and "Describe clothing." in prompt
-        and "LEARN_WITH_LORA — DO NOT DESCRIBE: stable visual identity" in prompt
+        and "- Face and body: nothing about the main subject's face" in prompt.split("NEVER DESCRIBE, ")[1]
     )
     general = Settings(trigger="ohwx")
     assert finish_caption("ohwx, woman", general)[0] == "ohwx, woman"

@@ -18,29 +18,12 @@ TOKENS = {"character": "<character>", "object": "<object>"}
 DEFAULT_CLASS = {"character": "a person", "object": "an object"}
 # How instructions refer to the named subject: noun, object pronoun, "X is", possessive.
 _WORDS = {"character": ("character", "them", "they are", "their"), "object": ("object", "it", "it is", "its")}
-# One sentence per LoRA type that says what the caption is for.
-PURPOSE = {
-    "general": "Everything the caption describes stays controllable by prompts.",
-    # Not "appearance": clothing is appearance too, so the model could leave out clothing it is asked to describe.
-    "character": "The LoRA learns only the main character's details that the caption policy marks LEARN_WITH_LORA; "
-    "everything the caption describes stays controllable by prompts.",
-    "object": "The LoRA learns only the main object's appearance; everything the caption describes stays "
-    "controllable by prompts.",
-    "style": "The LoRA learns only the visual style the images share; the caption describes their content so it "
-    "stays controllable by prompts.",
-}
+# Petr, 2026-09-29: the model does not need to know what a LoRA learns; it needs exact rules (training.py).
+PURPOSE = (
+    "Follow the caption rules at the end exactly: describe everything they list under MUST DESCRIBE and nothing "
+    "they list under NEVER DESCRIBE."
+)
 KIND = {"general": "", "character": "character ", "object": "object ", "style": "visual-style "}
-# A style LoRA's two learned details: its medium and technique, and its palette (training.py).
-STYLE_MEDIUM = (
-    "Describe only what is depicted: the subjects, objects, actions, setting and composition. Never name or "
-    "describe the medium, rendering technique, brushwork, line work, shading, texture or grain, and do not use "
-    "words such as painting, painted, illustration, drawing, sketch, print, render, rendered, 3D, CGI, anime, "
-    "cartoon, photo, photograph, photographic, cinematic, film still or stylized."
-)
-STYLE_PALETTE = (
-    "Do not describe the overall color palette, color scheme or grading. The colors of individual things are content "
-    "and may be described."
-)
 # Notices finishing can add to a caption; each is a UI message with a translation.
 MISSING_H3 = "Put the name into [Shot 1] manually."
 ADDED_AT_START = "The name was added at the start."
@@ -135,62 +118,24 @@ def naming_line(s, where: str = "where {is} first mentioned", language: str = "E
     )
 
 
-def worn_line(s) -> str | None:
-    """With the identity learned, say that the described clothing and accessories are not part of it.
-
-    Hair is left to the policy: naming it here could leak a learned hair color. WAN I2V has no such
-    line, as its caption leaves everything the first frame shows to the image.
-    """
-    if (
-        s.preset not in ("general", "character")
-        or "identity" not in s.omitted_attributes
-        or s.output_format == "wan_i2v"
-    ):
-        return None
-    names = [name for name in ("clothing", "accessories") if name not in s.omitted_attributes]
-    if not names:
-        return None
-    plural = names != ["clothing"]
-    owner = "The main character's" if s.preset == "character" else "The main person's"
-    return (
-        f"{owner} {' and '.join(names)} {'are' if plural else 'is'} not part of their identity, even when distinctive; describe "
-        f"{'them' if plural else 'it'} as the caption policy says."
-    )
-
-
 def subject_lines(s, where: str = "at the start") -> list[str]:
-    """What the LoRA type means for the content of any caption; `where` says where the trigger goes."""
+    """What the LoRA type means for the content of any caption; `where` says where the trigger goes.
+
+    What each detail may and may not say is in the caption rules (training.policy_prompt).
+    """
     lines = []
     if s.preset == "general":
         lines.append("Identify the main subject and describe it.")
     elif s.preset == "character":
-        lines.append("Keep the main character's description separate from other people in the image.")
+        if "background" not in s.omitted_attributes:
+            lines.append("Keep the main character's description separate from other people in the image.")
     elif s.preset == "object":
         lines.append("The main subject is the object; people who hold, wear or use it are secondary subjects.")
-        # Seen with Qwen3.8 27B: the object's colors, stickers and logo leak unless this is said outright.
-        hidden = []
-        if "identity" in s.omitted_attributes:
-            hidden.append("its shape, size, parts, material, surface, colors, pattern or markings")
-        if "object_text" in s.omitted_attributes:
-            hidden.append("its logo, brand marks, labels or the text on it, and never write a brand or product name")
-        if hidden:
-            # Live, BRIA's color_scheme named the cube's colors although every caption field was covered.
-            lines.append(
-                "Never describe what the object itself looks like: not " + "; not ".join(hidden) + ". This holds "
-                "everywhere, also in summaries and in any description of the image's colors or color scheme."
-            )
         if "identity" in s.omitted_attributes:
             cls = subject_class(s)
             lines.append(f"Call it only {cls!r} or {definite(cls)!r}, without adjectives.")
     else:
-        if "style" in s.omitted_attributes:
-            lines.append(STYLE_MEDIUM)
-        if "palette" in s.omitted_attributes:
-            lines.append(STYLE_PALETTE)
         lines.append("Describe people generically, such as a woman or an old man; never say who they are.")
-    worn = worn_line(s)
-    if worn:
-        lines.append(worn)
     if token(s) is None and lead_phrase(s):
         lines.append(
             f"Do not write a style name; the application adds it {where}."
@@ -198,6 +143,15 @@ def subject_lines(s, where: str = "at the start") -> list[str]:
             else f"Do not add a training trigger token; the application adds it {where}."
         )
     return lines
+
+
+def text_line(s) -> str:
+    """Whether readable text is transcribed; an object's own logo and text follow its detail switch."""
+    if s.text_in_image:
+        return "Transcribe readable visible text when relevant."
+    if s.preset == "object" and "object_text" not in s.omitted_attributes:
+        return "Do not transcribe text or watermarks, except the logo and text on the main object."
+    return "Do not transcribe text or watermarks."
 
 
 def _tidy(text: str) -> str:

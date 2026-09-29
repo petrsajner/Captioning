@@ -152,7 +152,7 @@ def test_clip_requests_send_labeled_frames_and_the_clip_instructions(tmp_path, m
     prompt = content[-1]["text"]
     assert "frames of one continuous video clip" in prompt and "first frame" in prompt
     assert "Target about 100 words" in prompt and "do not describe motion" not in prompt
-    assert "camera movement over the clip" in prompt and "hair color" not in prompt
+    assert "- Camera movement: how the camera moves over the clip" in prompt and "hair color" not in prompt
 
 
 def test_h3_clip_captions_keep_their_own_camera_movement(tmp_path, monkeypatch):
@@ -171,7 +171,7 @@ def test_h3_clip_captions_keep_their_own_camera_movement(tmp_path, monkeypatch):
     photo_prompt = make_prompt(s)
     clip_prompt = make_prompt(s, "clip")
     assert "single still image" in photo_prompt and "single still image" not in clip_prompt
-    assert "Motion over time" not in photo_prompt and "movement and actions of the main subject" in clip_prompt
+    assert "- Motion:" not in photo_prompt and "- Motion: what the main subject does" in clip_prompt
 
 
 def test_large_clip_requests_are_compressed_below_the_provider_limit(tmp_path, monkeypatch):

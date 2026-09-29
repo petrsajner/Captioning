@@ -59,15 +59,16 @@ def test_migrate_old_checkbox_and_explicit_new_policy_wins():
 def test_policy_covers_each_attribute_without_preset_conflicts():
     s = Settings(preset="character", omitted_attributes=["identity", "clothing"], instructions="Describe all clothes.")
     prompt = make_prompt(s)
-    assert prompt.count("LEARN_WITH_LORA — DO NOT DESCRIBE:") == 2
+    must, never = prompt.split("CAPTION RULES.")[1].split("NEVER DESCRIBE, ")
+    assert never.count("\n- ") == 2
     photo_details = [a for a in details_for("character") if a.get("media") != "clip"]
-    assert prompt.count("CONTROL_WITH_PROMPT — DESCRIBE IF VISIBLE:") == len(photo_details) - 2
-    assert prompt.index("MANDATORY CAPTION POLICY") > prompt.index("Describe all clothes.")
-    assert "CONTROL_WITH_PROMPT — DESCRIBE IF VISIBLE: clothing" not in prompt
+    assert must.count("\n- ") == len(photo_details) - 2
+    assert prompt.index("CAPTION RULES.") > prompt.index("Describe all clothes.")
+    assert "- Clothing: every garment" not in prompt and "- Clothing: nothing the main person wears" in never
     # Hair color can belong to the LoRA while the hairstyle stays free for prompts.
     hair = make_prompt(Settings(preset="character", omitted_attributes=["identity", "hair_color"]))
-    assert "LEARN_WITH_LORA — DO NOT DESCRIBE: hair color" in hair
-    assert "CONTROL_WITH_PROMPT — DESCRIBE IF VISIBLE: hairstyle of the main person" in hair
+    assert "- Hair color: no color of the main person's hair" in hair.split("NEVER DESCRIBE, ")[1]
+    assert "- Hairstyle: how long the main person's hair is" in hair.split("NEVER DESCRIBE, ")[0]
 
 
 def test_bria_keeps_appearance_details_until_hair_and_accessories_are_all_omitted():

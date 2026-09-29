@@ -71,10 +71,11 @@ def test_shortening_keeps_every_described_detail(image, monkeypatch):
     calls = responses(monkeypatch, [caption(49), caption(40)])
     asyncio.run(generate(image, Settings(words=40, preset="character", omitted_attributes=["identity", "hair_color"])))
     shorten = calls[1]["messages"][0]["content"]
-    assert "shorten the wording, not these facts" in shorten
-    assert "clothing of the main subject" in shorten and "hairstyle of the main person" in shorten
-    assert "facial structure" not in shorten and "hair color and hair tones" not in shorten
-    assert "movement and actions" not in shorten  # a photo has no motion
+    must, never = shorten.split("NEVER DESCRIBE, ")
+    assert "Apply the caption rules below" in must and "at least a few words" in must
+    assert "- Clothing: every garment" in must and "- Hairstyle: how long" in must
+    assert "- Face and body: nothing about" in never and "- Hair color: no color" in never
+    assert "- Motion:" not in shorten  # a photo has no motion
 
 
 def test_trigger_is_included_in_word_tolerance_and_not_duplicated(image, monkeypatch):
