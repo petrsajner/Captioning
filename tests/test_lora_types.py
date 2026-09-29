@@ -12,7 +12,7 @@ from captioning.training import TYPE_DEFAULTS
 from captioning.video import finish_video_caption, h3_body
 
 MEDIUM_NEVER = "- Medium and technique: never name or describe the medium or technique"
-PALETTE_NEVER = "- Color palette and grading: nothing about the image's overall colors"
+PALETTE_NEVER = "never the overall color palette, color scheme or grading"
 TEXT_OUTPUTS = ["normal", "wan", "wan_i2v", "ltx", "h3"]
 PROMPT_OUTPUTS = ["normal", "bria_json", "wan", "wan_i2v", "ltx", "h3"]
 
@@ -65,12 +65,9 @@ def test_style_prompts_describe_only_the_content(output):
 
 def test_a_style_detail_left_on_is_not_forbidden():
     prompt = make_prompt(Settings(preset="style", output_format="wan", trigger="Zorvak"))
-    assert MEDIUM_NEVER not in prompt and PALETTE_NEVER not in prompt
-    assert "- Medium and technique: the medium and how the image is made" in prompt
-    # The palette alone can be described while the medium stays learned.
-    prompt = make_prompt(Settings(preset="style", omitted_attributes=["style"], omitted_by_type={}))
-    assert MEDIUM_NEVER in prompt and PALETTE_NEVER not in prompt
-    assert "- Color palette and grading: the overall color scheme" in prompt
+    assert MEDIUM_NEVER not in prompt and "- Medium and technique: the medium and how the image is made" in prompt
+    # 2026-09-29: the model never described an overall palette, so a style LoRA never has it described.
+    assert PALETTE_NEVER in prompt and "Color palette" not in prompt
 
 
 POLICY = "CAPTION RULES."
@@ -104,13 +101,13 @@ def test_each_type_remembers_its_own_choices():
     assert s.omitted_by_type == {"object": ["identity"]}
     s = Settings(preset="style", omitted_attributes=["style"], omitted_by_type={"object": ["identity"]})
     assert s.omitted_by_type == {"object": ["identity"], "style": ["style"]}
-    # Recipes up to 0.2.2: "Visual style" of a style LoRA also covered the palette.
-    old = Settings(**{"preset": "style", "omitted_attributes": ["style"]})
-    assert old.omitted_attributes == ["style", "palette"]
+    # Recipes up to 0.2.10 could switch the palette; it is no detail any more and is dropped.
+    old = Settings(**{"preset": "style", "omitted_attributes": ["style", "palette"]})
+    assert old.omitted_attributes == ["style"]
     assert Settings(**{"preset": "character", "omitted_attributes": ["style"]}).omitted_attributes == ["style"]
 
 
-def test_bria_json_keeps_the_palette_apart_for_a_style_lora():
+def test_bria_json_never_keeps_the_palette_of_a_style_lora():
     data = {
         "short_description": "A woman sits.",
         "objects": [
@@ -122,11 +119,12 @@ def test_bria_json_keeps_the_palette_apart_for_a_style_lora():
         "style_medium": "woodblock print",
         "context": "",
     }
-    medium_only = Settings(preset="style", omitted_attributes=["style"], omitted_by_type={})
-    result = json.loads(normalize_json(json.dumps(data), medium_only))
-    assert "style_medium" not in result and result["aesthetics"]["color_scheme"] == "muted blues"
-    both = json.loads(normalize_json(json.dumps(data), settings("style")))
-    assert both["aesthetics"]["color_scheme"] == ""
+    medium_learned = json.loads(normalize_json(json.dumps(data), settings("style")))
+    assert "style_medium" not in medium_learned and medium_learned["aesthetics"]["color_scheme"] == ""
+    medium_described = json.loads(normalize_json(json.dumps(data), Settings(preset="style", omitted_attributes=[])))
+    assert (
+        medium_described["style_medium"] == "woodblock print" and medium_described["aesthetics"]["color_scheme"] == ""
+    )
     # Other types: "Visual style" still covers the palette.
     character = json.loads(normalize_json(json.dumps(data), Settings(preset="character", omitted_attributes=["style"])))
     assert character["aesthetics"]["color_scheme"] == ""
@@ -309,3 +307,12 @@ def test_type_specific_detail_names_are_translated():
     messages = catalog("cs")["messages"]
     names = {d[key] for t in ALL_TYPES for d in details_for(t) for key in ("label", "detail")}
     assert [name for name in names if name not in messages] == []
+
+
+@pytest.mark.parametrize("output", PROMPT_OUTPUTS)
+def test_every_prompt_checks_its_statements_against_the_image(output):
+    # Live 2026-09-29: the hands, standing or sitting, the camera angle and copied examples went wrong most.
+    media = "clip" if output == "wan_i2v" else "image"
+    prompt = make_prompt(settings("character", output, "Velmira", "a woman"), media)
+    assert "Check every statement against the image" in prompt and "Never guess" in prompt
+    assert "Example:" not in prompt.split("- Clothing:")[0]  # no example phrase before the clothing rule

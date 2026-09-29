@@ -136,6 +136,11 @@ def subject_lines(s, where: str = "at the start") -> list[str]:
             lines.append(f"Call it only {cls!r} or {definite(cls)!r}, without adjectives.")
     else:
         lines.append("Describe people generically, such as a woman or an old man; never say who they are.")
+        # The palette switch is gone (2026-09-29): the model never described an overall palette when asked.
+        lines.append(
+            "Name the colors of single things, but never the overall color palette, color scheme or grading of "
+            "the image."
+        )
     if token(s) is None and lead_phrase(s):
         lines.append(
             f"Do not write a style name; the application adds it {where}."
