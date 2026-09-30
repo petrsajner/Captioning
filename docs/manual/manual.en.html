@@ -305,6 +305,12 @@
           <li>Click <span class="ui">Save and continue →</span>.</li>
         </ol>
         <div class="tip">
+          <strong>Reasoning</strong>
+          Local Qwen reasons while it looks at the image and shortens without reasoning: it makes about half the errors
+          and takes about 23 s per caption on an RTX 5090. A server that cannot reason gets a notice and the strictest
+          detail switch offer.
+        </div>
+        <div class="tip">
           <strong>Keep Marvin running while you caption</strong>
           Caption Studio never starts or stops Marvin. Closing Marvin stops the model and frees the graphics card, for
           example before you train a LoRA.
@@ -353,6 +359,99 @@
       The model list can include text-only models. If the model rejects images, choose another one. For video clips the
       model receives up to 30 frames in one request.
     </div>
+    <h3 id="models">Recommended models</h3>
+    <p>
+      The cloud settings show the recommended models by quality in a green zone and the models we advise against in a
+      red zone. Each shows its quality (1–5 bars), time per caption and price per 100 captions; click it for details.
+      <span class="ui">Use this model</span> fills in the model ID for the chosen provider, or switches to OpenRouter
+      when that provider does not offer it. Then save.
+    </p>
+    <table>
+      <tr>
+        <th>#</th>
+        <th>Model</th>
+        <th>Clear errors / 10</th>
+        <th>Minor / 10</th>
+        <th>Switched-on described</th>
+        <th>s / caption</th>
+        <th>$ / 100 captions</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>GPT 6.1 Sol <small>(OpenAI)</small></td>
+        <td>0.0</td>
+        <td>1.5</td>
+        <td>99 %</td>
+        <td>~9</td>
+        <td>~1.50</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Claude Opus 5.5 <small>(Anthropic)</small></td>
+        <td>0.0</td>
+        <td>2.4</td>
+        <td>98 %</td>
+        <td>~13</td>
+        <td>~3.90</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Gemini 3.8 Flash <small>(Google)</small></td>
+        <td>0.4</td>
+        <td>2.4</td>
+        <td>93 %</td>
+        <td>~12</td>
+        <td>~0.85</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Qwen 3.8 Max <small>(Alibaba)</small></td>
+        <td>0.7</td>
+        <td>2.5</td>
+        <td>99 %</td>
+        <td>~61</td>
+        <td>~2.95</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>Grok 4.7 <small>(xAI)</small></td>
+        <td>0.7</td>
+        <td>3.3</td>
+        <td>98 %</td>
+        <td>~43</td>
+        <td>~3.45</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>Muse Spark 1.3 <small>(Meta)</small></td>
+        <td>0.7</td>
+        <td>3.3</td>
+        <td>97 %</td>
+        <td>~44</td>
+        <td>~2.25</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td>GLM 5.3 FlashX <small>(Z.ai)</small></td>
+        <td>1.9</td>
+        <td>3.1</td>
+        <td>97 %</td>
+        <td>~14</td>
+        <td>~0.36</td>
+      </tr>
+    </table>
+    <p>
+      We advise against: <strong>GLM 5V Turbo</strong> (many minor errors, slow),
+      <strong>MiMo 2.6 Flash</strong> (leaves out switched-on details, slow), <strong>DeepSeek V4.1 Flash</strong> (many
+      clear errors, sometimes answers with a message instead of a caption), <strong>MiMo 2.6 Pro</strong> (most clear
+      errors), <strong>Kimi K3</strong> (expensive and slow). You can still use them; they get the strictest detail
+      switch offer.
+    </p>
+    <p class="tiny muted">
+      Measured in September 2026 on the 55 hardest shots (people, a puzzle cube, Japanese woodblock prints) with 40-word
+      captions, judged blind against the image. OpenRouter runs Muse Spark only after you confirm you are 18+ in your
+      account settings.
+    </p>
 
     <div class="block">
       <h2 id="server">3.3 Other local servers</h2>
@@ -847,6 +946,11 @@
         captions up to 120 % are kept; a longer one is sent back to the model for a shorter version. Text is never cut
         off mechanically. BRIA JSON has no word target.
       </li>
+      <li>
+        Below the slider is the <strong>shortest reliable length</strong> for the chosen model and the number of
+        switched-on details (about 4.5 words per detail for the cloud models, 6.5 for local Qwen, 9 for an unknown
+        model). It is only a recommendation; a shorter target turns yellow, nothing is limited.
+      </li>
     </ul>
 
     <h2 id="details">7.4 Choosing what to include</h2>
@@ -915,6 +1019,14 @@
         <img src="img/en/details-style.jpg" alt="Style details" />
         <figcaption>Style: medium, technique and palette are learned</figcaption>
       </figure>
+    </div>
+    <div class="note">
+      <strong>Greyed-out switches</strong>
+      Every switch was measured on every recommended model. When a model does not follow one reliably (a detail switched
+      off would leak, one switched on would be missing), the switch is greyed at the LoRA type's default with the reason
+      below it. The recipe keeps your choice, and it returns with a model that can follow it. For a visual style no
+      model leaves out the content and background reliably, so they are always described; Muse Spark does not describe a
+      character's hair color reliably; an unknown model gets the strictest offer.
     </div>
     <h3>Tips per type</h3>
     <ul>
@@ -1170,6 +1282,18 @@
         than once, later mentions use its type.
       </li>
       <li>Existing captions are never lost: a replaced file is backed up first.</li>
+      <li>
+        <strong>Reasoning:</strong> the model reasons while it looks at the image; shortening and completing use the
+        least reasoning the provider accepts (faster and cheaper, same quality).
+      </li>
+      <li>
+        <strong>An answer that is not a caption</strong> (a message to the user or stray markup such as
+        <code>&lt;characters&gt;</code>) is kept <em>To review</em>; nothing is deleted.
+      </li>
+      <li>
+        <strong>A provider error</strong> also shows the provider's own message, for example about confirming your age
+        or an exhausted credit.
+      </li>
     </ul>
 
     <!-- 11 -->

@@ -306,6 +306,12 @@
           <li>Klikněte na <span class="ui">Uložit a pokračovat →</span>.</li>
         </ol>
         <div class="tip">
+          <strong>Uvažování</strong>
+          Lokální Qwen při popisu obrázku uvažuje a zkracuje bez uvažování: dělá tak zhruba poloviční počet chyb a trvá
+          asi 23 s na popisek na RTX 5090. Server, na kterém uvažování zapnout nejde, dostane upozornění a nejpřísnější
+          nabídku přepínačů detailů.
+        </div>
+        <div class="tip">
           <strong>Při popisování nechte Marvina běžet</strong>
           Caption Studio Marvina nikdy nespouští ani neukončuje. Zavřením Marvina se model zastaví a grafická karta se
           uvolní, například před tréninkem LoRA.
@@ -354,6 +360,97 @@
       Seznam může obsahovat i čistě textové modely. Pokud model obrázky odmítne, zvolte jiný. U videoklipů dostane model
       v jednom požadavku až 30 snímků.
     </div>
+    <h3 id="models">Doporučené modely</h3>
+    <p>
+      Nastavení cloudu ukazuje v zelené zóně doporučené modely seřazené podle kvality a v červené zóně modely, které
+      nedoporučujeme. U každého je vidět kvalita (1–5 dílků), čas na popisek a cena za 100 popisků; kliknutím se zobrazí
+      podrobnosti. <span class="ui">Použít tento model</span> vyplní ID modelu pro zvoleného poskytovatele; když ho
+      zvolený poskytovatel nenabízí, přepne na OpenRouter. Pak stačí uložit.
+    </p>
+    <table>
+      <tr>
+        <th>#</th>
+        <th>Model</th>
+        <th>Jasné chyby / 10</th>
+        <th>Drobné / 10</th>
+        <th>Zapnuté popsané</th>
+        <th>s / popisek</th>
+        <th>$ / 100 popisků</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>GPT 6.1 Sol <small>(OpenAI)</small></td>
+        <td>0,0</td>
+        <td>1,5</td>
+        <td>99 %</td>
+        <td>~9</td>
+        <td>~1,50</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Claude Opus 5.5 <small>(Anthropic)</small></td>
+        <td>0,0</td>
+        <td>2,4</td>
+        <td>98 %</td>
+        <td>~13</td>
+        <td>~3,90</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Gemini 3.8 Flash <small>(Google)</small></td>
+        <td>0,4</td>
+        <td>2,4</td>
+        <td>93 %</td>
+        <td>~12</td>
+        <td>~0,85</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Qwen 3.8 Max <small>(Alibaba)</small></td>
+        <td>0,7</td>
+        <td>2,5</td>
+        <td>99 %</td>
+        <td>~61</td>
+        <td>~2,95</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>Grok 4.7 <small>(xAI)</small></td>
+        <td>0,7</td>
+        <td>3,3</td>
+        <td>98 %</td>
+        <td>~43</td>
+        <td>~3,45</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>Muse Spark 1.3 <small>(Meta)</small></td>
+        <td>0,7</td>
+        <td>3,3</td>
+        <td>97 %</td>
+        <td>~44</td>
+        <td>~2,25</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td>GLM 5.3 FlashX <small>(Z.ai)</small></td>
+        <td>1,9</td>
+        <td>3,1</td>
+        <td>97 %</td>
+        <td>~14</td>
+        <td>~0,36</td>
+      </tr>
+    </table>
+    <p>
+      Nedoporučujeme: <strong>GLM 5V Turbo</strong> (hodně drobných chyb, pomalý),
+      <strong>MiMo 2.6 Flash</strong> (vynechává zapnuté detaily, pomalý), <strong>DeepSeek V4.1 Flash</strong> (hodně
+      jasných chyb, občas místo popisku odpoví zprávou), <strong>MiMo 2.6 Pro</strong> (nejvíc jasných chyb),
+      <strong>Kimi K3</strong> (drahý a pomalý). Použít je můžete, dostanou ale nejpřísnější nabídku přepínačů detailů.
+    </p>
+    <p class="tiny muted">
+      Měřeno v září 2026 na 55 nejtěžších záběrech (lidé, kostka, japonské dřevořezy), popisky 40 slov, hodnoceno
+      naslepo proti obrázku. Muse Spark spustí OpenRouter až po potvrzení věku 18+ v nastavení účtu.
+    </p>
 
     <div class="block">
       <h2 id="server">3.3 Jiné lokální servery</h2>
@@ -851,6 +948,11 @@
         <span class="ui">Cílová délka</span>: 20–300 slov, výchozí 100, včetně jména. Je orientační: popisky do 120 %
         zůstanou celé; delší model zkrátí. Text se nikdy mechanicky neořezává. BRIA JSON cílovou délku nemá.
       </li>
+      <li>
+        Pod posuvníkem je <strong>nejkratší spolehlivá délka</strong> pro zvolený model a počet zapnutých detailů (u
+        cloudových modelů asi 4,5 slova na detail, u lokálního Qwenu 6,5, u neznámého modelu 9). Je to jen doporučení;
+        kratší cíl se zvýrazní žlutě, ale nic se neomezuje.
+      </li>
     </ul>
 
     <h2 id="details">7.4 Co přidat do popisu</h2>
@@ -919,6 +1021,13 @@
         <img src="img/cs/details-style.jpg" alt="Detaily stylu" />
         <figcaption>Styl: médium, techniku a paletu se naučí LoRA</figcaption>
       </figure>
+    </div>
+    <div class="note">
+      <strong>Zašedlé přepínače</strong>
+      Každý přepínač jsme změřili na každém doporučeném modelu. Když ho model spolehlivě nedodrží (vypnutý detail by
+      prosákl, zapnutý by chyběl), přepínač zašedne ve výchozím stavu typu LoRA a pod ním je důvod. Recept si vaši volbu
+      pamatuje a se schopnějším modelem se vrátí. U vizuálního stylu nevynechá obsah a pozadí spolehlivě žádný model,
+      takže se popisují vždy; Muse Spark nepopíše spolehlivě barvu vlasů postavy; neznámý model má nejpřísnější nabídku.
     </div>
     <h3>Tipy pro jednotlivé typy</h3>
     <ul>
@@ -1161,6 +1270,18 @@
         zmínky použijí jeho typ.
       </li>
       <li>Existující popisky se nikdy neztratí: nahrazovaný soubor se nejprve zazálohuje.</li>
+      <li>
+        <strong>Uvažování:</strong> model uvažuje, když se dívá na obrázek; zkracování a dokončení jde s nejnižším
+        uvažováním, které poskytovatel přijme (rychlejší a levnější, kvalita beze změny).
+      </li>
+      <li>
+        <strong>Odpověď, která není popisek</strong> (zpráva uživateli nebo zbloudilá značka jako
+        <code>&lt;characters&gt;</code>), zůstane <em>Ke kontrole</em>; nic se nemaže.
+      </li>
+      <li>
+        <strong>Chyba poskytovatele</strong> ukáže i jeho vlastní zprávu, například o potvrzení věku nebo došlém
+        kreditu.
+      </li>
     </ul>
 
     <!-- 11 -->

@@ -1,6 +1,46 @@
 # Caption Studio development handoff
 
-## Current release: 0.2.10 (2026-09-28)
+## Current release: 0.3.0 (2026-09-30)
+
+Switches offered per model, reasoning per stage and provider, measured models in the settings. Petr's
+rules (2026-09-29/30): a switch a model cannot follow must not be offered ("it would lie"); unknown
+models get the strictest offer; lower Qwen quants and all local Qwen share one profile; all Anthropic
+models count as Opus, all Gemini as Gemini Flash, GPT at Anthropic level; local Qwen always reasons (no
+toggle); send each provider only the reasoning value it is known to accept, no blind fallback. The
+measurements, blind judgements and the proposal Petr approved are in `output/switch-test` (PROPOSAL.md,
+model-table-mockup.html; not in git).
+
+- `capabilities.py`: model profiles ("full", "muse", "strict") by name and mode, the locked details per
+  profile with their reason, `effective()` (a locked detail at the type default; the recipe keeps the
+  user's choice) and the recommended length (words per switched-on photo detail: cloud 4.4, local 6.5,
+  strict 8.8). Style content and background OFF are locked for every model (even Opus leaked 5 of 10 on
+  one-subject prints), Muse locks a character's hair color ON, strict locks character identity ON,
+  accessories OFF, object background OFF and the palette ON (measured as Qwen without reasoning).
+- `provider.py`: `generate` applies `effective`; local Qwen reasons for `caption`/`retry_caption` and not
+  for rewrites (`CaptionSession.stage_options`; managed always, external when `/props` shows
+  `enable_thinking`, else the strict profile and `NO_LOCAL_REASONING`); cloud rewrites send
+  `REWRITE_REASONING` (OpenRouter `reasoning.effort` minimal, Google `reasoning_effort` none, OpenAI
+  low; "none" is rejected by OpenRouter, "minimal" by Google and gpt-6.1-sol). `<thinking>` blocks are
+  removed; `not_a_caption` keeps a message to the user or stray markup for review; `http_error` adds the
+  provider's message with an echoed key masked.
+- `training.py`: palette is a style detail again (default OFF, `bria.py` and `anchor.py` follow it);
+  pose NEVER forbids naming held objects and, in a close-up, the head turn; pose MUST asks for the head
+  turn in a close-up; hair color MUST gives the tone in black-and-white; identity MUST names one face or
+  body feature (facial hair belongs to the hairstyle; "clean-shaven" in the tested wording was copied
+  onto men with a moustache, so it is not in the rule); object interaction NEVER covers sleeves and
+  wristbands; `_combinations` adds the headwear rule and an object's placement without its surface;
+  state "assembled or taken apart".
+- UI: `models.js` (green/red model table, local card, "Use this model"), `recipe.js` (greyed switches
+  with `data-choice` holding the user's state, length recommendation), `state.capabilities` from
+  `service.snapshot`, the prompt preview shows the effective prompt. Manual 3.2 (recommended models),
+  3.1 (reasoning), 7.3 (length), 7.4 (greyed switches), 10 (what happens automatically).
+- Measured (40 words, blind): model table from the 55 hardest shots; switch offer from the full switch
+  test (Opus, Gemini, GLM FlashX, local Qwen, GPT 10 photos per type; Qwen Max, Grok, Muse 5) and a
+  re-measure of the borderline switches on a second photo set with the four rule fixes, all models.
+- Still open: the switch test after implementation for local Qwen and Gemini with the final code;
+  screenshots in the manual; the managed runtime's reasoning is assumed from its Qwen template.
+
+## 0.2.10 (2026-09-28)
 
 Exact caption rules per detail (Petr, 2026-09-29: "the model does not have to understand general
 wording, the LoRA learns that; tell it exactly what must be in the caption and forbid outright what
