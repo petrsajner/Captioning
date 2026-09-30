@@ -38,8 +38,17 @@ model-table-mockup.html; not in git).
 - Measured (40 words, blind): model table from the 55 hardest shots; switch offer from the full switch
   test (Opus, Gemini, GLM FlashX, local Qwen, GPT 10 photos per type; Qwen Max, Grok, Muse 5) and a
   re-measure of the borderline switches on a second photo set with the four rule fixes, all models.
-- Still open: the switch test after implementation for local Qwen and Gemini with the final code;
-  screenshots in the manual; the managed runtime's reasoning is assumed from its Qwen template.
+- Verified after implementation: Gemini 3.8 Flash (direct Google API) full switch test with the final code,
+  blind (no leak of a switch it follows; palette 10/10; a close-up's pose 7/10 at 40 words, 9/10 at 60,
+  10/10 at 80, hence 60 words for Gemini, Muse and GLM); local Qwen on Marvin quick check (reasoning on
+  for every caption stage, off for every rewrite; palette 3/3; a held umbrella not named with pose off).
+  The managed runtime's reasoning is assumed from its Qwen template.
+- Build 0.3.0 (2026-09-30): `scripts/build.ps1` passed (ruff, mypy, 255 pytest, 20 Playwright), smoke test
+  of the package passed. Windows Sandbox: install, import, thumbnails, clip frames, saved caption and the
+  llama.cpp runtime pass; the app window stays black because the sandbox's WebView2 153.0.4234.48 fails
+  with "Package dependency criteria could not be resolved". The released 0.2.9 installer fails the same
+  way in the same sandbox, so this is the sandbox, not 0.3.0; the `webview2_processes` check cannot pass
+  there until Windows fixes it. Restarting the vmcompute service helps when a new sandbox does not start.
 
 ## 0.2.10 (2026-09-28)
 
