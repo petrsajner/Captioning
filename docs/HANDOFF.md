@@ -12,8 +12,9 @@ model-table-mockup.html; not in git).
 
 - `capabilities.py`: model profiles ("full", "muse", "strict") by name and mode, the locked details per
   profile with their reason, `effective()` (a locked detail at the type default; the recipe keeps the
-  user's choice) and the recommended length (words per switched-on photo detail: cloud 4.4, local 6.5,
-  strict 8.8). Style content and background OFF are locked for every model (even Opus leaked 5 of 10 on
+  user's choice) and the recommended length (words per switched-on photo detail: GPT, Claude, Qwen Max,
+  Grok 4.4; Gemini, Muse, GLM and local Qwen 6.5, as Gemini described a close-up's pose in 7/9/10 of 10 at
+  40/60/80 words; strict 8.8). Style content and background OFF are locked for every model (even Opus leaked 5 of 10 on
   one-subject prints), Muse locks a character's hair color ON, strict locks character identity ON,
   accessories OFF, object background OFF and the palette ON (measured as Qwen without reasoning).
 - `provider.py`: `generate` applies `effective`; local Qwen reasons for `caption`/`retry_caption` and not

@@ -79,11 +79,14 @@ def test_locked_detail_returns_to_the_type_default_in_both_directions():
 
 def test_recommended_length_follows_the_model_and_the_switched_on_details():
     character = dict(preset="character", omitted_attributes=["identity", "hair_color"])  # 9 photo details on
-    assert capabilities.recommended_words(cloud("google/gemini-3.8-flash", **character)) == 40
+    assert capabilities.recommended_words(cloud("openai/gpt-6.1-sol", **character)) == 40
+    assert capabilities.recommended_words(cloud("anthropic/claude-opus-5.5", **character)) == 40
+    # Gemini described a close-up's pose in 7 of 10 captions at 40 words, in 9 at 60.
+    assert capabilities.recommended_words(cloud("google/gemini-3.8-flash", **character)) == 60
     assert capabilities.recommended_words(Settings(**character)) == 60
     assert capabilities.recommended_words(cloud("x/y", **character)) == 80
     few = cloud(
-        "google/gemini-3.8-flash",
+        "openai/gpt-6.1-sol",
         preset="character",
         omitted_attributes=[
             "identity",

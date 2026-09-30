@@ -32,8 +32,10 @@ LOCKS: dict[str, dict[tuple[str, str], str]] = {
 }
 ALWAYS = {("style", "identity"): NO_MODEL, ("style", "background"): NO_MODEL}
 # Words per switched-on photo detail for the shortest reliable caption: 40 words for a character's 9 details on
-# the cloud models, 60 on local Qwen with reasoning, 80 on Qwen without it.
-WORDS_PER_DETAIL = {"cloud": 4.4, "local": 6.5, "strict": 8.8}
+# GPT, Claude, Qwen Max and Grok, 60 on Gemini, Muse, GLM FlashX and local Qwen with reasoning (at 40 words Gemini
+# described the pose of a close-up in 7 of 10 captions, at 60 in 9, at 80 in 10), 80 on Qwen without reasoning.
+WORDS_PER_DETAIL = {"cloud": 4.4, "longer": 6.5, "local": 6.5, "strict": 8.8}
+LONGER_MODELS = re.compile(r"gemini|muse-spark|glm-", re.I)
 # Cloud models by name, newer versions of the same line included.
 FULL_MODELS = re.compile(r"claude|anthropic|(^|/)gpt-|openai/|gemini|qwen[^/]*max|grok|glm-[\d.]+-flashx", re.I)
 MUSE_MODELS = re.compile(r"muse-spark", re.I)
@@ -74,7 +76,9 @@ def effective(s, reasoning: bool = True):
 def words_per_detail(s, reasoning: bool = True) -> float:
     if profile(s, reasoning) == "strict":
         return WORDS_PER_DETAIL["strict"]
-    return WORDS_PER_DETAIL["local" if s.mode == "local" else "cloud"]
+    if s.mode == "local":
+        return WORDS_PER_DETAIL["local"]
+    return WORDS_PER_DETAIL["longer" if LONGER_MODELS.search(s.cloud_model) else "cloud"]
 
 
 def recommended_words(s, reasoning: bool = True) -> int:

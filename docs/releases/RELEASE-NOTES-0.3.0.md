@@ -50,7 +50,8 @@ provider accepts (OpenRouter minimal, Google none, OpenAI low). Blind A/B checks
 Opus rewrites twice as fast, Qwen Max's from 117 to 15 seconds.
 
 **Recommended length.** Below the length slider, the shortest reliable caption length for your model and
-the number of switched-on details: about 40 words for a character on the cloud models, 60 on local Qwen.
+the number of switched-on details: about 40 words for a character on GPT, Claude, Qwen Max and Grok,
+60 on Gemini, Muse, GLM FlashX and local Qwen.
 It is a note, never a limit.
 
 **Clearer problems.** A provider error shows the provider's own message (an 18+ confirmation, exhausted

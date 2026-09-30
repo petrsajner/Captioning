@@ -51,11 +51,15 @@ test('the offer and the recommended length follow the configured model', async (
   await expect(note).toHaveText('Shortest reliable length for this model and 9 switched-on details: 80 words.');
   await expect(note).not.toHaveClass(/short/);
 
-  // Muse describes everything but a character's hair color reliably; the cloud models need about 40 words.
+  // Muse describes everything but a character's hair color reliably; like Gemini it needs about 60 words.
   await api(page, '/settings', { settings: { ...base, mode: 'cloud', cloud_model: 'meta/muse-spark-1.3' } });
   await page.reload();
   await expect(recipe.locator('[data-attribute=hair_color]')).toBeDisabled();
   await expect(recipe.locator('[data-attribute=identity]')).toBeEnabled();
+  await expect(note).toHaveText('Shortest reliable length for this model and 9 switched-on details: 60 words.');
+  // GPT needs about 40.
+  await api(page, '/settings', { settings: { ...base, mode: 'cloud', cloud_model: 'openai/gpt-6.1-sol' } });
+  await page.reload();
   await expect(note).toHaveText('Shortest reliable length for this model and 9 switched-on details: 40 words.');
 });
 
