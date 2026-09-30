@@ -13,8 +13,11 @@ let recipeTimer,
   shownType = null,
   typeChoices = {};
 
+// A switch the model cannot follow shows the type default, but the recipe keeps the user's own choice.
 const shownOmitted = () =>
-  [...recipe.querySelectorAll('[data-attribute]')].filter((el) => !el.checked).map((el) => el.dataset.attribute);
+  [...recipe.querySelectorAll('[data-attribute]')]
+    .filter((el) => (el.dataset.choice ? el.dataset.choice === 'off' : !el.checked))
+    .map((el) => el.dataset.attribute);
 
 // Current recipe form values on top of the saved settings.
 export function liveSettings() {
@@ -53,7 +56,7 @@ export function fillTrainingControls(settings) {
   $('training-controls').innerHTML = ui.state.training_details[settings.preset]
     .map(
       (a) =>
-        `<label class="caption-detail" data-media="${a.media || ''}"><span><input type="checkbox" name="include_${a.id}" data-attribute="${a.id}" ${omitted.has(a.id) ? '' : 'checked'}><span class="detail-name">${esc(t(a.label))}</span><span class="detail-state" aria-hidden="true"><span class="state-on">ON</span><span class="state-off">OFF</span></span></span><small>${esc(t(a.detail))}</small></label>`,
+        `<label class="caption-detail" data-media="${a.media || ''}"><span><input type="checkbox" name="include_${a.id}" data-attribute="${a.id}" ${omitted.has(a.id) ? '' : 'checked'}><span class="detail-name">${esc(t(a.label))}</span><span class="detail-state" aria-hidden="true"><span class="state-on">ON</span><span class="state-off">OFF</span></span></span><small>${esc(t(a.detail))}</small><small class="lock-note" hidden></small></label>`,
     )
     .join('');
 }
@@ -140,6 +143,50 @@ export function loadRecipe(settings) {
   $('word-output').value = settings.words;
 }
 
+// Measured per model (captioning/capabilities.py): a switch it cannot follow is greyed out at the type default.
+function renderLocks(preset, blocked) {
+  const locks = ui.state.capabilities.locked[preset] || {},
+    defaults = ui.state.training_defaults[preset];
+  for (const input of $('training-controls').querySelectorAll('[data-attribute]')) {
+    const id = input.dataset.attribute,
+      reason = locks[id],
+      label = input.closest('.caption-detail');
+    if (reason && !input.dataset.choice) {
+      input.dataset.choice = input.checked ? 'on' : 'off';
+      input.checked = !defaults.includes(id);
+    } else if (!reason && input.dataset.choice) {
+      input.checked = input.dataset.choice === 'on';
+      delete input.dataset.choice;
+    }
+    input.disabled = blocked || !!reason;
+    label.classList.toggle('locked', !!reason);
+    const note = label.querySelector('.lock-note');
+    note.hidden = !reason;
+    note.textContent = reason ? t(reason) : '';
+  }
+}
+
+// The shortest reliable length for this model and the switched-on photo details; only a note, never a limit.
+function renderLengthRecommendation(s, normal) {
+  const note = $('length-recommendation'),
+    on = ui.state.training_details[s.preset].filter(
+      (a) =>
+        a.media !== 'clip' &&
+        !s.omitted_attributes.includes(a.id) &&
+        !(ui.state.capabilities.locked[s.preset] || {})[a.id],
+    ).length,
+    locked = Object.keys(ui.state.capabilities.locked[s.preset] || {}).filter(
+      (id) => !ui.state.training_defaults[s.preset].includes(id),
+    ).length,
+    words = Math.max(20, Math.ceil(((on + locked) * ui.state.capabilities.words_per_detail) / 10) * 10);
+  note.hidden = !normal;
+  note.classList.toggle('short', Number(s.words) < words);
+  note.textContent = t('Shortest reliable length for this model and {n} switched-on details: {words} words.', {
+    n: on + locked,
+    words,
+  });
+}
+
 function renderTrainingPlan() {
   const s = liveSettings(),
     format = s.output_format,
@@ -158,6 +205,8 @@ function renderTrainingPlan() {
   recipe.elements.format.disabled = json || video || blocked;
   recipe.elements.language.disabled = video || blocked;
   recipe.elements.words.disabled = json || blocked;
+  renderLocks(s.preset, blocked);
+  renderLengthRecommendation(s, format === 'normal');
   $('json-format-note').hidden = !json;
   $('length-policy-note').hidden = json;
   $('video-format-note').hidden = !video;

@@ -111,6 +111,7 @@
             <span><output id="word-output">100</output> <span data-i18n="words">words</span></span
             ><input name="words" type="range" min="20" max="300" step="10"
           /></label>
+          <p id="length-recommendation" class="tiny length-recommendation" aria-live="polite"></p>
           <p id="video-format-note" class="tiny muted" hidden>
             <span
               data-i18n="Video model captions are English descriptions. Each model gets its own caption file; the others are not changed."
@@ -541,6 +542,7 @@
               >
             </p>
           </div>
+          <div id="local-model-card" class="model-table"></div>
         </div>
         <div id="cloud-settings" hidden>
           <label
@@ -589,6 +591,7 @@
               include text-only models.</span
             >
           </p>
+          <div id="model-table" class="model-table"></div>
         </div>
         <details class="advanced">
           <summary><span data-i18n="Analysis settings">Analysis settings</span></summary>

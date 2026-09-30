@@ -7,12 +7,14 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import httpx
 from PIL import Image, ImageOps
 
 from .anchor import finish_caption, token
 from .bria import normalize_json, schema_prompt
+from .capabilities import effective
 from .errors import ProviderUnavailableError, UserError
 from .media import VIDEO_EXTENSIONS, encode, frame_times, frames_at, is_video, probe
 from .models import VIDEO_OUTPUTS, Settings, make_prompt
@@ -37,6 +39,11 @@ HTTP_HINTS = {
     429: "The request rate limit was reached.",
 }
 BLOCKED_FINISH = {"content_filter", "safety", "blocklist", "prohibited_content"}
+# A local server whose chat template cannot switch reasoning on runs without it and gets the strict switch offer.
+NO_LOCAL_REASONING = (
+    "This local server does not allow reasoning, so captions are less accurate and some detail switches keep their "
+    "defaults."
+)
 RETRY_MESSAGE = {
     "role": "user",
     "content": "Return the final image caption only. The previous response contained no usable caption.",
@@ -81,11 +88,13 @@ def image_bytes(path: Path, size: int, quality=92) -> bytes:
 
 def clean_caption(value: str) -> str:
     """The model's text without reasoning, fences, quotes and extra whitespace; the trigger comes later."""
-    value = re.sub(r"<think>.*?</think>", "", value, flags=re.S).strip()
-    if "</think>" in value:
-        value = value.rsplit("</think>", 1)[-1]
-    if "<think>" in value:
-        value = value.split("<think>", 1)[0]
+    # Qwen writes <think>; Opus sometimes returned its reasoning as <thinking> in the text (4 of about 450).
+    for tag in ("think", "thinking"):
+        value = re.sub(rf"<{tag}>.*?</{tag}>", "", value, flags=re.S).strip()
+        if f"</{tag}>" in value:
+            value = value.rsplit(f"</{tag}>", 1)[-1]
+        if f"<{tag}>" in value:
+            value = value.split(f"<{tag}>", 1)[0]
     value = re.sub(r"^```[^\n]*\n|\n```$", "", value).strip()
     if len(value) > 1 and value.startswith('"') and value.endswith('"'):
         value = value[1:-1]
@@ -93,6 +102,27 @@ def clean_caption(value: str) -> str:
     if not value:
         raise UserError("The model returned an empty caption.")
     return value
+
+
+# Live, DeepSeek once answered "i'll condense your draft…" and GLM left "<characters>" in a caption. Such text
+# is kept for review, never changed or deleted.
+MESSAGE_START = re.compile(
+    r"^(i['’]ll|i will|i['’]ve|i have|here is|here['’]s|sure\b|certainly|as requested|below is)", re.I
+)
+MARKUP = re.compile(r"</?[A-Za-z][\w-]*>")
+NOT_A_CAPTION = "The model answered with a message instead of a caption. Check the text."
+STRAY_MARKUP = "The caption contains markup such as {tag}. Check the text."
+
+
+def not_a_caption(draft: str, caption: str | None = None) -> str:
+    """A notice when the model's text is not a plain caption; empty when it is.
+
+    The draft is the model's own text; the caption has the name token (<character>) already replaced.
+    """
+    if MESSAGE_START.match(draft.strip()):
+        return NOT_A_CAPTION
+    tag = MARKUP.search(draft if caption is None else caption)
+    return STRAY_MARKUP.format(tag=tag.group(0)) if tag else ""
 
 
 async def list_models(s: Settings, key: str = "") -> list[str]:
@@ -123,34 +153,68 @@ def build_payload(s: Settings, model: str, images: list[tuple[str, str]], media:
     if s.mode == "local":
         payload.update(temperature=0.6, top_p=0.95)
         if s.local_source == "managed":
-            payload["chat_template_kwargs"] = {"enable_thinking": False}
+            payload["chat_template_kwargs"] = {"enable_thinking": True}
             if s.output_format == "bria_json":
                 payload["response_format"] = {"type": "json_object"}
     return payload
 
 
-async def disable_external_thinking(client: httpx.AsyncClient, base: str, headers: dict, payload: dict):
-    """Capability-gated, per-request setting. Never reconfigure the external server.
+async def external_can_reason(client: httpx.AsyncClient, base: str, headers: dict) -> bool:
+    """Whether an external server's chat template lets a request switch reasoning on; never reconfigure it.
 
-    Qwen's reasoning can otherwise spend thousands of tokens counting caption words.
+    Measured 2026-09-30: local Qwen reasoning while it looks at the image makes about half the clear errors and
+    describes a held object and the palette correctly (CaptionSession.stage_options).
     """
     root = base[:-3] if base.endswith("/v1") else base
     try:
         props = await client.get(root + "/props", headers=headers, timeout=3)
         info = props.json() if props.status_code == 200 else {}
-        if (
+        return (
             isinstance(info, dict)
             and "default_generation_settings" in info
             and "enable_thinking" in str(info.get("chat_template", ""))
-        ):
-            payload["chat_template_kwargs"] = {"enable_thinking": False}
+        )
     except (httpx.HTTPError, ValueError, TypeError, KeyError):
-        pass
+        return False
 
 
-def http_error(status: int) -> UserError:
+# The lowest reasoning each provider accepts for a text-only rewrite; only values it is known to accept
+# (Petr, 2026-09-30). OpenRouter rejects "none" ("Reasoning is mandatory"), Google rejects "minimal",
+# OpenAI's gpt-6.1-sol accepts only "low" and higher. A rewrite does not see the image, so it needs no reasoning:
+# Opus 8.6 -> 4.5 s, Gemini 10 -> 1.3 s, Qwen 3.8 Max 117 -> 15 s per shortening, quality unchanged (blind A/B).
+REWRITE_REASONING = {
+    "openrouter.ai": ("reasoning", {"effort": "minimal"}),
+    "generativelanguage.googleapis.com": ("reasoning_effort", "none"),
+    "api.openai.com": ("reasoning_effort", "low"),
+}
+
+
+def rewrite_reasoning(base: str) -> tuple[str, object] | None:
+    host = urlsplit(base).hostname or ""
+    return next((v for k, v in REWRITE_REASONING.items() if host == k or host.endswith("." + k)), None)
+
+
+def provider_message(response: httpx.Response, secret: str = "") -> str:
+    """The provider's own error text, such as OpenRouter's 18+ confirmation or an exhausted credit.
+
+    A provider that echoes the API key gets it masked.
+    """
+    try:
+        body = response.json()
+    except ValueError:
+        return ""
+    if isinstance(body, list) and body:
+        body = body[0]  # Google's OpenAI-compatible API wraps the error in a list.
+    error = body.get("error") if isinstance(body, dict) else None
+    message = error.get("message") if isinstance(error, dict) else error if isinstance(error, str) else None
+    text = " ".join(str(message).split()) if message else ""
+    return text.replace(secret, "***") if secret else text
+
+
+def http_error(status: int, message: str = "") -> UserError:
     error_type = ProviderUnavailableError if status in UNAVAILABLE else UserError
-    return error_type(f"HTTP {status}: " + HTTP_HINTS.get(status, "The model server is not ready. Try again."))
+    text = f"HTTP {status}: " + HTTP_HINTS.get(status, "The model server is not ready. Try again.")
+    return error_type(text + (f" Provider: {message}" if message else ""))
 
 
 def read_response(body: dict, s: Settings, stage: str, media: str = "image") -> dict:
@@ -271,9 +335,10 @@ class CaptionSession:
         payload: dict,
         on_progress,
         media: str = "image",
+        notice: str = "",
     ):
         self.client, self.s, self.base, self.headers, self.payload = client, s, base, headers, payload
-        self.on_progress, self.media = on_progress, media
+        self.on_progress, self.media, self.notice = on_progress, media, notice
         self.history: list[dict] = []
 
     def emit(self, event: dict):
@@ -282,20 +347,33 @@ class CaptionSession:
 
     def result(self, trace: dict, notice: str = "", needs_review: bool = False) -> CaptionResult:
         """The chosen response with the notices from finishing its caption."""
-        notices = [notice, *trace.get("finish_notices", [])]
+        odd = (
+            ""
+            if self.s.output_format == "bria_json"
+            else not_a_caption(trace.get("draft", trace["text"]), trace["text"])
+        )
+        notices = [notice, *trace.get("finish_notices", []), odd, self.notice]
         return CaptionResult(
             trace["text"],
             # One notice per line, so the interface can translate each of them.
             notice="\n".join(n for n in notices if n),
-            needs_review=needs_review or trace.get("finish_review", False),
+            needs_review=needs_review or trace.get("finish_review", False) or bool(odd),
             history=self.history,
         )
 
-    async def post(self, messages: list) -> httpx.Response:
+    def stage_options(self, stage: str) -> dict:
+        """Reasoning while the model looks at the image; a text-only rewrite reasons as little as allowed."""
+        image = stage in ("caption", "retry_caption")
+        if "chat_template_kwargs" in self.payload:
+            return {"chat_template_kwargs": {**self.payload["chat_template_kwargs"], "enable_thinking": image}}
+        option = None if image or self.s.mode != "cloud" else rewrite_reasoning(self.base)
+        return dict([option]) if option else {}
+
+    async def post(self, messages: list, stage: str = "caption") -> httpx.Response:
+        body = {**self.payload, **self.stage_options(stage), "messages": messages}
+
         async def send():
-            return await self.client.post(
-                self.base + "/chat/completions", json={**self.payload, "messages": messages}, headers=self.headers
-            )
+            return await self.client.post(self.base + "/chat/completions", json=body, headers=self.headers)
 
         response = await send()
         for delay in RETRY_DELAYS:
@@ -308,11 +386,11 @@ class CaptionSession:
     async def request(self, messages: list, stage: str) -> dict:
         self.emit({"kind": "phase", "stage": stage})
         try:
-            response = await self.post(messages)
+            response = await self.post(messages, stage)
             if response.is_error:
                 status = response.status_code
                 self.emit({"kind": "request_error", "stage": stage, "http_status": status, "app_token_limit": None})
-                raise http_error(status)
+                raise http_error(status, provider_message(response, self.headers.get("Authorization", "")[7:]))
             trace = read_response(response_json(response), self.s, stage, self.media)
         except httpx.TimeoutException:
             self.emit({"kind": "request_error", "stage": stage, "error_type": "timeout", "app_token_limit": None})
@@ -443,9 +521,14 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
         images = await asyncio.to_thread(clip_frames, path, s.clip_interval)
     else:
         images = [("", base64.b64encode(await asyncio.to_thread(image_bytes, path, s.image_size)).decode())]
-    payload = build_payload(s, model, images, media)
     headers = {"Authorization": f"Bearer {key}"} if key else {}
     async with httpx.AsyncClient(timeout=httpx.Timeout(s.timeout, connect=15), trust_env=False) as client:
-        if s.mode == "local" and s.local_source == "external":
-            await disable_external_thinking(client, base, headers, payload)
-        return await CaptionSession(client, s, base, headers, payload, on_progress, media).run()
+        external = s.mode == "local" and s.local_source == "external"
+        reasoning = await external_can_reason(client, base, headers) if external else True
+        # A switch the model cannot follow stays at the LoRA type's default (capabilities.py).
+        s = effective(s, reasoning)
+        payload = build_payload(s, model, images, media)
+        if external and reasoning:
+            payload["chat_template_kwargs"] = {"enable_thinking": True}
+        notice = "" if reasoning else NO_LOCAL_REASONING
+        return await CaptionSession(client, s, base, headers, payload, on_progress, media, notice).run()

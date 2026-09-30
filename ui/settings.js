@@ -3,6 +3,7 @@ import { action, api } from './api.js';
 import { $, esc, fillForm, formValues } from './dom.js';
 import { diagnostic, setLanguage, t } from './i18n.js';
 import { fillTrainingControls, liveSettings, saveRecipe } from './recipe.js';
+import { modelChoice, renderModelTable } from './models.js';
 import { ui } from './store.js';
 
 const settingsForm = $('settings-form');
@@ -149,6 +150,7 @@ export function openSettings() {
     : 'custom';
   $('setup-title').textContent = state.settings.setup_complete ? t('Model and runtime') : t('Set up your workspace');
   $('settings-message').textContent = '';
+  renderModelTable();
   $('settings-dialog').showModal();
   renderRuntime();
   // What is available must be visible immediately, not after trying buttons.
@@ -282,6 +284,22 @@ $('cloud-provider').onchange = () => {
   renderKeyStatuses();
   renderSummary();
 };
+// "Use this model" fills the provider and the model ID; the key and saving stay with the user.
+$('model-table').addEventListener('click', (e) => {
+  const button = e.target.closest('[data-model]');
+  if (!button) return;
+  const choice = modelChoice(button.dataset.model, normalizedUrl(settingsForm.elements.cloud_url));
+  if (normalizedUrl(settingsForm.elements.cloud_url) !== choice.url) {
+    $('cloud-provider').value = choice.url;
+    settingsForm.elements.cloud_url.value = choice.url;
+    $('api-key').value = '';
+    $('clear-key').checked = false;
+  }
+  settingsForm.elements.cloud_model.value = choice.id;
+  renderKeyStatuses();
+  renderSummary();
+  $('settings-message').textContent = t('{v0} selected. Save to use it.', { v0: button.dataset.model });
+});
 $('save-settings').onclick = () => action(() => saveSetup(true));
 $('ui-language').onchange = () => action(changeLanguage);
 $('load-models').onclick = () =>

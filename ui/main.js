@@ -5,6 +5,7 @@ import { $, esc } from './dom.js';
 import { FolderPicker } from './folder-browser.js';
 import { diagnostic, loadTranslations, setLanguage, t } from './i18n.js';
 import { hasUnsavedRecipe, liveSettings, loadRecipe, renderRecipe } from './recipe.js';
+import { renderModelTable } from './models.js';
 import { openSettings, renderRuntime } from './settings.js';
 import { captionView, hasBusy, resumeIds, ui } from './store.js';
 
@@ -94,6 +95,7 @@ function refresh() {
 function relocalize() {
   invalidateRenderCache();
   render();
+  if ($('settings-dialog').open) renderModelTable();
   if (folderPicker.listing) {
     folderPicker.renderContents();
     folderPicker.renderTree();

@@ -216,8 +216,9 @@ def test_invalid_bria_that_cannot_be_repaired_is_preserved(image, monkeypatch):
     assert result.needs_review and "A blue" in result.text and len(calls) == 3
 
 
-def test_recognized_external_llama_uses_non_thinking_without_output_limit(image, monkeypatch):
-    real = httpx.AsyncClient
+def test_recognized_external_llama_reasons_only_while_looking_at_the_image(image, monkeypatch):
+    """Measured 2026-09-30: reasoning helps the caption; a text-only shortening needs none (117 -> 15 s)."""
+    real, stages = httpx.AsyncClient, []
 
     def handler(request):
         if request.url.path == "/props":
@@ -225,19 +226,47 @@ def test_recognized_external_llama_uses_non_thinking_without_output_limit(image,
                 200, json={"default_generation_settings": {}, "chat_template": "uses enable_thinking"}
             )
         payload = json.loads(request.content)
-        assert payload["chat_template_kwargs"] == {"enable_thinking": False}
+        stages.append(payload["chat_template_kwargs"]["enable_thinking"])
         assert "max_tokens" not in payload
+        text = " ".join(["word"] * 200) + "." if len(stages) == 1 else "A blue square."
         return httpx.Response(
             200,
             json={
-                "choices": [{"finish_reason": "stop", "message": {"content": "A blue square."}}],
+                "choices": [{"finish_reason": "stop", "message": {"content": text}}],
                 "usage": "optional malformed metadata",
             },
         )
 
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs))
-    s = Settings(local_source="external", local_url="http://127.0.0.1:8080/v1", local_model="q5")
-    assert asyncio.run(generate(image, s)).text == "A blue square."
+    s = Settings(local_source="external", local_url="http://127.0.0.1:8080/v1", local_model="q5", words=40)
+    result = asyncio.run(generate(image, s))
+    assert result.text == "A blue square." and stages == [True, False]
+    assert "does not allow reasoning" not in result.notice
+
+
+def test_external_server_without_reasoning_gets_the_strict_switch_offer(image, monkeypatch):
+    real, prompts = httpx.AsyncClient, []
+
+    def handler(request):
+        if request.url.path == "/props":
+            return httpx.Response(404)
+        payload = json.loads(request.content)
+        assert "chat_template_kwargs" not in payload
+        prompts.append(payload["messages"][0]["content"][-1]["text"])
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": "A face."}}]})
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs))
+    # Character identity switched on: an unmeasured model keeps the type default (left out).
+    s = Settings(
+        local_source="external",
+        local_url="http://127.0.0.1:8080/v1",
+        local_model="llava",
+        preset="character",
+        omitted_attributes=["hair_color"],
+    )
+    result = asyncio.run(generate(image, s))
+    never = prompts[0].split("NEVER DESCRIBE, ", 1)[1]
+    assert "Face and body:" in never and "does not allow reasoning" in result.notice
 
 
 def test_server_disappearance_pauses_batch_instead_of_failing_all_images(tmp_path, monkeypatch):

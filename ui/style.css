@@ -1488,3 +1488,197 @@ pre {
   margin: 10px 0;
   line-height: 1.6;
 }
+/* A detail switch the configured model cannot follow (captioning/capabilities.py). */
+.caption-detail.locked {
+  cursor: default;
+}
+.caption-detail.locked > span {
+  opacity: 0.5;
+}
+.caption-detail .lock-note {
+  color: #e3cf8e;
+}
+.length-recommendation {
+  margin-top: 6px;
+  color: var(--muted);
+}
+.length-recommendation.short {
+  color: #e3cf8e;
+}
+/* Measured models in the settings: recommended in a green zone, advised against in a red one. */
+.model-table {
+  margin-top: 14px;
+}
+.model-table .zone {
+  border-radius: 10px;
+  padding: 14px 14px 6px;
+  margin-top: 12px;
+}
+.model-table .zone.good {
+  background: rgba(183, 235, 143, 0.055);
+  border: 1px solid rgba(183, 235, 143, 0.28);
+}
+.model-table .zone.bad {
+  background: rgba(240, 156, 145, 0.055);
+  border: 1px solid rgba(240, 156, 145, 0.28);
+}
+.model-table .zone-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.model-table .zone-head .dot {
+  width: 8px;
+  height: 8px;
+  transform: translateY(-1px);
+}
+.model-table .good .zone-head .dot {
+  background: var(--accent);
+}
+.model-table .bad .zone-head .dot {
+  background: var(--error);
+}
+.model-table .good h3 {
+  color: var(--accent);
+}
+.model-table .bad h3 {
+  color: var(--error);
+}
+.model-table .zone-head small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.model-table .cols,
+.model-table summary.row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 84px 52px 64px;
+  align-items: center;
+  gap: 10px;
+}
+.model-table .cols {
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  color: #7f9184;
+  font-weight: 600;
+  padding: 0 8px 6px;
+}
+.model-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.model-table .num.slow {
+  color: #e3cf8e;
+}
+.model-table details {
+  margin: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-size: 12.5px;
+}
+.model-table summary.row {
+  list-style: none;
+  cursor: pointer;
+  padding: 9px 8px;
+  border-radius: 7px;
+  color: var(--text);
+}
+.model-table summary.row::-webkit-details-marker {
+  display: none;
+}
+.model-table summary.row:hover,
+.model-table details[open] summary.row {
+  background: rgba(255, 255, 255, 0.04);
+}
+.model-table details[open] summary {
+  margin-bottom: 0;
+}
+.model-table .rank {
+  color: var(--muted);
+  text-align: center;
+}
+.model-table .name {
+  min-width: 0;
+}
+.model-table .name b {
+  font-weight: 550;
+}
+.model-table .tag {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 9.5px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #2a3b24;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.model-table .tag.amber {
+  background: #3a3420;
+  color: #e3cf8e;
+}
+.model-table .provider,
+.model-table .reason {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+.model-table .reason {
+  color: #e9a89e;
+}
+.model-table .meter {
+  display: flex;
+  gap: 3px;
+}
+.model-table .meter i {
+  width: 12px;
+  height: 6px;
+  border-radius: 3px;
+  background: #2e3a31;
+}
+.model-table .good .meter i.on {
+  background: var(--accent);
+}
+.model-table .bad .meter i.on {
+  background: var(--error);
+}
+.model-table .more {
+  padding: 4px 8px 12px 38px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.model-table .more p {
+  margin: 0 0 8px;
+}
+.model-table .facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-bottom: 6px;
+}
+.model-table .facts b {
+  color: var(--text);
+}
+.model-table .use {
+  font-size: 11px;
+  padding: 6px 11px;
+}
+.model-table .local-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 16px;
+  align-items: center;
+  padding: 6px 8px 12px;
+}
+@media (max-width: 620px) {
+  .model-table .cols,
+  .model-table summary.row {
+    grid-template-columns: 16px minmax(0, 1fr) 64px 46px;
+  }
+  .model-table .price {
+    display: none;
+  }
+  .model-table .local-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}

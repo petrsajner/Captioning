@@ -14,7 +14,7 @@ from typing import Required, TypedDict
 
 from PIL import Image
 
-from . import __version__, provider
+from . import __version__, capabilities, provider
 from .bria import CaptionValidationError, normalize_json
 from .errors import ProviderUnavailableError, UserError
 from .media import is_video, probe
@@ -300,6 +300,8 @@ class Studio:
             # Each LoRA type has its own details, names and defaults.
             "training_details": {t: details_for(t) for t in ALL_TYPES},
             "training_defaults": TYPE_DEFAULTS,
+            # What the configured model follows reliably: greyed switches and the recommended length.
+            "capabilities": capabilities.summary(self.settings),
             "caption_outputs": {o: {"suffix": OUTPUT_SUFFIX[o], "name": OUTPUT_NAMES[o]} for o in OUTPUT_SUFFIX},
             "video_outputs": VIDEO_OUTPUTS,
             "media_outputs": MEDIA_OUTPUTS,

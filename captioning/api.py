@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
 
+from .capabilities import effective
 from .discovery import CANDIDATES, discover
 from .errors import UserError
 from .folders import FolderBrowser
@@ -169,7 +170,8 @@ def make_app(studio: Studio, token: str, port: int, assets: Path) -> FastAPI:
 
     @app.post("/api/prompt")
     async def prompt(body: Settings, media: Literal["image", "clip"] = "image"):
-        return {"prompt": make_prompt(body, media), "output_format": body.output_format}
+        # The prompt the model gets: a switch it cannot follow stays at the type default (capabilities.py).
+        return {"prompt": make_prompt(effective(body), media), "output_format": body.output_format}
 
     @app.post("/api/models")
     async def models(body: Settings):

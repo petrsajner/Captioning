@@ -161,7 +161,8 @@ def test_payload_and_image_preprocessing(tmp_path, monkeypatch):
     encoded = payload["messages"][0]["content"][0]["image_url"]["url"].split(",", 1)[1]
     with Image.open(io.BytesIO(base64.b64decode(encoded))) as im:
         assert im.size == (1024, 512) and im.mode == "RGB"
-    assert payload["chat_template_kwargs"]["enable_thinking"] is False
+    # The managed Qwen reasons while it looks at the image (0.3.0: about half the clear errors).
+    assert payload["chat_template_kwargs"]["enable_thinking"] is True
 
 
 @pytest.mark.parametrize(
@@ -299,6 +300,8 @@ def test_cloud_request_key_and_clean_failure(tmp_path, monkeypatch):
     with pytest.raises(ProviderUnavailableError) as result:
         asyncio.run(generate(image, Settings(mode="cloud", cloud_model="test/vision"), "fake-test-key"))
     assert "401" in str(result.value) and "fake-test-key" not in str(result.value)
+    # The provider's own message is shown (0.3.0), with an echoed key masked.
+    assert "Provider: *** private-photo.png" in str(result.value)
 
 
 def test_external_change_during_inference_keeps_user_caption(tmp_path, monkeypatch):
