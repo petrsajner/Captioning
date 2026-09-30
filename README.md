@@ -93,6 +93,13 @@ models** can help find the ID. OpenRouter, Gemini and other compatible image Cha
 Completions APIs can be used. Cloud mode needs no local model download or powerful
 GPU. Selected images are sent to the chosen provider and billed under its terms.
 
+The setup lists the models we measured on the hardest shots, judged blind: recommended
+ones by quality (GPT 6.1 Sol, Claude Opus 5.5, Gemini 3.8 Flash, Qwen 3.8 Max, Grok 4.7,
+Muse Spark 1.3, GLM 5.3 FlashX) and the ones we advise against, each with its time per
+caption and price per 100 captions. **Use this model** fills in the ID for your provider.
+Rewrites (shortening, completing) use the least reasoning the provider accepts, which
+makes them faster and cheaper at the same quality.
+
 ## Prepare a dataset
 
 1. **Open folder** or **Select images**. Optionally include subfolders or append to
@@ -111,7 +118,11 @@ GPU. Selected images are sent to the chosen provider and billed under its terms.
    and allows replacing it.
 
 Checked details are described when visible; unchecked details are omitted. The
-model receives an explicit instruction for every detail in every output. Each LoRA type
+model receives an explicit instruction for every detail in every output: what the caption
+must contain when it is on and what it must never contain when it is off. A switch the
+configured model does not follow reliably is greyed out at the type's default with the
+reason; your recipe keeps its choice for a model that can follow it. Below the length
+slider is the shortest reliable length for the model and the switched-on details. Each LoRA type
 has its own details, and **Apply defaults for this LoRA type** leaves out the ones in bold:
 
 | Type | Details |
