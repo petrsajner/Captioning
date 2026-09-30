@@ -2,7 +2,7 @@
 // Quality dots follow clear errors per 10 captions on the 55 hardest shots: up to 0.4 = 5, 0.9 = 4, 1.9 = 3,
 // 2.9 = 2, more = 1. Seconds and dollars are per caption and per 100 captions, rewrites with minimal reasoning.
 import { $, esc } from './dom.js';
-import { t } from './i18n.js';
+import { i18n, t } from './i18n.js';
 
 const RECOMMENDED = [
   {
@@ -148,11 +148,13 @@ const NOT_RECOMMENDED = [
 const SWITCHES = 'Every detail switch except content and background of a style (no model leaves those out reliably).';
 const meter = (n) =>
   `<span class="meter" aria-label="${esc(t('Quality {v0} of 5', { v0: n }))}">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
-const money = (value) => (value ? `${value} $` : '–');
+// Czech writes a decimal comma.
+const num = (value) => (i18n.language === 'cs' ? String(value).replace('.', ',') : String(value));
+const money = (value) => (value ? `${num(value)} $` : '–');
 
 function facts(m) {
   if (!m.seconds) return `<p>${esc(t('We stopped measuring it: too expensive and too slow.'))}</p>`;
-  return `<div class="facts"><span>${esc(t('Clear errors'))} <b>${m.clear}</b> / 10</span><span>${esc(t('minor'))} <b>${m.minor}</b></span><span>${esc(t('switched-on details described'))} <b>${m.described} %</b></span></div>`;
+  return `<div class="facts"><span>${esc(t('Clear errors'))} <b>${num(m.clear)}</b> / 10</span><span>${esc(t('minor'))} <b>${num(m.minor)}</b></span><span>${esc(t('switched-on details described'))} <b>${m.described} %</b></span></div>`;
 }
 
 function row(m, rank, recommended) {

@@ -146,7 +146,14 @@ try {
       await page.locator('#open-settings').click();
       await page.locator('#settings-dialog').waitFor();
       await page.locator('[data-mode=cloud]').click();
+      // The measured models get a picture of their own; the setup shows the connection fields.
+      await page.locator('#model-table').evaluate((el) => (el.hidden = true));
       await shoot(page, img('setup-cloud.jpg'), '#settings-dialog', pairs);
+      await page.locator('#model-table').evaluate((el) => (el.hidden = false));
+      await page.locator('#model-table summary', { hasText: 'Gemini 3.8 Flash' }).click();
+      await page.locator('#model-table').scrollIntoViewIfNeeded();
+      await shoot(page, img('models.jpg'), '#model-table', pairs);
+      await page.locator('#model-table details[open]').evaluate((el) => (el.open = false));
       await page.locator('[data-mode=local]').click();
       await page.locator('#local-source').selectOption('managed');
       await shoot(page, img('setup-local.jpg'), '#settings-dialog', pairs);
@@ -159,9 +166,9 @@ try {
       } finally {
         stopMarvin();
       }
-      await page.locator('#settings-dialog details').evaluate((details) => (details.open = true));
-      await page.locator('#settings-dialog details').scrollIntoViewIfNeeded();
-      await shoot(page, img('setup-analysis.jpg'), '#settings-dialog details', pairs);
+      await page.locator('#settings-dialog details.advanced').evaluate((details) => (details.open = true));
+      await page.locator('#settings-dialog details.advanced').scrollIntoViewIfNeeded();
+      await shoot(page, img('setup-analysis.jpg'), '#settings-dialog details.advanced', pairs);
       await page.locator('#settings-dialog .close-dialog').click();
 
       // The recipe of a character LoRA, with its details.
