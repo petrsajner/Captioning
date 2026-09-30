@@ -42,14 +42,14 @@ test('the name fields, notes and detail names follow the LoRA type', async ({ pa
   await expect(identity.locator('.detail-name')).toHaveText('What is depicted');
   await expect(recipe.locator('[data-attribute=hair_color]')).toHaveCount(0);
   await page.locator('#apply-training-preset').click();
-  await expect.poll(async () => (await state(page)).settings.omitted_attributes).toEqual(['style']);
+  await expect.poll(async () => (await state(page)).settings.omitted_attributes).toEqual(['style', 'palette']);
   // Back on the object, its own choices return: the logo is still described.
   await recipe.locator('[name=preset]').selectOption('object');
   await expect(recipe.locator('[data-attribute=object_text]')).toBeChecked();
   await expect(recipe.locator('[data-attribute=identity]')).not.toBeChecked();
   await expect
     .poll(async () => (await state(page)).settings.omitted_by_type)
-    .toEqual({ general: [], object: ['identity'], style: ['style'] });
+    .toEqual({ general: [], object: ['identity'], style: ['style', 'palette'] });
   await recipe.locator('[name=preset]').selectOption('style');
   await page.locator('#preview-prompt').click();
   await expect(page.locator('#prompt-text')).toContainText('- Medium and technique: never name or describe the medium');

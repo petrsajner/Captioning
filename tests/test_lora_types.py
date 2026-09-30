@@ -12,7 +12,7 @@ from captioning.training import TYPE_DEFAULTS
 from captioning.video import finish_video_caption, h3_body
 
 MEDIUM_NEVER = "- Medium and technique: never name or describe the medium or technique"
-PALETTE_NEVER = "never the overall color palette, color scheme or grading"
+PALETTE_NEVER = "- Color palette and grading: nothing about the image's overall colors"
 TEXT_OUTPUTS = ["normal", "wan", "wan_i2v", "ltx", "h3"]
 PROMPT_OUTPUTS = ["normal", "bria_json", "wan", "wan_i2v", "ltx", "h3"]
 
@@ -65,9 +65,16 @@ def test_style_prompts_describe_only_the_content(output):
 
 def test_a_style_detail_left_on_is_not_forbidden():
     prompt = make_prompt(Settings(preset="style", output_format="wan", trigger="Zorvak"))
-    assert MEDIUM_NEVER not in prompt and "- Medium and technique: the medium and how the image is made" in prompt
-    # 2026-09-29: the model never described an overall palette, so a style LoRA never has it described.
-    assert PALETTE_NEVER in prompt and "Color palette" not in prompt
+    assert MEDIUM_NEVER not in prompt and PALETTE_NEVER not in prompt
+    assert "- Medium and technique: the medium and how the image is made" in prompt
+    # The palette alone can be described while the medium stays learned (back in 0.3.0, measured live).
+    prompt = make_prompt(Settings(preset="style", omitted_attributes=["style"], omitted_by_type={}))
+    assert MEDIUM_NEVER in prompt and PALETTE_NEVER not in prompt
+    assert "- Color palette and grading: one phrase about the overall color palette" in prompt
+    assert "never the overall color palette" not in prompt
+    # Left out by default: only the colors of single things are named.
+    prompt = make_prompt(settings("style"))
+    assert PALETTE_NEVER in prompt and "never the overall color palette" in prompt
 
 
 POLICY = "CAPTION RULES."
@@ -101,13 +108,13 @@ def test_each_type_remembers_its_own_choices():
     assert s.omitted_by_type == {"object": ["identity"]}
     s = Settings(preset="style", omitted_attributes=["style"], omitted_by_type={"object": ["identity"]})
     assert s.omitted_by_type == {"object": ["identity"], "style": ["style"]}
-    # Recipes up to 0.2.10 could switch the palette; it is no detail any more and is dropped.
-    old = Settings(**{"preset": "style", "omitted_attributes": ["style", "palette"]})
-    assert old.omitted_attributes == ["style"]
+    # Recipes up to 0.2.2: "Visual style" of a style LoRA also covered the palette.
+    old = Settings(**{"preset": "style", "omitted_attributes": ["style"]})
+    assert old.omitted_attributes == ["style", "palette"]
     assert Settings(**{"preset": "character", "omitted_attributes": ["style"]}).omitted_attributes == ["style"]
 
 
-def test_bria_json_never_keeps_the_palette_of_a_style_lora():
+def test_bria_json_keeps_the_palette_apart_for_a_style_lora():
     data = {
         "short_description": "A woman sits.",
         "objects": [
@@ -119,12 +126,11 @@ def test_bria_json_never_keeps_the_palette_of_a_style_lora():
         "style_medium": "woodblock print",
         "context": "",
     }
-    medium_learned = json.loads(normalize_json(json.dumps(data), settings("style")))
-    assert "style_medium" not in medium_learned and medium_learned["aesthetics"]["color_scheme"] == ""
-    medium_described = json.loads(normalize_json(json.dumps(data), Settings(preset="style", omitted_attributes=[])))
-    assert (
-        medium_described["style_medium"] == "woodblock print" and medium_described["aesthetics"]["color_scheme"] == ""
-    )
+    medium_only = Settings(preset="style", omitted_attributes=["style"], omitted_by_type={})
+    result = json.loads(normalize_json(json.dumps(data), medium_only))
+    assert "style_medium" not in result and result["aesthetics"]["color_scheme"] == "muted blues"
+    both = json.loads(normalize_json(json.dumps(data), settings("style")))
+    assert both["aesthetics"]["color_scheme"] == ""
     # Other types: "Visual style" still covers the palette.
     character = json.loads(normalize_json(json.dumps(data), Settings(preset="character", omitted_attributes=["style"])))
     assert character["aesthetics"]["color_scheme"] == ""

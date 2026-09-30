@@ -22,7 +22,6 @@ Attribute = Literal[
     "lighting",
     "composition",
     "style",
-    # Removed 2026-09-29; still accepted so that older recipes load, then dropped as no detail of any type.
     "palette",
     "motion",
     "camera_motion",
@@ -35,7 +34,7 @@ TYPE_DEFAULTS: dict[str, list[str]] = {
     "general": [],
     "character": ["identity", "hair_color"],
     "object": ["identity", "object_text"],
-    "style": ["style"],
+    "style": ["style", "palette"],
 }
 # Each detail tells the model exactly what the caption MUST contain when it is switched on and what it must
 # NEVER contain when it is off, with concrete words (Petr, 2026-09-29: the model does not follow general wording
@@ -48,7 +47,8 @@ ATTRIBUTES: list[dict[str, Any]] = [
         "detail": "Facial and physical features; an object’s characteristic shape, material and colors.",
         "must": "Face and body: the main subject's facial features and physical traits you can see clearly, such as "
         "face shape, eye color, eyebrows, nose, lips, skin tone, freckles, scars, tattoos, build and apparent age; for "
-        "an animal its coat, markings and colors.",
+        "an animal its coat, markings and colors. Name at least one of them; facial hair belongs to the "
+        "hairstyle, not here.",
         "never": "Face and body: nothing about the main subject's face or physical traits. No face shape, eye color, "
         "eyebrows, nose, lips, skin tone, freckles, scars, tattoos, build, body shape or apparent age (not young, "
         "old, elderly); for an animal no coat, markings or colors.",
@@ -86,11 +86,12 @@ ATTRIBUTES: list[dict[str, Any]] = [
         "types": ("object",),
         "label": "Variant and state",
         "detail": "Open or closed, folded, switched on or off; a version or colorway when the dataset has several.",
+        # "assembled" alone was copied onto scrambled puzzle cubes (2026-09-30).
         "must": "Variant and state: the main object's changeable state, such as open or closed, folded or unfolded, "
-        "assembled, switched on or off, full or empty; its version or colorway only when the additional dataset "
-        "instructions say it comes in several.",
+        "assembled or taken apart, switched on or off, full or empty; its version or colorway only when the "
+        "additional dataset instructions say it comes in several.",
         "never": "Variant and state: nothing about the main object's changeable state. Not open, closed, folded, "
-        "unfolded, assembled, switched on or off, full or empty, and no version or colorway.",
+        "unfolded, assembled or taken apart, switched on or off, full or empty, and no version or colorway.",
     },
     # Separate since 0.2.0: a character's hair color usually belongs to the LoRA, its hairstyle to the prompt.
     {
@@ -98,7 +99,8 @@ ATTRIBUTES: list[dict[str, Any]] = [
         "types": PEOPLE,
         "label": "Hair color",
         "detail": "The main person’s hair and facial hair color and tones.",
-        "must": "Hair color: the color of the main person's hair and of any beard or moustache.",
+        "must": "Hair color: the color of the main person's hair and of any beard or moustache; in a black-and-white "
+        "or sepia image its tone, such as dark, gray or light.",
         "never": "Hair color: no color of the main person's hair, beard or moustache. Never blonde, brunette, "
         "brown, dark, black, gray, white, silver, red, auburn, ginger, fair or light-colored hair or facial hair.",
     },
@@ -142,10 +144,11 @@ ATTRIBUTES: list[dict[str, Any]] = [
         "label": "Pose and action",
         "detail": "Posture, movement, body orientation and action.",
         "must": "Pose and action: the main subject's posture, body orientation and what they do, including where the "
-        "hands are and what they hold.",
+        "hands are and what they hold. For a close-up, the turn and tilt of the head.",
         "never": "Pose and action: nothing about the main subject's posture, body orientation or action. Never "
         "stands, sits, walks, leans, poses, faces, turns, arms or hands in a position, holds, carries or a tilted "
-        "head.",
+        "head. Do not name what the main subject holds or carries, not even as a thing in the scene. For a close-up, "
+        "also no turn or tilt of the head and not that it faces the camera.",
         "by_type": {
             "object": {
                 "label": "Placement and orientation",
@@ -170,7 +173,8 @@ ATTRIBUTES: list[dict[str, Any]] = [
         "detail": "Who holds, wears or uses the object and how; hands and people described generically.",
         "must": "Use and interaction: who holds, wears or uses the main object and how, with hands and people "
         "described generically.",
-        "never": "Use and interaction: no hands or people touching, holding, wearing or using the main object.",
+        "never": "Use and interaction: no hands or people touching, holding, wearing or using the main object, and "
+        "nothing of a person holding it, such as a sleeve, wristband or fingers at the edge.",
     },
     {
         "id": "expression",
@@ -199,7 +203,8 @@ ATTRIBUTES: list[dict[str, Any]] = [
                 "detail": "Location, surface, background and other objects around it.",
                 "must": "Environment: the surroundings of the main object: the surface it is on, the location, the "
                 "background and other objects.",
-                "never": "Environment: nothing around the main object. No surface, table, floor, location, "
+                "never": "Environment: nothing around the main object. No surface, stand, sill, table, floor, "
+                "location, "
                 "background or backdrop color, other objects, people or animals, and never outdoors, indoors, "
                 "studio, scene or background.",
             }
@@ -269,6 +274,19 @@ ATTRIBUTES: list[dict[str, Any]] = [
             },
         },
     },
+    # Back since 0.3.0: measured live, Opus, GPT, Gemini, Qwen Max, Grok, Muse, GLM FlashX and local Qwen with
+    # reasoning describe the palette when asked (without reasoning Qwen did not); see capabilities.py.
+    {
+        "id": "palette",
+        "types": ("style",),
+        "label": "Color palette and grading",
+        "detail": "The overall color scheme and grading; colors of single things stay described.",
+        "must": "Color palette and grading: one phrase about the overall color palette of the whole image: its "
+        "dominant colors and whether they are muted or saturated, warm or cool.",
+        "never": "Color palette and grading: nothing about the image's overall colors. No palette, color scheme, "
+        "grading, tones, muted, vibrant, pastel, monochrome, warm or cool colors; the colors of single things may "
+        "still be named.",
+    },
     # Only for video clips ("media": "clip"); photos never get these instructions.
     {
         "id": "motion",
@@ -336,6 +354,18 @@ def _combinations(ids: set[str], omitted: set[str]) -> list[str]:
         lines.append(
             "Describe the main person's hairstyle without any color word: 'a shoulder-length braid', never 'a dark "
             "braid' or 'long auburn hair'."
+        )
+    if "accessories" in off and "clothing" in on:
+        # Live, models named a uniform's peaked cap as part of the uniform while accessories were switched off.
+        lines.append(
+            "Describe the garments only: leave out any cap, hat, helmet or other headwear, also when it belongs to a "
+            "uniform or costume."
+        )
+    if "background" in off and "pose" in on and "interaction" in ids:
+        # An object's placement named the stand or sill it rests on while its surroundings were switched off.
+        lines.append(
+            "Describe the object's placement without naming the surface, stand, sill or furniture it rests on; that "
+            "belongs to the background."
         )
     if "background" in off:
         if "lighting" in on:

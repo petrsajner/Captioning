@@ -156,8 +156,8 @@ def normalize_json(text: str, settings=None) -> str:
             data.pop("style_medium", None)
             data.pop("artistic_style", None)
             data["aesthetics"]["mood_atmosphere"] = ""
-        # A style LoRA never describes its palette; elsewhere a learned "Visual style" includes it.
-        if settings.preset == "style" or "style" in omitted:
+        # A style LoRA has a palette detail of its own; elsewhere a learned "Visual style" includes it.
+        if "palette" in omitted or ("style" in omitted and settings.preset != "style"):
             data["aesthetics"]["color_scheme"] = ""
         if data["objects"]:
             main = data["objects"][0]

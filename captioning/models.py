@@ -111,6 +111,14 @@ class Settings(BaseModel):
             # 0.2.0 and 0.2.1 called the class phrase character_class; "Main subject name" is gone since 0.2.2.
             old = value["character_class"]
             value = {**value, "subject_class": "" if old == "a person" else old}  # "a person" was the default
+        if (
+            isinstance(value, dict)
+            and "omitted_by_type" not in value
+            and value.get("preset") == "style"
+            and "style" in value.get("omitted_attributes", [])
+        ):
+            # Up to 0.2.2 "Visual style" also covered the palette, which a style LoRA now learns separately.
+            value = {**value, "omitted_attributes": [*value["omitted_attributes"], "palette"]}
         if isinstance(value, dict) and "local_source" not in value:
             url = value.get("local_url", MANAGED_URL)
             if isinstance(url, str) and url.rstrip("/") != MANAGED_URL:
