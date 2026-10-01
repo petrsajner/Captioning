@@ -143,41 +143,54 @@ export function loadRecipe(settings) {
   $('word-output').value = settings.words;
 }
 
-// Measured per model (captioning/capabilities.py): a switch it cannot follow is greyed out at the type default.
+// Measured per model (captioning/capabilities.py): a switch the model followed in 50-85 % of the test captions is
+// orange, below 50 % it is greyed out at the type default; the recipe keeps the user's choice in data-choice.
+function offerNote(o) {
+  const counts = { v0: o.followed, v1: o.captions };
+  if (o.level === 'grey')
+    return o.state === 'off'
+      ? t('Switched off, this model left it out in only {v0} of {v1} test captions, so it stays described.', counts)
+      : t('Switched on, this model described it in only {v0} of {v1} test captions, so it stays left out.', counts);
+  return o.state === 'off'
+    ? t('Switched off, this model left it out in {v0} of {v1} test captions. Check the captions.', counts)
+    : t('Switched on, this model described it in {v0} of {v1} test captions. Check the captions.', counts);
+}
+
+const offerFor = (preset) => ui.state.capabilities.offer[preset] || {};
+const greyed = (preset, id) => offerFor(preset)[id]?.level === 'grey';
+
 function renderLocks(preset, blocked) {
-  const locks = ui.state.capabilities.locked[preset] || {},
+  const offer = offerFor(preset),
     defaults = ui.state.training_defaults[preset];
   for (const input of $('training-controls').querySelectorAll('[data-attribute]')) {
     const id = input.dataset.attribute,
-      reason = locks[id],
+      o = offer[id],
+      grey = o?.level === 'grey',
       label = input.closest('.caption-detail');
-    if (reason && !input.dataset.choice) {
+    if (grey && !input.dataset.choice) {
       input.dataset.choice = input.checked ? 'on' : 'off';
       input.checked = !defaults.includes(id);
-    } else if (!reason && input.dataset.choice) {
+    } else if (!grey && input.dataset.choice) {
       input.checked = input.dataset.choice === 'on';
       delete input.dataset.choice;
     }
-    input.disabled = blocked || !!reason;
-    label.classList.toggle('locked', !!reason);
+    input.disabled = blocked || grey;
+    label.classList.toggle('locked', grey);
+    label.classList.toggle('uncertain', o?.level === 'orange');
     const note = label.querySelector('.lock-note');
-    note.hidden = !reason;
-    note.textContent = reason ? t(reason) : '';
+    note.hidden = !o;
+    note.textContent = o ? offerNote(o) : '';
   }
 }
 
 // The shortest reliable length for this model and the switched-on photo details; only a note, never a limit.
 function renderLengthRecommendation(s, normal) {
   const note = $('length-recommendation'),
+    defaults = ui.state.training_defaults[s.preset],
     on = ui.state.training_details[s.preset].filter(
-      (a) =>
-        a.media !== 'clip' &&
-        !s.omitted_attributes.includes(a.id) &&
-        !(ui.state.capabilities.locked[s.preset] || {})[a.id],
+      (a) => a.media !== 'clip' && !s.omitted_attributes.includes(a.id) && !greyed(s.preset, a.id),
     ).length,
-    locked = Object.keys(ui.state.capabilities.locked[s.preset] || {}).filter(
-      (id) => !ui.state.training_defaults[s.preset].includes(id),
-    ).length,
+    locked = Object.keys(offerFor(s.preset)).filter((id) => greyed(s.preset, id) && !defaults.includes(id)).length,
     words = Math.max(20, Math.ceil(((on + locked) * ui.state.capabilities.words_per_detail) / 10) * 10);
   note.hidden = !normal;
   note.classList.toggle('short', Number(s.words) < words);

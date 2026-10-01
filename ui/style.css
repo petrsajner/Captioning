@@ -14,6 +14,7 @@
   --text: #e4ebe5;
   --muted: #91a396;
   --accent: #b7eb8f;
+  --uncertain: #f2a35e;
   --dark: #1c2b14;
   --error: #f09c91;
 }
@@ -1498,6 +1499,15 @@ pre {
 .caption-detail .lock-note {
   color: #e3cf8e;
 }
+/* Followed in 50-85 % of the test captions: offered, in orange. */
+.caption-detail.uncertain input {
+  accent-color: var(--uncertain);
+}
+.caption-detail.uncertain .detail-state,
+.caption-detail.uncertain input:checked ~ .detail-state .state-on,
+.caption-detail.uncertain .lock-note {
+  color: var(--uncertain);
+}
 .length-recommendation {
   margin-top: 6px;
   color: var(--muted);
@@ -1616,6 +1626,18 @@ pre {
 .model-table .tag.amber {
   background: #3a3420;
   color: #e3cf8e;
+}
+/* A model's orange and greyed detail switches, as the recipe offers them. */
+.switch-offer .tag {
+  margin: 2px 4px 2px 0;
+}
+.switch-offer .tag.amber {
+  background: #3d2c1b;
+  color: var(--uncertain);
+}
+.switch-offer .tag.grey {
+  background: #2c2c2c;
+  color: var(--muted);
 }
 .model-table .provider,
 .model-table .reason {

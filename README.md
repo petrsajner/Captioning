@@ -119,9 +119,12 @@ makes them faster and cheaper at the same quality.
 
 Checked details are described when visible; unchecked details are omitted. The
 model receives an explicit instruction for every detail in every output: what the caption
-must contain when it is on and what it must never contain when it is off. A switch the
-configured model does not follow reliably is greyed out at the type's default with the
-reason; your recipe keeps its choice for a model that can follow it. Below the length
+must contain when it is on and what it must never contain when it is off. Every switch is
+measured on every model in the settings' table: green when the model followed it in more
+than 85 % of the test captions, orange from 50 % (check the captions), greyed below 50 %
+(the detail stays at the type's default and your recipe keeps its choice for a model that
+can follow it). A visual style is judged more loosely: green above 70 %, orange from 30 %.
+A model we have not measured gets every switch. Below the length
 slider is the shortest reliable length for the model and the switched-on details. Each LoRA type
 has its own details, and **Apply defaults for this LoRA type** leaves out the ones in bold:
 

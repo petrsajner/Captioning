@@ -90,6 +90,15 @@ def test_failed_or_unhelpful_shortening_preserves_original_complete_text(image, 
     assert result.text == caption(60) and not result.needs_review and result.notice and len(calls) == 3
 
 
+def test_a_shortening_that_answers_with_a_message_keeps_the_caption(image, monkeypatch):
+    # 2026-10-01: GLM FlashX answered a shortening with a request to paste the caption; it was saved as the caption.
+    message = "It looks like the caption you want edited wasn't included. Please paste the caption."
+    calls = responses(monkeypatch, [caption(60), message, message])
+    result = asyncio.run(generate(image, Settings(words=40)))
+    assert result.text == caption(60) and len(calls) == 3
+    assert "Retained the complete response" in result.notice
+
+
 def test_full_caption_with_length_finish_is_not_a_false_failure(image, monkeypatch):
     calls = responses(monkeypatch, [caption(35)], ["length"])
     result = asyncio.run(generate(image, Settings(words=40)))
@@ -244,7 +253,7 @@ def test_recognized_external_llama_reasons_only_while_looking_at_the_image(image
     assert "does not allow reasoning" not in result.notice
 
 
-def test_external_server_without_reasoning_gets_the_strict_switch_offer(image, monkeypatch):
+def test_external_server_without_reasoning_gets_a_notice(image, monkeypatch):
     real, prompts = httpx.AsyncClient, []
 
     def handler(request):
@@ -256,7 +265,7 @@ def test_external_server_without_reasoning_gets_the_strict_switch_offer(image, m
         return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": "A face."}}]})
 
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs))
-    # Character identity switched on: an unmeasured model keeps the type default (left out).
+    # Character identity switched on: it stays on, whatever the server runs.
     s = Settings(
         local_source="external",
         local_url="http://127.0.0.1:8080/v1",
@@ -265,8 +274,9 @@ def test_external_server_without_reasoning_gets_the_strict_switch_offer(image, m
         omitted_attributes=["hair_color"],
     )
     result = asyncio.run(generate(image, s))
-    never = prompts[0].split("NEVER DESCRIBE, ", 1)[1]
-    assert "Face and body:" in never and "does not allow reasoning" in result.notice
+    # The switches stay as chosen (0.3.1: no lock for an unknown model); only a notice about the accuracy.
+    must = prompts[0].split("MUST DESCRIBE", 1)[1].split("NEVER DESCRIBE, ", 1)[0]
+    assert "Face and body:" in must and "does not allow reasoning" in result.notice
 
 
 def test_server_disappearance_pauses_batch_instead_of_failing_all_images(tmp_path, monkeypatch):

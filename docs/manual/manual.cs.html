@@ -308,8 +308,8 @@
         <div class="tip">
           <strong>Uvažování</strong>
           Lokální Qwen při popisu obrázku uvažuje a zkracuje bez uvažování: dělá tak zhruba poloviční počet chyb a trvá
-          asi 23 s na popisek na RTX 5090. Server, na kterém uvažování zapnout nejde, dostane upozornění a nejpřísnější
-          nabídku přepínačů detailů.
+          asi 23 s na popisek na RTX 5090. Server, na kterém uvažování zapnout nejde, dostane upozornění, že jeho
+          popisky budou méně přesné.
         </div>
         <div class="tip">
           <strong>Při popisování nechte Marvina běžet</strong>
@@ -449,7 +449,8 @@
       Nedoporučujeme: <strong>GLM 5V Turbo</strong> (hodně drobných chyb, pomalý),
       <strong>MiMo 2.6 Flash</strong> (vynechává zapnuté detaily, pomalý), <strong>DeepSeek V4.1 Flash</strong> (hodně
       jasných chyb, občas místo popisku odpoví zprávou), <strong>MiMo 2.6 Pro</strong> (nejvíc jasných chyb),
-      <strong>Kimi K3</strong> (drahý a pomalý). Použít je můžete, dostanou ale nejpřísnější nabídku přepínačů detailů.
+      <strong>Kimi K3</strong> (drahý a pomalý). Jen doporučujeme: <span class="ui">Použít tento model</span> funguje i
+      u nich a přepínač, který některý z nich nedodrží, je zašedlý s vysvětlením.
     </p>
     <p class="tiny muted">
       Měřeno v září 2026 na 55 nejtěžších záběrech (lidé, kostka, japonské dřevořezy), popisky 40 slov, hodnoceno
@@ -954,8 +955,8 @@
       </li>
       <li>
         Pod posuvníkem je <strong>nejkratší spolehlivá délka</strong> pro zvolený model a počet zapnutých detailů (u
-        GPT, Claude, Qwen Max a Groku asi 4,5 slova na detail, u Gemini, Muse, GLM a lokálního Qwenu 6,5, u neznámého
-        modelu 9). Je to jen doporučení; kratší cíl se zvýrazní žlutě, ale nic se neomezuje.
+        GPT, Claude, Qwen Max a Groku asi 4,5 slova na detail, u Gemini, Muse, GLM, lokálního Qwenu a každého dalšího
+        modelu 6,5). Je to jen doporučení; kratší cíl se zvýrazní žlutě, ale nic se neomezuje.
       </li>
     </ul>
 
@@ -1027,11 +1028,15 @@
       </figure>
     </div>
     <div class="note">
-      <strong>Zašedlé přepínače</strong>
-      Každý přepínač jsme změřili na každém doporučeném modelu. Když ho model spolehlivě nedodrží (vypnutý detail by
-      prosákl, zapnutý by chyběl), přepínač zašedne ve výchozím stavu typu LoRA a pod ním je důvod. Recept si vaši volbu
-      pamatuje a se schopnějším modelem se vrátí. U vizuálního stylu nevynechá obsah a pozadí spolehlivě žádný model,
-      takže se popisují vždy; Muse Spark nepopíše spolehlivě barvu vlasů postavy; neznámý model má nejpřísnější nabídku.
+      <strong>Zelené, oranžové a zašedlé přepínače</strong>
+      Každý přepínač jsme změřili na každém modelu z tabulky: kolik testovacích popisků ho dodrželo, když ho přepnete
+      (detail ve výchozím stavu vynechaný zapnete, jakýkoli jiný vypnete). <strong>Zelený</strong>, víc než 85 %
+      popisků: nabízí se normálně. <strong>Oranžový</strong>, 50–85 %: přepínač funguje, ale ne pokaždé; poznámka pod
+      ním říká, kolik testovacích popisků ho dodrželo, takže popisky zkontrolujte. <strong>Zašedlý</strong>, pod 50 %:
+      detail zůstane ve výchozím stavu typu LoRA a pod ním je důvod; recept si vaši volbu pamatuje a s modelem, který ji
+      zvládne, se vrátí. Vizuální styl se hodnotí volněji (zelený nad 70 %, oranžový od 30 %), protože únik tam vadí
+      méně než u postavy. Tabulka modelů v nastavení ukazuje oranžové a zašedlé přepínače každého modelu. Model, který v
+      tabulce není, dostane všechny přepínače.
     </div>
     <h3>Tipy pro jednotlivé typy</h3>
     <ul>

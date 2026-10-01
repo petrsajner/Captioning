@@ -1,7 +1,8 @@
-"""Model profiles, locked detail switches, reasoning per stage and provider (0.3.0, measured 2026-09-30)."""
+"""The switch offer per model, reasoning per stage and provider (measured 2026-09-30 and 2026-10-01)."""
 
 import asyncio
 import json
+import re
 
 import httpx
 import pytest
@@ -27,54 +28,59 @@ def cloud(model, url="https://openrouter.ai/api/v1", **extra):
 
 
 @pytest.mark.parametrize(
-    "model,expected",
+    "model",
+    ["", "some/unknown-vision", "moonshotai/kimi-k3"],  # no model chosen yet, never measured
+)
+def test_a_model_we_have_not_measured_gets_every_switch(model):
+    # Petr, 2026-10-01: we recommend, we do not forbid; never "not measured, so not allowed".
+    s = cloud(model, preset="character", omitted_attributes=["hair_color", "accessories"])
+    assert capabilities.offer(s) == {}
+    assert capabilities.effective(s).omitted_attributes == ["hair_color", "accessories"]
+
+
+@pytest.mark.parametrize(
+    "lora_type,detail,followed,level",
     [
-        ("anthropic/claude-opus-5.5", "full"),
-        ("openai/gpt-6.1-sol", "full"),
-        ("gpt-6.1-sol", "full"),
-        ("google/gemini-3.8-flash", "full"),
-        ("gemini-3.8-flash", "full"),
-        ("qwen/qwen3.8-max-0902", "full"),
-        ("x-ai/grok-4.7", "full"),
-        ("z-ai/glm-5.3-flashx", "full"),
-        ("meta/muse-spark-1.3", "muse"),
-        ("z-ai/glm-5v-turbo", "strict"),
-        ("xiaomi/mimo-v2.6-pro", "strict"),
-        ("deepseek/deepseek-v4.1-flash", "strict"),
-        ("some/unknown-vision", "strict"),
+        # A character's switches are critical: green above 85 %, orange from 50 %, greyed below.
+        ("character", "accessories", 9, None),
+        ("character", "accessories", 8, "orange"),
+        ("character", "accessories", 5, "orange"),
+        ("character", "accessories", 4, "grey"),
+        # A style is judged more loosely: green above 70 %, orange from 30 %.
+        ("style", "background", 8, None),
+        ("style", "background", 7, "orange"),
+        ("style", "background", 3, "orange"),
+        ("style", "background", 2, "grey"),
     ],
 )
-def test_cloud_models_get_their_measured_profile(model, expected):
-    assert capabilities.profile(cloud(model)) == expected
+def test_the_offer_follows_the_measured_share_per_lora_type(monkeypatch, lora_type, detail, followed, level):
+    monkeypatch.setattr(capabilities, "MEASURED", [(re.compile("test-model"), {(lora_type, detail): (followed, 10)})])
+    s = cloud("x/test-model", preset=lora_type)
+    got = capabilities.offer(s).get(lora_type, {}).get(detail)
+    assert (got and got["level"]) == level
+    if got:
+        assert got == {"level": level, "state": "off", "followed": followed, "captions": 10}
 
 
-def test_local_models_reason_and_fall_back_to_strict_without_it():
-    assert capabilities.profile(Settings()) == "full"
-    assert capabilities.profile(Settings(), reasoning=False) == "strict"
+def test_a_greyed_switch_stays_at_the_default_and_an_orange_one_as_chosen(monkeypatch):
+    shares = {("character", "hair_color"): (2, 10), ("character", "accessories"): (6, 10)}
+    monkeypatch.setattr(capabilities, "MEASURED", [(re.compile("test-model"), shares)])
+    s = cloud("x/test-model", preset="character", omitted_attributes=["identity", "accessories"])
+    offer = capabilities.offer(s)["character"]
+    assert offer["hair_color"]["level"] == "grey" and offer["hair_color"]["state"] == "on"
+    assert offer["accessories"]["level"] == "orange" and offer["accessories"]["state"] == "off"
+    # Hair color switched on is greyed: left out like the type's default. Accessories stay off as chosen.
+    assert capabilities.effective(s).omitted_attributes == ["identity", "accessories", "hair_color"]
+    # The recipe keeps the choice for a model that can follow it.
+    assert s.omitted_attributes == ["identity", "accessories"]
+    other = cloud("x/other", preset="character", omitted_attributes=["identity", "accessories"])
+    assert capabilities.effective(other).omitted_attributes == ["identity", "accessories"]
 
 
-def test_style_content_and_background_stay_described_for_every_model():
-    for s in (cloud("anthropic/claude-opus-5.5"), Settings(), cloud("unknown/model")):
-        style = cloud(s.cloud_model, preset="style") if s.mode == "cloud" else Settings(preset="style")
-        chosen = style.model_copy(update={"omitted_attributes": ["style", "palette", "identity", "background"]})
-        assert capabilities.effective(chosen).omitted_attributes == ["style", "palette"]
-        # The recipe keeps the choice; only the caption uses the default.
-        assert chosen.omitted_attributes == ["style", "palette", "identity", "background"]
-
-
-def test_locked_detail_returns_to_the_type_default_in_both_directions():
-    # Muse: character hair color switched on stays left out (the type default).
-    muse = cloud("meta/muse-spark-1.3", preset="character", omitted_attributes=["identity"])
-    assert "hair_color" in capabilities.effective(muse).omitted_attributes
-    # Unknown model: the palette switched on stays left out, identity switched on too.
-    strict = cloud("x/y", preset="character", omitted_attributes=["hair_color"])
-    assert set(capabilities.effective(strict).omitted_attributes) == {"hair_color", "identity"}
-    # Unknown model: an object's background switched off stays described.
-    obj = cloud("x/y", preset="object", omitted_attributes=["identity", "object_text", "background"])
-    assert capabilities.effective(obj).omitted_attributes == ["identity", "object_text"]
-    # Opus follows every switch of a character.
-    opus = cloud("anthropic/claude-opus-5.5", preset="character", omitted_attributes=["hair_color", "accessories"])
-    assert capabilities.effective(opus).omitted_attributes == ["hair_color", "accessories"]
+def test_local_qwen_has_its_own_measurement(monkeypatch):
+    monkeypatch.setattr(capabilities, "LOCAL_MEASURED", {("style", "identity"): (1, 10)})
+    assert capabilities.offer(Settings())["style"]["identity"]["level"] == "grey"
+    assert capabilities.offer(cloud("x/y")) == {}
 
 
 def test_recommended_length_follows_the_model_and_the_switched_on_details():
@@ -84,7 +90,7 @@ def test_recommended_length_follows_the_model_and_the_switched_on_details():
     # Gemini described a close-up's pose in 7 of 10 captions at 40 words, in 9 at 60.
     assert capabilities.recommended_words(cloud("google/gemini-3.8-flash", **character)) == 60
     assert capabilities.recommended_words(Settings(**character)) == 60
-    assert capabilities.recommended_words(cloud("x/y", **character)) == 80
+    assert capabilities.recommended_words(cloud("x/y", **character)) == 60
     few = cloud(
         "openai/gpt-6.1-sol",
         preset="character",
@@ -102,7 +108,7 @@ def test_recommended_length_follows_the_model_and_the_switched_on_details():
     assert capabilities.recommended_words(few) == 20
 
 
-def test_state_and_prompt_preview_show_what_the_model_gets(tmp_path):
+def test_state_and_prompt_preview_show_what_the_model_gets(tmp_path, monkeypatch):
     from pathlib import Path
 
     from fastapi.testclient import TestClient
@@ -113,11 +119,16 @@ def test_state_and_prompt_preview_show_what_the_model_gets(tmp_path):
     with TestClient(app, base_url="http://127.0.0.1:8888") as client:
         client.get("/?token=test-token")
         headers = {"X-Caption-Client": "1"}
-        state = client.get("/api/state", headers=headers).json()["capabilities"]
-        assert state["profile"] == "full" and state["locked"]["style"].keys() == {"identity", "background"}
-        body = Settings(preset="style", omitted_attributes=["style", "palette", "background"]).model_dump()
-        prompt = client.post("/api/prompt", json=body, headers=headers).json()["prompt"]
-    assert "- Environment and background: where the main subject is" in prompt
+        state = client.get("/api/state", headers=headers).json()
+        assert state["capabilities"]["offer"] == capabilities.offer(Settings())
+        assert "background" in {a["id"] for a in state["training_details"]["style"]}
+        body = cloud("z-ai/glm-5.3-flashx", preset="style", omitted_attributes=["identity", "style"]).model_dump()
+        # An orange switch stays as chosen; a greyed one is at the type's default in the preview.
+        orange = client.post("/api/prompt", json=body, headers=headers).json()["prompt"]
+        monkeypatch.setattr(capabilities, "MEASURED", [(re.compile("flashx"), {("style", "identity"): (1, 10)})])
+        grey = client.post("/api/prompt", json=body, headers=headers).json()["prompt"]
+    assert "- What is depicted: nothing about the people" in orange
+    assert "- What is depicted: the people, animals and things" in grey
 
 
 @pytest.mark.parametrize(
@@ -168,6 +179,9 @@ def test_text_that_is_not_a_caption_is_kept_for_review():
     assert not_a_caption("Here is the caption: a cube.") == NOT_A_CAPTION
     assert "<characters>" in not_a_caption("A woman <characters> stands.")
     assert not_a_caption("A woman stands under an umbrella.") == ""
+    glm = "it looks like the caption you want edited wasn't included. Please paste the caption, and I'll rewrite it."
+    assert not_a_caption(glm) == NOT_A_CAPTION
+    assert not_a_caption("Snow falls on a street; your eye goes to the lantern.") == ""
     # The name token of a character is markup only until the application replaces it.
     assert not_a_caption("<character>, a woman, stands.", "Velmira, a woman, stands.") == ""
 
@@ -184,3 +198,14 @@ def test_the_provider_message_is_shown_with_the_key_masked():
 def test_palette_is_a_style_detail_again():
     prompt = make_prompt(Settings(preset="style", omitted_attributes=["style"], omitted_by_type={}))
     assert "- Color palette and grading: one phrase about the overall color palette" in prompt
+
+
+def test_the_model_table_shows_the_offer_of_every_model_it_lists():
+    from pathlib import Path
+
+    table = (Path(__file__).parents[1] / "ui" / "models.js").read_text(encoding="utf-8")
+    listed = re.findall(r"'https://openrouter\.ai/api/v1': '([^']+)'", table)
+    assert set(listed) == set(capabilities.TABLE_MODELS)
+    summary = capabilities.summary(cloud("x/y"))
+    assert set(summary["table"]) == {*capabilities.TABLE_MODELS, "local"}
+    assert summary["table"]["local"] == capabilities.offer(Settings())

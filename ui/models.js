@@ -3,6 +3,7 @@
 // 2.9 = 2, more = 1. Seconds and dollars are per caption and per 100 captions, rewrites with minimal reasoning.
 import { $, esc } from './dom.js';
 import { i18n, t } from './i18n.js';
+import { ui } from './store.js';
 
 const RECOMMENDED = [
   {
@@ -73,7 +74,7 @@ const RECOMMENDED = [
     maker: 'Meta',
     tag: '18+ confirmation',
     warn: true,
-    note: 'OpenRouter runs it only after you confirm you are 18+ in your account settings. Hair color of a character is not offered.',
+    note: 'OpenRouter runs it only after you confirm you are 18+ in your account settings.',
     quality: 4,
     seconds: 44,
     price: '2.25',
@@ -100,6 +101,7 @@ const RECOMMENDED = [
 const NOT_RECOMMENDED = [
   {
     name: 'GLM 5V Turbo',
+    ids: { 'https://openrouter.ai/api/v1': 'z-ai/glm-5v-turbo' },
     maker: 'Z.ai',
     why: 'many minor errors, slow',
     quality: 3,
@@ -111,6 +113,7 @@ const NOT_RECOMMENDED = [
   },
   {
     name: 'MiMo 2.6 Flash',
+    ids: { 'https://openrouter.ai/api/v1': 'xiaomi/mimo-v2.6-flash' },
     maker: 'Xiaomi',
     why: 'leaves out details, slow',
     quality: 2,
@@ -122,6 +125,7 @@ const NOT_RECOMMENDED = [
   },
   {
     name: 'DeepSeek V4.1 Flash',
+    ids: { 'https://openrouter.ai/api/v1': 'deepseek/deepseek-v4.1-flash' },
     maker: 'DeepSeek',
     why: 'many errors, sometimes no caption',
     quality: 2,
@@ -133,6 +137,7 @@ const NOT_RECOMMENDED = [
   },
   {
     name: 'MiMo 2.6 Pro',
+    ids: { 'https://openrouter.ai/api/v1': 'xiaomi/mimo-v2.6-pro' },
     maker: 'Xiaomi',
     why: 'most errors',
     quality: 1,
@@ -142,15 +147,37 @@ const NOT_RECOMMENDED = [
     minor: '6.9',
     described: 94,
   },
-  { name: 'Kimi K3', maker: 'Moonshot AI', why: 'expensive and slow', quality: 0 },
+  {
+    name: 'Kimi K3',
+    ids: { 'https://openrouter.ai/api/v1': 'moonshotai/kimi-k3' },
+    maker: 'Moonshot AI',
+    why: 'expensive and slow',
+    quality: 0,
+  },
 ];
 
-const SWITCHES = 'Every detail switch except content and background of a style (no model leaves those out reliably).';
 const meter = (n) =>
   `<span class="meter" aria-label="${esc(t('Quality {v0} of 5', { v0: n }))}">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
 // Czech writes a decimal comma.
 const num = (value) => (i18n.language === 'cs' ? String(value).replace('.', ',') : String(value));
 const money = (value) => (value ? `${num(value)} $` : '–');
+
+const OPENROUTER = 'https://openrouter.ai/api/v1';
+
+// The detail switches a model does not follow reliably, from the measurement in captioning/capabilities.py: the
+// same offer the recipe shows when the model is configured.
+function switchOffer(id) {
+  const offer = ui.state.capabilities.table[id] || {},
+    typeName = (type) => document.querySelector(`[name=preset] option[value=${type}]`)?.textContent || type,
+    label = (type, detail) => ui.state.training_details[type].find((a) => a.id === detail)?.label || detail,
+    chips = Object.entries(offer).flatMap(([type, details]) =>
+      Object.entries(details).map(
+        ([detail, o]) =>
+          `<span class="tag ${o.level === 'grey' ? 'grey' : 'amber'}" title="${esc(t(o.level === 'grey' ? 'Greyed out' : 'Orange: check the captions'))}">${esc(t(label(type, detail)))} · ${esc(typeName(type))} ${o.followed}/${o.captions}</span>`,
+      ),
+    );
+  return `<p class="switch-offer">${esc(t('Detail switches:'))} ${chips.length ? chips.join(' ') : esc(t('all green'))}</p>`;
+}
 
 function facts(m) {
   if (!m.seconds) return `<p>${esc(t('We stopped measuring it: too expensive and too slow.'))}</p>`;
@@ -162,13 +189,12 @@ function row(m, rank, recommended) {
   const second = recommended
     ? `<span class="provider">${esc(m.maker)}</span>`
     : `<span class="reason">${esc(t(m.why))}</span>`;
-  const use = recommended
-    ? `<button type="button" class="use secondary" data-model="${esc(m.name)}">${esc(t('Use this model'))}</button>`
-    : '';
-  const note = recommended
-    ? `<p>${esc(t(m.note || SWITCHES))}</p>`
-    : `<p>${esc(m.maker)}. ${esc(t('You can still use it; it gets the strictest detail switch offer.'))}</p>`;
-  return `<details><summary class="row"><span class="rank">${rank}</span><span class="name"><b>${esc(m.name)}</b>${tag}${second}</span>${meter(m.quality)}<span class="num${m.seconds > 60 ? ' slow' : ''}">${m.seconds ? m.seconds + ' s' : '–'}</span><span class="num price">${money(m.price)}</span></summary><div class="more">${facts(m)}${note}${use}</div></details>`;
+  // We recommend, we do not forbid: every measured model can be chosen.
+  const use = `<button type="button" class="use secondary" data-model="${esc(m.name)}">${esc(t('Use this model'))}</button>`;
+  const said = m.note ? t(m.note) : '',
+    text = recommended ? said : [m.maker + '.', said].join(' ').trim(),
+    note = text ? `<p>${esc(text)}</p>` : '';
+  return `<details><summary class="row"><span class="rank">${rank}</span><span class="name"><b>${esc(m.name)}</b>${tag}${second}</span>${meter(m.quality)}<span class="num${m.seconds > 60 ? ' slow' : ''}">${m.seconds ? m.seconds + ' s' : '–'}</span><span class="num price">${money(m.price)}</span></summary><div class="more">${facts(m)}${note}${switchOffer(m.ids[OPENROUTER])}${use}</div></details>`;
 }
 
 function columns(first) {
@@ -183,7 +209,7 @@ export function renderModelTable() {
   $('local-model-card').innerHTML =
     `<section class="zone good"><div class="zone-head"><span class="dot"></span><h3>${esc(t('Local model'))}</h3><small>${esc(t('runs on your computer'))}</small></div>` +
     `<div class="local-card"><span class="name"><b>${esc(t('Qwen with reasoning'))}</b><span class="tag">${esc(t('free, images stay with you'))}</span><span class="provider">${esc(t('Reasons while it looks at the image, shortens without reasoning.'))}</span></span>${meter(3)}<span class="num">~23 s</span><span class="num">0 $</span></div></section>` +
-    `<p class="tiny muted">${esc(t('Time measured on an RTX 5090; a smaller card takes longer. Clear errors 1.4 per 10 captions, minor 5.8, switched-on details described 96 %.'))}</p>`;
+    `<p class="tiny muted">${esc(t('Time measured on an RTX 5090; a smaller card takes longer. Clear errors 1.4 per 10 captions, minor 5.8, switched-on details described 96 %.'))}</p>${switchOffer('local')}`;
 }
 
 // One model's details open at a time.
@@ -200,9 +226,8 @@ document.addEventListener(
 
 // "Use this model": the model's ID for the chosen provider, or OpenRouter when that provider does not offer it.
 export function modelChoice(name, providerUrl) {
-  const m = RECOMMENDED.find((x) => x.name === name);
+  const m = [...RECOMMENDED, ...NOT_RECOMMENDED].find((x) => x.name === name);
   if (!m) return null;
   if (m.ids[providerUrl]) return { url: providerUrl, id: m.ids[providerUrl] };
-  const url = 'https://openrouter.ai/api/v1';
-  return { url, id: m.ids[url] };
+  return { url: OPENROUTER, id: m.ids[OPENROUTER] };
 }

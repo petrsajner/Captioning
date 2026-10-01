@@ -39,11 +39,8 @@ HTTP_HINTS = {
     429: "The request rate limit was reached.",
 }
 BLOCKED_FINISH = {"content_filter", "safety", "blocklist", "prohibited_content"}
-# A local server whose chat template cannot switch reasoning on runs without it and gets the strict switch offer.
-NO_LOCAL_REASONING = (
-    "This local server does not allow reasoning, so captions are less accurate and some detail switches keep their "
-    "defaults."
-)
+# A local server whose chat template cannot switch reasoning on runs without it: about twice the clear errors.
+NO_LOCAL_REASONING = "This local server does not allow reasoning, so captions are less accurate."
 RETRY_MESSAGE = {
     "role": "user",
     "content": "Return the final image caption only. The previous response contained no usable caption.",
@@ -107,11 +104,24 @@ def clean_caption(value: str) -> str:
 # Live, DeepSeek once answered "i'll condense your draft…" and GLM left "<characters>" in a caption. Such text
 # is kept for review, never changed or deleted.
 MESSAGE_START = re.compile(
-    r"^(i['’]ll|i will|i['’]ve|i have|here is|here['’]s|sure\b|certainly|as requested|below is)", re.I
+    r"^(i['’]ll|i will|i['’]ve|i have|i['’]m sorry|sorry\b|here is|here['’]s|sure\b|certainly|as requested|below is"
+    r"|it (looks|seems) like)",
+    re.I,
+)
+# A message to the user talks about the request itself (2026-10-01: GLM FlashX answered a shortening with "it looks
+# like the caption you want edited wasn't included ... Please paste the caption").
+MESSAGE_TALK = re.compile(
+    r"\b(caption to edit|the (caption|draft) you|your (caption|draft|request)|please (paste|provide|share|send|include)"
+    r"|(wasn['’]t|was not|isn['’]t|is not) included|i (can|will|['’]ll) (rewrite|condense|shorten|edit))\b",
+    re.I,
 )
 MARKUP = re.compile(r"</?[A-Za-z][\w-]*>")
 NOT_A_CAPTION = "The model answered with a message instead of a caption. Check the text."
 STRAY_MARKUP = "The caption contains markup such as {tag}. Check the text."
+
+
+def is_message(text: str) -> bool:
+    return bool(MESSAGE_START.match(text.strip()) or MESSAGE_TALK.search(text))
 
 
 def not_a_caption(draft: str, caption: str | None = None) -> str:
@@ -119,7 +129,7 @@ def not_a_caption(draft: str, caption: str | None = None) -> str:
 
     The draft is the model's own text; the caption has the name token (<character>) already replaced.
     """
-    if MESSAGE_START.match(draft.strip()):
+    if is_message(draft):
         return NOT_A_CAPTION
     tag = MARKUP.search(draft if caption is None else caption)
     return STRAY_MARKUP.format(tag=tag.group(0)) if tag else ""
@@ -474,6 +484,8 @@ class CaptionSession:
                 break
             if edited["blocked"]:
                 break
+            if is_message(edited.get("draft", edited["text"])):
+                continue  # A message instead of the rewritten caption: keep the caption it was given.
             if edited["complete"] and edited["text"]:
                 candidates.append(edited)
                 if words(edited) <= ceiling:
@@ -526,7 +538,7 @@ async def generate(path: Path, s: Settings, key: str = "", on_progress=None) -> 
         external = s.mode == "local" and s.local_source == "external"
         reasoning = await external_can_reason(client, base, headers) if external else True
         # A switch the model cannot follow stays at the LoRA type's default (capabilities.py).
-        s = effective(s, reasoning)
+        s = effective(s)
         payload = build_payload(s, model, images, media)
         if external and reasoning:
             payload["chat_template_kwargs"] = {"enable_thinking": True}

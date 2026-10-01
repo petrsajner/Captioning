@@ -307,8 +307,8 @@
         <div class="tip">
           <strong>Reasoning</strong>
           Local Qwen reasons while it looks at the image and shortens without reasoning: it makes about half the errors
-          and takes about 23 s per caption on an RTX 5090. A server that cannot reason gets a notice and the strictest
-          detail switch offer.
+          and takes about 23 s per caption on an RTX 5090. A server that cannot reason gets a notice that its captions
+          are less accurate.
         </div>
         <div class="tip">
           <strong>Keep Marvin running while you caption</strong>
@@ -452,8 +452,8 @@
       We advise against: <strong>GLM 5V Turbo</strong> (many minor errors, slow),
       <strong>MiMo 2.6 Flash</strong> (leaves out switched-on details, slow), <strong>DeepSeek V4.1 Flash</strong> (many
       clear errors, sometimes answers with a message instead of a caption), <strong>MiMo 2.6 Pro</strong> (most clear
-      errors), <strong>Kimi K3</strong> (expensive and slow). You can still use them; they get the strictest detail
-      switch offer.
+      errors), <strong>Kimi K3</strong> (expensive and slow). We only advise: <span class="ui">Use this model</span>
+      works for them too, and a switch one of them does not follow is greyed with the reason.
     </p>
     <p class="tiny muted">
       Measured in September 2026 on the 55 hardest shots (people, a puzzle cube, Japanese woodblock prints) with 40-word
@@ -956,9 +956,8 @@
       </li>
       <li>
         Below the slider is the <strong>shortest reliable length</strong> for the chosen model and the number of
-        switched-on details (about 4.5 words per detail for GPT, Claude, Qwen Max and Grok, 6.5 for Gemini, Muse, GLM
-        and local Qwen, 9 for an unknown model). It is only a recommendation; a shorter target turns yellow, nothing is
-        limited.
+        switched-on details (about 4.5 words per detail for GPT, Claude, Qwen Max and Grok, 6.5 for Gemini, Muse, GLM,
+        local Qwen and any other model). It is only a recommendation; a shorter target turns yellow, nothing is limited.
       </li>
     </ul>
 
@@ -1030,12 +1029,15 @@
       </figure>
     </div>
     <div class="note">
-      <strong>Greyed-out switches</strong>
-      Every switch was measured on every recommended model. When a model does not follow one reliably (a detail switched
-      off would leak, one switched on would be missing), the switch is greyed at the LoRA type's default with the reason
-      below it. The recipe keeps your choice, and it returns with a model that can follow it. For a visual style no
-      model leaves out the content and background reliably, so they are always described; Muse Spark does not describe a
-      character's hair color reliably; an unknown model gets the strictest offer.
+      <strong>Green, orange and greyed switches</strong>
+      Every switch was measured on every model in the table: how many test captions followed it when you switch it (a
+      detail left out by default switched on, any other switched off). <strong>Green</strong>, more than 85 % of the
+      captions: offered as usual. <strong>Orange</strong>, 50–85 %: the switch works, but not every time; the note below
+      it says how many test captions followed it, so check the captions. <strong>Greyed</strong>, below 50 %: the detail
+      stays at the LoRA type's default with the reason below it; the recipe keeps your choice, and it returns with a
+      model that can follow it. A visual style is judged more loosely (green above 70 %, orange from 30 %), because a
+      leak there matters less than in a character. The model table in the settings shows each model's orange and greyed
+      switches. A model that is not in the table gets every switch.
     </div>
     <h3>Tips per type</h3>
     <ul>

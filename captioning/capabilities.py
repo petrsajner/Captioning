@@ -1,8 +1,11 @@
-"""Which detail switches a model follows reliably, measured live (2026-09-30, output/switch-test/PROPOSAL.md).
+"""How reliably each model follows each detail switch, measured live and judged blind (output/switch-test).
 
-A switch the model cannot follow is not offered (Petr: "it would lie"): its detail stays at the LoRA type's
-default and the UI shows it greyed out with the reason. The recipe keeps the user's own choice, so it returns
-with a model that can follow it.
+A switch is offered in three ways (Petr, 2026-10-01): green when the model followed it in more than 85 % of the
+test captions, orange from 50 % (it works, check the captions), greyed below 50 %. A style may be judged more
+loosely (green above 70 %, orange from 30 %); for a character the switches are critical. A greyed switch stays at the
+LoRA type's default for that model; the recipe keeps the user's own choice, so it returns with a model that can
+follow it. Measured is the state the user switches to (a detail left out by default switched on, any other
+switched off). A model we have not measured gets every switch: the app recommends, it does not forbid.
 """
 
 from __future__ import annotations
@@ -12,85 +15,103 @@ import re
 
 from .training import TYPE_DEFAULTS, details_for
 
-# Style LoRAs: no measured model keeps the depicted content or the background out of a print (even Opus named
-# the turtle or the lantern of a one-subject print, and the boats and small figures of a landscape).
-NO_MODEL = "No measured model leaves this out reliably in style images, so it stays described."
-# Measured on a few known models only; an unknown model gets the defaults where the weakest measured model failed.
-UNMEASURED = "Not measured for this model; this detail stays at the LoRA type's default."
-LOCKS: dict[str, dict[tuple[str, str], str]] = {
-    "full": {},
-    "muse": {
-        ("character", "hair_color"): "This model often misses the hair tone in black-and-white photos, so hair color "
-        "stays left out.",
-    },
-    "strict": {
-        ("character", "identity"): UNMEASURED,
-        ("character", "accessories"): UNMEASURED,
-        ("object", "background"): UNMEASURED,
-        ("style", "palette"): UNMEASURED,
-    },
+# Per LoRA type: (green above, orange from) as shares of the test captions that followed the switch.
+THRESHOLDS = {"general": (0.85, 0.5), "character": (0.85, 0.5), "object": (0.85, 0.5), "style": (0.7, 0.3)}
+# Per model, by name (newer versions of the same line included): (followed, test captions) for each switch it
+# did not follow often enough to be green, 40 words, judged blind; the prompt of every test caption was checked to
+# carry the switch as measured. A style on two print sets (the second with a single subject such as a turtle, a
+# carp or a lantern), people and objects with the rule fixes of 0.3.0. Every other switch is green (a share needs
+# at least 5 test captions; GPT's logo switched on was visible in only 2 and is green).
+MEASURED: list[tuple[re.Pattern, dict[tuple[str, str], tuple[int, int]]]] = [
+    (re.compile(r"qwen[^/]*max", re.I), {("style", "background"): (8, 15)}),
+    (re.compile(r"grok", re.I), {("style", "identity"): (9, 15), ("style", "background"): (9, 15)}),
+    (re.compile(r"muse-spark", re.I), {("character", "hair_color"): (8, 10)}),
+    (re.compile(r"glm[^/]*flashx", re.I), {("style", "identity"): (7, 19), ("style", "background"): (9, 20)}),
+]
+# The models in the settings' table (their OpenRouter IDs, ui/models.js): the table shows each one's offer.
+TABLE_MODELS = (
+    "openai/gpt-6.1-sol",
+    "anthropic/claude-opus-5.5",
+    "google/gemini-3.8-flash",
+    "qwen/qwen3.8-max-0902",
+    "x-ai/grok-4.7",
+    "meta/muse-spark-1.3",
+    "z-ai/glm-5.3-flashx",
+    "z-ai/glm-5v-turbo",
+    "xiaomi/mimo-v2.6-flash",
+    "deepseek/deepseek-v4.1-flash",
+    "xiaomi/mimo-v2.6-pro",
+    "moonshotai/kimi-k3",
+)
+# Local Qwen (Marvin, the managed runtime or an external llama-server running it), reasoning while it captions.
+LOCAL_MEASURED: dict[tuple[str, str], tuple[int, int]] = {
+    ("style", "identity"): (3, 10),
+    ("style", "background"): (6, 10),
 }
-ALWAYS = {("style", "identity"): NO_MODEL, ("style", "background"): NO_MODEL}
 # Words per switched-on photo detail for the shortest reliable caption: 40 words for a character's 9 details on
-# GPT, Claude, Qwen Max and Grok, 60 on Gemini, Muse, GLM FlashX and local Qwen with reasoning (at 40 words Gemini
-# described the pose of a close-up in 7 of 10 captions, at 60 in 9, at 80 in 10), 80 on Qwen without reasoning.
-WORDS_PER_DETAIL = {"cloud": 4.4, "longer": 6.5, "local": 6.5, "strict": 8.8}
-LONGER_MODELS = re.compile(r"gemini|muse-spark|glm-", re.I)
-# Cloud models by name, newer versions of the same line included.
-FULL_MODELS = re.compile(r"claude|anthropic|(^|/)gpt-|openai/|gemini|qwen[^/]*max|grok|glm-[\d.]+-flashx", re.I)
-MUSE_MODELS = re.compile(r"muse-spark", re.I)
+# GPT, Claude, Qwen Max and Grok, 60 on Gemini, Muse, GLM, local Qwen with reasoning and any other model (at 40
+# words Gemini described the pose of a close-up in 7 of 10 captions, at 60 in 9, at 80 in 10).
+WORDS_PER_DETAIL = {"cloud": 4.4, "longer": 6.5}
+SHORT_MODELS = re.compile(r"claude|anthropic|(^|/)gpt-|openai/|qwen[^/]*max|grok", re.I)
 
 
-def profile(s, reasoning: bool = True) -> str:
-    """The measured group of the configured model: "full", "muse" or "strict".
-
-    Local models run with reasoning (Qwen through Marvin or the managed runtime); a local server that cannot
-    reason (`reasoning` False, known only once it answers) and every unknown cloud model get "strict".
-    """
-    if s.mode == "local":
-        return "full" if reasoning else "strict"
-    if MUSE_MODELS.search(s.cloud_model):
-        return "muse"
-    return "full" if FULL_MODELS.search(s.cloud_model) else "strict"
+def measured(s) -> dict[tuple[str, str], tuple[int, int]]:
+    if s.mode != "cloud":
+        return LOCAL_MEASURED
+    found: dict[tuple[str, str], tuple[int, int]] = {}
+    for pattern, shares in MEASURED:
+        if pattern.search(s.cloud_model):
+            found |= shares
+    return found
 
 
-def locked(s, reasoning: bool = True) -> dict[str, dict[str, str]]:
-    """Per LoRA type, the details that stay at the type's default for this model, with the reason."""
-    locks = {**ALWAYS, **LOCKS[profile(s, reasoning)]}
-    out: dict[str, dict[str, str]] = {}
-    for (lora_type, detail), reason in locks.items():
-        out.setdefault(lora_type, {})[detail] = reason
+def offer(s) -> dict[str, dict[str, dict]]:
+    """Per LoRA type, the switches this model does not follow reliably enough to be green: orange or grey, the
+    state the user switches to and how many test captions followed it."""
+    out: dict[str, dict[str, dict]] = {}
+    for (lora_type, detail), (followed, captions) in measured(s).items():
+        green_above, orange_from = THRESHOLDS[lora_type]
+        share = followed / captions
+        if share > green_above:
+            continue
+        out.setdefault(lora_type, {})[detail] = {
+            "level": "orange" if share >= orange_from else "grey",
+            "state": "on" if detail in TYPE_DEFAULTS[lora_type] else "off",
+            "followed": followed,
+            "captions": captions,
+        }
     return out
 
 
-def effective(s, reasoning: bool = True):
-    """The settings a caption uses: every locked detail at its LoRA type's default, the rest as chosen."""
-    locks = locked(s, reasoning).get(s.preset, {})
-    if not locks:
+def greyed(s) -> set[str]:
+    return {d for d, o in offer(s).get(s.preset, {}).items() if o["level"] == "grey"}
+
+
+def effective(s):
+    """The settings a caption uses: every greyed detail at its LoRA type's default, the rest as chosen."""
+    grey = greyed(s)
+    if not grey:
         return s
     defaults = set(TYPE_DEFAULTS[s.preset])
-    omitted = [a for a in s.omitted_attributes if a not in locks] + [a for a in locks if a in defaults]
+    omitted = [a for a in s.omitted_attributes if a not in grey] + [a for a in grey if a in defaults]
     return s.model_copy(update={"omitted_attributes": omitted})
 
 
-def words_per_detail(s, reasoning: bool = True) -> float:
-    if profile(s, reasoning) == "strict":
-        return WORDS_PER_DETAIL["strict"]
-    if s.mode == "local":
-        return WORDS_PER_DETAIL["local"]
-    return WORDS_PER_DETAIL["longer" if LONGER_MODELS.search(s.cloud_model) else "cloud"]
+def words_per_detail(s) -> float:
+    short = s.mode == "cloud" and SHORT_MODELS.search(s.cloud_model)
+    return WORDS_PER_DETAIL["cloud" if short else "longer"]
 
 
-def recommended_words(s, reasoning: bool = True) -> int:
+def recommended_words(s) -> int:
     """The shortest reliable caption length for this model and the switched-on photo details."""
-    on = [
-        a
-        for a in details_for(s.preset)
-        if a.get("media", "image") == "image" and a["id"] not in effective(s, reasoning).omitted_attributes
-    ]
-    return max(20, math.ceil(len(on) * words_per_detail(s, reasoning) / 10) * 10)
+    omitted = effective(s).omitted_attributes
+    on = [a for a in details_for(s.preset) if a.get("media", "image") == "image" and a["id"] not in omitted]
+    return max(20, math.ceil(len(on) * words_per_detail(s) / 10) * 10)
 
 
 def summary(s) -> dict:
-    """What the UI needs: the locked details with their reasons and the words per switched-on detail."""
-    return {"profile": profile(s), "locked": locked(s), "words_per_detail": words_per_detail(s)}
+    """What the UI needs: the orange and greyed switches of the configured model, the words per switched-on detail
+    and, for the model table, the offer of every measured model and of local Qwen."""
+    table = {m: offer(s.model_copy(update={"mode": "cloud", "cloud_model": m})) for m in TABLE_MODELS}
+    table["local"] = offer(s.model_copy(update={"mode": "local"}))
+    return {"offer": offer(s), "words_per_detail": words_per_detail(s), "table": table}

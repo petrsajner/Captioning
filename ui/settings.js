@@ -284,7 +284,8 @@ $('cloud-provider').onchange = () => {
   renderKeyStatuses();
   renderSummary();
 };
-// "Use this model" fills the provider and the model ID; the key and saving stay with the user.
+// "Use this model" fills in the provider and the model ID and saves them at once, so the recipe offers the model's
+// switches right away (Petr, 2026-10-01: picking a model and closing the dialog left the previous one in use).
 $('model-table').addEventListener('click', (e) => {
   const button = e.target.closest('[data-model]');
   if (!button) return;
@@ -298,7 +299,10 @@ $('model-table').addEventListener('click', (e) => {
   settingsForm.elements.cloud_model.value = choice.id;
   renderKeyStatuses();
   renderSummary();
-  $('settings-message').textContent = t('{v0} selected. Save to use it.', { v0: button.dataset.model });
+  action(async () => {
+    await saveSetup();
+    $('settings-message').textContent = t('{v0} is set.', { v0: button.dataset.model });
+  });
 });
 $('save-settings').onclick = () => action(() => saveSetup(true));
 $('ui-language').onchange = () => action(changeLanguage);
