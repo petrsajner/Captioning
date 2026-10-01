@@ -1,5 +1,53 @@
 # Caption Studio development handoff
 
+## Next release: 0.3.1 (in progress, 2026-10-01)
+
+Petr's feedback on 0.3.0: identity and accessories were greyed for every model with "not measured" (the
+settings had a cloud provider but no model, which 0.3.0 treated as unknown and gave the strict offer). His
+rules: we recommend, we do not forbid ("Use this model" for the red zone too); never "we did not measure it";
+measure what is missing; a switch that works nowhere is removed, one that works somewhere is greyed only for the
+models that cannot follow it; then three tiers by measured share: green above 85 %, orange from 50 % (offered,
+"check the captions"), greyed below 50 %; a style may be judged more loosely (green above 70 %, orange from
+30 %), for a character the switches are critical. And: "we must be sure every measurement is right, not
+switched off by our own switch".
+
+- `capabilities.py`: `MEASURED` per model name and `LOCAL_MEASURED` hold (followed, test captions) for the
+  switches that are not green; `THRESHOLDS` per LoRA type; `offer()` gives orange or grey with the switched
+  state ("on" for a detail left out by default, else "off") and the counts; `effective()` puts only greyed
+  details at the type default; `summary()` adds `table` (the offer of every model in the settings' table,
+  `TABLE_MODELS`, plus "local"). An unknown or empty model gets every switch. No "strict" profile, no
+  "not measured" text. A share from fewer than 5 test captions does not decide (GPT's logo switched on was
+  visible in 2 photos, 1/2).
+- UI: `recipe.js` greys (`locked`) or colours (`uncertain`, `--uncertain` orange) each switch with a note
+  composed from the counts ("Switched off, this model left it out in 9 of 15 test captions. Check the
+  captions."); `models.js` shows each model's orange and greyed switches as chips, from `state.capabilities.table`;
+  "Use this model" on every row, and it saves at once ("{v0} is set."). The length note keeps only "The word
+  count is a soft target."
+- `provider.py`: a rewrite that answers with a message instead of the caption is never used (`is_message`,
+  `MESSAGE_TALK`; GLM FlashX answered a shortening with "it looks like the caption you want edited wasn't
+  included ... Please paste the caption" and that was saved as the caption); the caption it was given is kept.
+  `NO_LOCAL_REASONING` no longer mentions a restricted offer.
+- Measurement (40 words, blind judges, `judge_flip_prompt.md`): set 1 and the r5 re-measure (all before the
+  0.3.0 implementation, 2026-09-30 07:07 UTC; every caption's prompt rebuilt with the code copy it was
+  measured with, `verify_history.py`: 145 runs, all as measured; 3,870 captions, none a message) plus, on
+  2026-10-01, the second print set for a style's content and background (GPT, Opus, Gemini, Qwen Max, Grok,
+  Muse, GLM FlashX) and a half switch test (5 photos per LoRA type, every switch) of GLM 5V Turbo, MiMo 2.6
+  Flash and Pro and DeepSeek V4.1 Flash. The 2026-10-01 runs record the prompt each caption really got
+  (`switches_live.py`: "sent", "sent_ok"; the app's own offer is emptied while measuring) and only captions
+  whose prompt carried the switch as measured are judged. The first runs of that day were discarded
+  (`output/invalid-2026-10-01`): they started while 0.3.0's locks were still in the code (GLM 5V and MiMo
+  Flash got the strict offer, Gemini's and GLM's style content stayed described).
+- Result for the recommended models: GPT, Claude Opus and Gemini all green; orange: Qwen Max style background
+  8/15; Grok style content 9/15 and background 9/15; Muse character hair color 8/10; GLM FlashX style content
+  7/19 and background 9/20; local Qwen style content 3/10 and background 6/10 (set 1 only: Marvin was not
+  running for set 2). Nothing greyed among them. The models we advise against (half test, 5 per switch):
+  DeepSeek and MiMo Pro orange only for a character's identity on (4/5); GLM 5V identity on 4/5 and style
+  background 2/5 orange, style content off 1/5 greyed; MiMo Flash identity on 3/5 and style background 3/5
+  orange, style content off 1/5 greyed. Kimi K3 is not measured (too expensive and slow) and gets every switch.
+- Scripts (scratchpad, not in git): `switches_live.py` (records "sent"), `build_flip_packets.py` (only verified
+  captions, no messages), `judge_flip_prompt.md`, `unblind_flip.py`, `compute_offer.py` (set 1 + r5 + new,
+  thresholds, minimum 5 captions; prints the MEASURED block), `verify_history.py`.
+
 ## Current release: 0.3.0 (2026-09-30)
 
 Switches offered per model, reasoning per stage and provider, measured models in the settings. Petr's

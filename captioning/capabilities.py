@@ -27,6 +27,17 @@ MEASURED: list[tuple[re.Pattern, dict[tuple[str, str], tuple[int, int]]]] = [
     (re.compile(r"grok", re.I), {("style", "identity"): (9, 15), ("style", "background"): (9, 15)}),
     (re.compile(r"muse-spark", re.I), {("character", "hair_color"): (8, 10)}),
     (re.compile(r"glm[^/]*flashx", re.I), {("style", "identity"): (7, 19), ("style", "background"): (9, 20)}),
+    # The models we advise against, half switch test (the 5 hardest photos per LoRA type).
+    (
+        re.compile(r"glm-5v", re.I),
+        {("character", "identity"): (4, 5), ("style", "identity"): (1, 5), ("style", "background"): (2, 5)},
+    ),
+    (
+        re.compile(r"mimo[^/]*flash", re.I),
+        {("character", "identity"): (3, 5), ("style", "identity"): (1, 5), ("style", "background"): (3, 5)},
+    ),
+    (re.compile(r"mimo[^/]*pro", re.I), {("character", "identity"): (4, 5)}),
+    (re.compile(r"deepseek", re.I), {("character", "identity"): (4, 5)}),
 ]
 # The models in the settings' table (their OpenRouter IDs, ui/models.js): the table shows each one's offer.
 TABLE_MODELS = (

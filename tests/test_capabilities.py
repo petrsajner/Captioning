@@ -209,3 +209,17 @@ def test_the_model_table_shows_the_offer_of_every_model_it_lists():
     summary = capabilities.summary(cloud("x/y"))
     assert set(summary["table"]) == {*capabilities.TABLE_MODELS, "local"}
     assert summary["table"]["local"] == capabilities.offer(Settings())
+
+
+def test_the_measured_offer_of_the_table_models():
+    # Measured 2026-09-30 and 2026-10-01, blind, the prompt of every test caption verified.
+    def offer(model):
+        o = capabilities.offer(cloud(model))
+        return {(t, d): (v["level"], v["followed"], v["captions"]) for t, ds in o.items() for d, v in ds.items()}
+
+    for model in ("openai/gpt-6.1-sol", "anthropic/claude-opus-5.5", "google/gemini-3.8-flash", "moonshotai/kimi-k3"):
+        assert offer(model) == {}
+    assert offer("meta/muse-spark-1.3") == {("character", "hair_color"): ("orange", 8, 10)}
+    assert offer("z-ai/glm-5v-turbo")[("style", "identity")] == ("grey", 1, 5)
+    assert offer("xiaomi/mimo-v2.6-flash")[("style", "identity")] == ("grey", 1, 5)
+    assert offer("deepseek/deepseek-v4.1-flash") == {("character", "identity"): ("orange", 4, 5)}

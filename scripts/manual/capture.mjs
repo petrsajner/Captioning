@@ -150,7 +150,8 @@ try {
       await page.locator('#model-table').evaluate((el) => (el.hidden = true));
       await shoot(page, img('setup-cloud.jpg'), '#settings-dialog', pairs);
       await page.locator('#model-table').evaluate((el) => (el.hidden = false));
-      await page.locator('#model-table summary', { hasText: 'Gemini 3.8 Flash' }).click();
+      // Grok's details show orange switches next to its numbers.
+      await page.locator('#model-table summary', { hasText: 'Grok 4.7' }).click();
       await page.locator('#model-table').scrollIntoViewIfNeeded();
       await shoot(page, img('models.jpg'), '#model-table', pairs);
       await page.locator('#model-table details[open]').evaluate((el) => (el.open = false));

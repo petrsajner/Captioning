@@ -133,6 +133,9 @@ test('the settings show the measured models and fill in the chosen one', async (
   await expect(page.locator('#local-model-card .switch-offer .tag.amber')).toHaveCount(2);
   // A model we advise against can be chosen too: we recommend, we do not forbid.
   await bad.locator('summary', { hasText: 'DeepSeek V4.1 Flash' }).click();
+  await expect(bad.locator('details[open] .switch-offer .tag.amber')).toHaveText([
+    'Identity / subject appearance · Character / person 4/5',
+  ]);
   await bad.locator('details[open] [data-model]').click();
   await expect(page.locator('[name=cloud_model]')).toHaveValue('deepseek/deepseek-v4.1-flash');
   await expect(page.locator('#settings-message')).toHaveText('DeepSeek V4.1 Flash is set.');
