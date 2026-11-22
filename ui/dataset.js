@@ -30,7 +30,7 @@ const phaseLabels = {
 const SHORT = { wan: 'WAN', wan_i2v: 'I2V', ltx: 'LTX', h3: 'H3' };
 // What each video model trains on, shown for clips.
 const modelNotes = {
-  wan: 'WAN 2.2 (A14B) trains at 16 fps with up to 81 frames, about 5 s.',
+  wan: 'WAN 2.2 / Wan-Animate 2 train at 16 fps with up to 81 frames, about 5 s.',
   wan_i2v: 'WAN 2.2 I2V (A14B) trains at 16 fps with up to 81 frames, about 5 s; the first frame is the start image.',
   ltx: 'LTX-2.5 trains at 24–25 fps with up to 121 frames, about 5 s.',
   h3: 'MiniMax H3 trains at 24 fps on clips of 5–15 s.',

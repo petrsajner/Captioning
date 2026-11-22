@@ -91,6 +91,11 @@ export default async function globalSetup() {
       // Already stopped.
     }
     model.close();
-    rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    try {
+      rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
+    } catch {
+      // Windows Defender / Explorer may briefly hold a handle on the temp directory.
+    }
   };
 }

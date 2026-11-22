@@ -199,13 +199,16 @@ def h3_prompt(s: Settings, media: str) -> list[str]:
     composition = "composition" not in s.omitted_attributes
     if style and composition:
         begin = (
-            "Begin with the visual style and the initial composition, for example: Live-action, photographic, a "
-            f"medium close-up at eye level frames {subject} ..."
+            "Begin with the visual style and the initial composition, for example: 3D animated film, a medium close-up "
+            f"at eye level frames {subject} ... or Live-action, photographic, a medium close-up at eye level frames {subject} ..."
         )
     elif composition:
         begin = f"Begin with the initial composition, for example: A medium close-up at eye level frames {subject} ..."
     elif style:
-        begin = f"Begin with the visual style, for example: Live-action, photographic, {subject} ..."
+        begin = (
+            f"Begin with the visual style, for example: 3D animated film, {subject} ... "
+            f"or Live-action, photographic, {subject} ..."
+        )
     else:
         begin = f"Begin with {_subject(s)}, for example: {subject} ..."
     action = _action(s, media)
