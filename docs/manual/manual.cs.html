@@ -10,7 +10,7 @@
       <div class="logo">C</div>
       <h1>Caption Studio</h1>
       <p class="subtitle">Uživatelská příručka</p>
-      <p class="meta">Verze <span data-version>0.2.9</span> · září 2026 · Windows 10 a 11 (64bitové)</p>
+      <p class="meta">Verze <span data-version>0.3.3</span> · listopad 2026 · Windows 10 a 11 (64bitové)</p>
       <img src="img/cs/main.jpg" alt="Hlavní okno Caption Studia" />
     </section>
 
@@ -62,17 +62,18 @@
     </p>
     <ul>
       <li>
-        <strong>Obrazové modely:</strong> prosté popisy nebo tagy v <code>.txt</code> (FLUX.2, Klein, Z-Image, Krea 2,
-        Qwen-Image, SDXL a každý trenér, který čte k obrázku soubor <code>.txt</code>) a strukturovaný
-        <code>.json</code> pro BRIA FIBO.
+        <strong>Obrazové modely:</strong> prosté popisy nebo tagy v <code>.txt</code> (FLUX.2, FLUX 3, Klein, Z-Image,
+        Krea 2, Qwen-Image, MiniMax P-H3-Image, SDXL a každý trenér, který čte k obrázku soubor <code>.txt</code>) a
+        strukturovaný <code>.json</code> pro BRIA FIBO 1.5 a 2.0.
       </li>
       <li>
-        <strong>Video modely:</strong> samostatný soubor popisku pro WAN 2.2 (text na video i obrázek na video), LTX-2.5
-        a MiniMax H3, každý v podobě, jakou používají jeho prompty. Fotky a klipy mohou být v jednom datasetu.
+        <strong>Video modely:</strong> samostatný soubor popisku pro WAN 2.2 / Wan-Animate 2 (text na video i obrázek na
+        video), LTX-2.5 a MiniMax H3, každý v podobě, jakou používají jeho prompty. Fotky a klipy mohou být v jednom
+        datasetu.
       </li>
       <li>
-        <strong>Čtyři druhy LoRA:</strong> postava nebo osoba, objekt nebo produkt, vizuální styl nebo obecný dataset.
-        Každý druh pojmenovává svůj subjekt po svém a nabízí vlastní výběr detailů.
+        <strong>Pět druhů LoRA:</strong> postava nebo osoba, objekt nebo produkt, vizuální styl, animační styl filmu
+        nebo obecný dataset. Každý druh pojmenovává svůj subjekt po svém a rovnou nastaví vlastní výběr detailů.
       </li>
       <li>
         <strong>Tři způsoby, jak spustit obrazový model:</strong> cloudové API; lokální server, především
@@ -718,8 +719,8 @@
       </li>
       <li>
         <strong>Řekněte, co trénujete.</strong> V poli <span class="ui">Co trénujete?</span> zvolte
-        <em>Postava / osoba</em>, <em>Objekt / produkt</em>, <em>Vizuální styl</em> nebo <em>Obecný dataset</em> a
-        vyplňte jméno (u postavy a objektu také jeho typ).
+        <em>Postava / osoba</em>, <em>Objekt / produkt</em>, <em>Vizuální styl</em>, <em>Animační styl filmu</em> nebo
+        <em>Obecný dataset</em> a vyplňte jméno (u postavy a objektu také jeho typ).
       </li>
       <li>
         <strong>Zvolte výstup.</strong> V poli <span class="ui">Výstup popisků</span> vyberte soubor pro model, který
@@ -811,7 +812,7 @@
     <ul>
       <li>
         Použijte jedno vymyšlené, čitelné slovo, které základní model nezná: <em>Velmira</em> pro postavu,
-        <em>Zorbo</em> pro objekt, <em>Zorvak</em> pro styl.
+        <em>Zorbo</em> pro objekt, <em>Zorvak</em> pro styl nebo <em>myfilm_style</em> pro animační styl filmu.
       </li>
       <li>
         Vyhněte se krátkým tokenům jako <code>sks</code>; trenéry je najdou i uvnitř jiných slov. Nepoužívejte jména
@@ -861,6 +862,11 @@
             <td><code>Zorvak style, a woman sits…</code></td>
           </tr>
           <tr>
+            <td>Animační styl filmu</td>
+            <td>Trigger stylu filmu</td>
+            <td><code>myfilm_style, a cobblestone street…</code></td>
+          </tr>
+          <tr>
             <td>Obecný dataset</td>
             <td>Trigger slovo (nepovinné)</td>
             <td><code>ohwx, a woman sits…</code></td>
@@ -873,7 +879,15 @@
         </p>
         <p>
           <strong>Vizuální styl:</strong> popisek popisuje jen obsah (lidi obecně), nikdy médium ani techniku, takže
-          styl patří ke jménu. Název, který už končí slovem „style“, se použije tak, jak je.
+          styl patří ke jménu. Název, který už končí slovem „style“ (včetně <code>_style</code> nebo
+          <code>-style</code>), se použije tak, jak je.
+        </p>
+        <p>
+          <strong>Animační styl filmu:</strong> jedno přepnutí sladěné s receptem <em>Visual Style / Film Look</em> v
+          LoRA Studiu (Playbook 3). Trigger se zapíše doslova na začátek (<code>myfilm_style, …</code>), takže v Caption
+          Studiu i v LoRA Studiu používáte přesně totéž slovo. Popisky popisují lidi obecně, oblečení, pózu, rekvizity,
+          čistá prostředí bez postav, kompozici a směr i barvu světla, zatímco vynechávají médium animace, shadery,
+          vykreslení povrchů, stylizované proporce a celkovou paletu.
         </p>
         <p><strong>Obecný:</strong> prostý popis; trigger slovo, pokud ho zadáte, stojí na začátku.</p>
       </div>
@@ -900,13 +914,13 @@
           <td>Popis nebo tagy, anglicky nebo česky</td>
         </tr>
         <tr>
-          <td>BRIA JSON (FIBO)</td>
+          <td>BRIA JSON (FIBO 1.5 / 2.0)</td>
           <td><code>název.json</code></td>
           <td>fotky</td>
           <td>Strukturovaná pole BRIA: subjekt, objekty, scéna, osvětlení, kompozice…</td>
         </tr>
         <tr>
-          <td>WAN 2.2</td>
+          <td>WAN 2.2 / Wan-Animate 2</td>
           <td><code>název.wan.txt</code></td>
           <td>fotky, klipy</td>
           <td>Prosté věty: subjekt a děj, detaily, prostředí, světlo, záběr</td>
@@ -1012,6 +1026,13 @@
         </td>
       </tr>
       <tr>
+        <td>Animační styl filmu</td>
+        <td>
+          Co je na obrázku, Póza a činnost, Prostředí a pozadí, Světelná situace, Kompozice a kamera,
+          <strong>Vzhled filmu, rendering a proporce</strong>, <strong>Barevná paleta a grading</strong>
+        </td>
+      </tr>
+      <tr>
         <td>Klipy (každý typ)</td>
         <td>Pohyb v čase, Pohyb kamery: zobrazí se, když je zvolen video výstup</td>
       </tr>
@@ -1028,6 +1049,34 @@
       <figure>
         <img src="img/cs/details-style.jpg" alt="Detaily stylu" />
         <figcaption>Styl: médium, techniku a paletu se naučí LoRA</figcaption>
+      </figure>
+    </div>
+    <div class="side keep">
+      <div>
+        <h3>Animační styl filmu: hotovo jedním kliknutím</h3>
+        <p>
+          Zvolte <span class="ui">Animační styl filmu</span> a připravíte dataset pro filmový Style LoRA bez ručního
+          nastavování desítek přepínačů. Pět detailů obsahu je zapnutých a dva detaily stylu vypnuté:
+        </p>
+        <ul>
+          <li>
+            <strong>Čistá prostředí fungují přirozeně:</strong> záběry bez postav popisují architekturu, přírodu,
+            interiéry a rekvizity přímo, aniž by si model vymýšlel hlavní postavu.
+          </li>
+          <li>
+            <strong>Směr a barva světla zůstávají volné:</strong> zlatá hodinka v protisvětle, teplé lampy nebo chladný
+            měsíční svit se popisují, zatímco způsob vykreslení světla a stínů se učí do LoRA.
+          </li>
+          <li>
+            <strong>Shadery, povrchy a stylizované proporce se vynechávají:</strong> zakázány jsou pojmy jako 3D, CGI,
+            Pixar, cel-shaded, clay shader, tloušťka linky nebo velké stylizované oči; v BRIA JSON se navíc odstraní
+            textury objektů a fotografická pole kamery.
+          </li>
+        </ul>
+      </div>
+      <figure class="panel">
+        <img src="img/cs/details-animated-film.jpg" alt="Detaily animačního stylu filmu" />
+        <figcaption>Animační styl filmu: rendering, proporce a paletu se naučí LoRA</figcaption>
       </figure>
     </div>
     <div class="note">
@@ -1054,8 +1103,14 @@
         <span class="ui">Vlastních pokynů</span>; <em>Varianta a stav</em> pak variantu pojmenuje.
       </li>
       <li>
-        <strong>Vizuální styl:</strong> <em>Světelná situace</em> popisuje denní dobu a zdroje světla; způsob, jak je
-        světlo vykreslené, patří ke stylu. Barvy jednotlivých věcí se popisují i s vypnutou paletou.
+        <strong>Vizuální styl:</strong> <em>Světelná situace</em> popisuje denní dobu, zdroje a směr světla; způsob, jak
+        je světlo vykreslené, patří ke stylu. Barvy jednotlivých věcí se popisují i s vypnutou paletou.
+      </li>
+      <li>
+        <strong>Animační styl filmu:</strong> zadejte jeden unikátní trigger, například <code>myfilm_style</code>, a
+        přesně tentýž trigger použijte v LoRA Studiu v receptu <em>Visual Style / Film Look</em>. Ze stejné složky
+        vybraných snímků (postavy, čistá prostředí, děj, rekvizity) můžete vygenerovat <code>.txt</code>,
+        <code>.json</code> i soubory pro video modely.
       </li>
     </ul>
 
@@ -1111,7 +1166,7 @@
         <th>Soubor, který trenér čte</th>
       </tr>
       <tr>
-        <td>FLUX.2, FLUX.2 Klein, Z-Image, Krea 2, Qwen-Image (2512, 2.1), SDXL</td>
+        <td>FLUX.2, FLUX 3, Klein, Z-Image, Krea 2, Qwen-Image (2512, 2.1), MiniMax P-H3-Image, SDXL</td>
         <td>Normal</td>
         <td><code>název.txt</code></td>
       </tr>
@@ -1121,13 +1176,13 @@
         <td><code>název.txt</code></td>
       </tr>
       <tr>
-        <td>BRIA FIBO</td>
+        <td>BRIA FIBO 1.5 a FIBO 2.0</td>
         <td>BRIA JSON (FIBO)</td>
         <td><code>název.json</code></td>
       </tr>
       <tr>
-        <td>WAN 2.2 text na video (A14B, TI2V-5B)</td>
-        <td>WAN 2.2</td>
+        <td>WAN 2.2 (A14B, TI2V-5B) a Wan-Animate 2</td>
+        <td>WAN 2.2 / Wan-Animate 2</td>
         <td><code>název.wan.txt</code> (fotky i klipy)</td>
       </tr>
       <tr>
@@ -1436,17 +1491,17 @@
         <th>Používá</th>
       </tr>
       <tr>
-        <td>FLUX.2, Klein, Z-Image, Krea 2, Qwen-Image, SDXL</td>
+        <td>FLUX.2, FLUX 3, Klein, Z-Image, Krea 2, Qwen-Image, MiniMax P-H3-Image, SDXL</td>
         <td><code>název.txt</code></td>
         <td>fotky</td>
       </tr>
       <tr>
-        <td>BRIA FIBO</td>
+        <td>BRIA FIBO 1.5 a FIBO 2.0</td>
         <td><code>název.json</code></td>
         <td>fotky</td>
       </tr>
       <tr>
-        <td>WAN 2.2 T2V</td>
+        <td>WAN 2.2 (TI2V-5B, A14B) a Wan-Animate 2</td>
         <td><code>název.wan.txt</code></td>
         <td>fotky i klipy</td>
       </tr>

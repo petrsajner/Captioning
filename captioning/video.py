@@ -36,7 +36,12 @@ _GENERIC_ACTION = ("what is happening", "what happens over the clip, in time ord
 
 
 def clip_line(s: Settings) -> str:
-    mover = {"character": "the character", "object": "the object"}.get(s.preset, "the main subject")
+    mover = {
+        "character": "the character",
+        "object": "the object",
+        "style": "what is in the scene",
+        "animated_film": "what is in the scene",
+    }.get(s.preset, "the main subject")
     return (
         "The images are frames of one continuous video clip in time order, each labeled with its time in seconds. "
         f"Describe the clip as one continuous shot, including how {mover} moves and how the camera moves."
@@ -59,7 +64,9 @@ def _purpose(s: Settings, model: str) -> str:
 
 
 def _subject(s: Settings) -> str:
-    """How the shapes refer to the named subject: its token, or the main subject for style and general."""
+    """How the shapes refer to the named subject: its token, or the scene/subject for style and general."""
+    if s.preset in ("style", "animated_film"):
+        return "the depicted scene or subjects"
     return token(s) or "the main subject"
 
 
@@ -83,7 +90,7 @@ def _then(s: Settings, media: str, camera: bool) -> list[str]:
     if "background" not in omitted:
         parts.append("the setting")
     if "lighting" not in omitted:
-        parts.append("the lighting")
+        parts.append("the light situation" if s.preset in ("style", "animated_film") else "the lighting")
     if camera:
         shot = [] if "composition" in omitted else ["the shot size and camera angle"]
         if media == "clip" and "camera_motion" not in omitted:
@@ -142,6 +149,8 @@ def wan_i2v_prompt(s: Settings, media: str) -> list[str]:
     motion = {
         "character": "Begin with <character>, then describe the character's movement and actions",
         "object": "Begin with <object>, then describe how it moves or is handled",
+        "style": "Describe the movement and actions in the scene and any environmental motion",
+        "animated_film": "Describe the movement and actions in the scene and any environmental motion",
     }.get(s.preset, "Describe the movement and actions of the main subject and any other motion")
     only = i2v_details(s)
     return [
@@ -166,12 +175,18 @@ def ltx_prompt(s: Settings, media: str) -> list[str]:
     if media == "clip" and "camera_motion" not in omitted:
         rest.append("how the camera moves")
     if "composition" in omitted:
-        example = {"character": "<character> ...", "object": "<object> ..."}.get(s.preset, "A woman ...")
+        example = {
+            "character": "<character> ...",
+            "object": "<object> ...",
+            "animated_film": "A quiet street or a woman ...",
+        }.get(s.preset, "A woman ...")
         start = f"Begin with {_subject(s)}, for example: {example}"
     else:
-        example = {"character": "<character> as ...", "object": "<object> resting on ..."}.get(
-            s.preset, "a woman as ..."
-        )
+        example = {
+            "character": "<character> as ...",
+            "object": "<object> resting on ...",
+            "animated_film": "a street or a woman as ...",
+        }.get(s.preset, "a woman as ...")
         named = f", and name {'them' if s.preset == 'character' else 'it'} in that first sentence" if token(s) else ""
         start = (
             f"Begin with the shot, its shot size and camera angle{named}, for example: A medium close-up at eye level "
@@ -193,9 +208,9 @@ def ltx_prompt(s: Settings, media: str) -> list[str]:
 
 def h3_prompt(s: Settings, media: str) -> list[str]:
     # Official H3 prompt skill: [Shot 1] opens with style and composition; the app adds the three fields.
-    subject = token(s) or "a woman"
+    subject = token(s) or ("the scene or a woman" if s.preset == "animated_film" else "a woman")
     # A learned visual style or composition is left out of the opening of [Shot 1].
-    style = not (s.preset == "style" or "style" in s.omitted_attributes)
+    style = not (s.preset in ("style", "animated_film") or "style" in s.omitted_attributes)
     composition = "composition" not in s.omitted_attributes
     if style and composition:
         begin = (

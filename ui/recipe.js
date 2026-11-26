@@ -111,6 +111,15 @@ function typeFields(s) {
       }),
     };
   }
+  if (s.preset === 'animated_film') {
+    return {
+      label: t('Film style trigger'),
+      placeholder: t('e.g. myfilm_style'),
+      note: t(
+        'Written verbatim at the start of every caption: “myfilm_style, …”. Describes content and light situation; omits animation rendering, shaders, proportions and palette.',
+      ),
+    };
+  }
   return {
     label: t('Trigger word'),
     placeholder: t('e.g. ohwx'),

@@ -16,7 +16,13 @@ import re
 from .training import TYPE_DEFAULTS, details_for
 
 # Per LoRA type: (green above, orange from) as shares of the test captions that followed the switch.
-THRESHOLDS = {"general": (0.85, 0.5), "character": (0.85, 0.5), "object": (0.85, 0.5), "style": (0.7, 0.3)}
+THRESHOLDS = {
+    "general": (0.85, 0.5),
+    "character": (0.85, 0.5),
+    "object": (0.85, 0.5),
+    "style": (0.7, 0.3),
+    "animated_film": (0.7, 0.3),
+}
 # Per model, by name (newer versions of the same line included): (followed, test captions) for each switch it
 # did not follow often enough to be green, 40 words, judged blind; the prompt of every test caption was checked to
 # carry the switch as measured. A style on two print sets (the second with a single subject such as a turtle, a

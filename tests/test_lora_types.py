@@ -252,6 +252,89 @@ def test_style_h3_opens_the_shot_with_the_style_name():
     s = settings("style", "normal", "ink wash style")
     text, notices, _ = finished("A heron stands in a pond.", s)
     assert text == "ink wash style, a heron stands in a pond." and notices == []
+    # Underscore and hyphen suffixes also keep the trigger without doubling "style".
+    for trigger in ("myfilm_style", "myfilm-style"):
+        text, notices, _ = finished("A woman sits.", settings("style", "normal", trigger))
+        assert text == f"{trigger}, a woman sits." and notices == []
+    assert finished("A woman sits.", settings("style", "normal", "freestyle"))[0] == "freestyle style, a woman sits."
+
+
+@pytest.mark.parametrize("output", PROMPT_OUTPUTS)
+def test_animated_film_prompts_lock_rendering_and_proportions_and_describe_content(output):
+    s = settings("animated_film", output, "myfilm_style")
+    prompt = make_prompt(s, "clip" if output == "wan_i2v" else "image")
+    assert "myfilm_style" not in prompt and "<character>" not in prompt and "<object>" not in prompt
+    assert "Do not write a style name" in prompt
+    assert "- Film look, rendering and proportions: never name or describe the animation medium" in prompt
+    assert "stylized proportions" in prompt and "large expressive eyes" in prompt and "clay shader" in prompt
+    assert "- Color palette and grading: nothing about the overall color palette" in prompt
+    assert "3D animated film" not in prompt and "Live-action, photographic" not in prompt
+    if output != "wan_i2v":
+        assert "pure environment" in prompt
+        assert "light direction and light color" in prompt
+    if output == "h3":
+        assert "Begin with the initial composition" in prompt
+
+
+@pytest.mark.parametrize("output", TEXT_OUTPUTS)
+def test_animated_film_keeps_trigger_verbatim_without_appending_style(output):
+    # LoRA Studio Playbook 3 enters one exact trigger (e.g. myfilm_style or zorvak_look) in both apps.
+    for trigger in ("myfilm_style", "zorvak_look"):
+        s = settings("animated_film", output, trigger)
+        text, notices, review = finished("A cobblestone street lies under golden hour light.", s)
+        body = h3_body(text) if output == "h3" else text
+        assert body.startswith(f"{trigger}, a cobblestone street") and f"{trigger} style" not in body
+        assert notices == [] and not review
+
+
+def test_bria_json_strips_style_textures_and_camera_lens_metadata_for_style_types():
+    data = {
+        "short_description": "A woman stands on a cobblestone street.",
+        "objects": [
+            {
+                "description": "a woman",
+                "location": "center",
+                "relationship": "standing",
+                "texture": "smooth clay-like 3D shader",
+                "skin_tone_and_texture": "stylized subsurface skin",
+                "clothing": "blue wool coat",
+            },
+            {
+                "description": "a lantern",
+                "location": "right",
+                "relationship": "hanging",
+                "texture": "hand-painted matte metal",
+            },
+        ],
+        "background_setting": "a cobblestone street",
+        "lighting": {"conditions": "golden hour", "direction": "backlit"},
+        "aesthetics": {"composition": "wide shot", "color_scheme": "warm amber tones", "mood_atmosphere": "whimsical"},
+        "photographic_characteristics": {
+            "depth_of_field": "shallow",
+            "focus": "sharp",
+            "camera_angle": "eye level",
+            "lens_focal_length": "50mm",
+        },
+        "style_medium": "3D CGI animated film",
+        "artistic_style": "Pixar-like",
+        "context": "",
+    }
+    for preset, trigger, expected_prefix in (
+        ("style", "myfilm_style", "myfilm_style, "),
+        ("animated_film", "zorvak_look", "zorvak_look, "),
+    ):
+        s = settings(preset, "bria_json", trigger)
+        result = json.loads(normalize_json(json.dumps(data), s))
+        assert result["short_description"].startswith(expected_prefix)
+        assert "style_medium" not in result and "artistic_style" not in result
+        assert "photographic_characteristics" not in result
+        assert result["aesthetics"]["color_scheme"] == "" and result["aesthetics"]["mood_atmosphere"] == ""
+        assert result["aesthetics"]["composition"] == "wide shot"
+        assert all("texture" not in o and "skin_tone_and_texture" not in o for o in result["objects"])
+        assert result["objects"][0]["clothing"] == "blue wool coat"
+    # Animated film schema prompt allows pure landscapes without forcing a foreground subject or shader textures.
+    prompt = make_prompt(settings("animated_film", "bria_json", "myfilm_style"))
+    assert "pure landscape or interior" in prompt and "omit texture, skin_tone_and_texture" in prompt
 
 
 @pytest.mark.parametrize("output", TEXT_OUTPUTS)
@@ -269,7 +352,7 @@ def test_general_trigger_is_not_repeated_when_the_model_already_wrote_it():
     assert finished("LED lights glow.", s)[0] == "ohwx, LED lights glow."
 
 
-@pytest.mark.parametrize("preset", ["character", "object", "style", "general"])
+@pytest.mark.parametrize("preset", ["character", "object", "style", "animated_film", "general"])
 @pytest.mark.parametrize("output", TEXT_OUTPUTS)
 def test_class_caption_equals_the_caption_written_without_a_trigger(preset, output):
     draft = {

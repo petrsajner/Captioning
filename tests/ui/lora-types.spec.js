@@ -54,4 +54,27 @@ test('the name fields, notes and detail names follow the LoRA type', async ({ pa
   await page.locator('#preview-prompt').click();
   await expect(page.locator('#prompt-text')).toContainText('- Medium and technique: never name or describe the medium');
   await expect(page.locator('#prompt-text')).not.toContainText('Kestrin');
+  await page.locator('#prompt-dialog .close-dialog').click();
+
+  // Animated film style configures every Playbook 3 style switch in one click, with verbatim trigger.
+  await recipe.locator('[name=preset]').selectOption('animated_film');
+  await recipe.locator('[name=trigger]').fill('Kestrin_look');
+  await expect(page.locator('#subject-class-field')).toBeHidden();
+  await expect(page.locator('#trigger-label')).toHaveText('Film style trigger');
+  await expect(recipe.locator('[name=trigger]')).toHaveAttribute('placeholder', 'e.g. myfilm_style');
+  await expect(page.locator('#trigger-note')).toContainText('myfilm_style');
+  await expect(page.locator('#trigger-note')).not.toContainText('Kestrin_look');
+  await expect(page.locator('#training-plan')).toHaveText('5 of 7 details included in caption');
+  await expect(recipe.locator('[data-attribute=style]')).not.toBeChecked();
+  await expect(recipe.locator('[data-attribute=palette]')).not.toBeChecked();
+  await expect(recipe.locator('[data-attribute=lighting]')).toBeChecked();
+  await expect(
+    page.locator('.caption-detail', { has: page.locator('[data-attribute=style]') }).locator('.detail-name'),
+  ).toHaveText('Film look, rendering and proportions');
+  await expect.poll(async () => (await state(page)).settings.omitted_attributes).toEqual(['style', 'palette']);
+  await page.locator('#preview-prompt').click();
+  await expect(page.locator('#prompt-text')).toContainText(
+    '- Film look, rendering and proportions: never name or describe the animation medium',
+  );
+  await expect(page.locator('#prompt-text')).not.toContainText('Kestrin_look');
 });

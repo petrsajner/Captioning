@@ -23,7 +23,13 @@ PURPOSE = (
     "Follow the caption rules at the end exactly: describe everything they list under MUST DESCRIBE and nothing "
     "they list under NEVER DESCRIBE."
 )
-KIND = {"general": "", "character": "character ", "object": "object ", "style": "visual-style "}
+KIND = {
+    "general": "",
+    "character": "character ",
+    "object": "object ",
+    "style": "visual-style ",
+    "animated_film": "animated-film visual-style ",
+}
 # Notices finishing can add to a caption; each is a UI message with a translation.
 MISSING_H3 = "Put the name into [Shot 1] manually."
 ADDED_AT_START = "The name was added at the start."
@@ -57,15 +63,15 @@ def subject_class(s) -> str:
 
 
 def style_phrase(trigger: str) -> str:
-    """ "Zorvak" -> "Zorvak style"; a trigger that already ends in "style" is kept."""
+    """ "Zorvak" -> "Zorvak style"; a trigger ending in "style" (including "_style" / "-style") is kept."""
     trigger = clean_trigger(trigger)
-    if not trigger or re.search(r"\bstyle$", trigger, re.I):
+    if not trigger or re.search(r"(?:^|[\s_-])style$", trigger, re.I):
         return trigger
     return trigger + " style"
 
 
 def lead_phrase(s) -> str:
-    """What starts every style or general caption; character and object LoRAs use the opening instead."""
+    """What starts every style, animated_film or general caption; character and object LoRAs use the opening instead."""
     return style_phrase(s.trigger) if s.preset == "style" else clean_trigger(s.trigger)
 
 
@@ -134,6 +140,22 @@ def subject_lines(s, where: str = "at the start") -> list[str]:
         if "identity" in s.omitted_attributes:
             cls = subject_class(s)
             lines.append(f"Call it only {cls!r} or {definite(cls)!r}, without adjectives.")
+    elif s.preset == "animated_film":
+        lines.append(
+            "Describe the content in detail: people generically (such as a woman or a boy, never named individuals), "
+            "clothing, pose, props, location, framing and light situation; if no people or animals appear, describe "
+            "the environment and objects directly without inventing a subject."
+        )
+        if "style" in s.omitted_attributes:
+            lines.append(
+                "Describe what things are (such as a wooden table or wool coat), never how surfaces, shaders, edges "
+                "or stylized proportions are rendered."
+            )
+        if "palette" in s.omitted_attributes:
+            lines.append(
+                "Name the colors of single things and light sources, but never the overall color palette, color "
+                "atmosphere or grading of the image."
+            )
     else:
         lines.append("Describe people generically, such as a woman or an old man; never say who they are.")
         if "palette" in s.omitted_attributes:
@@ -144,7 +166,7 @@ def subject_lines(s, where: str = "at the start") -> list[str]:
     if token(s) is None and lead_phrase(s):
         lines.append(
             f"Do not write a style name; the application adds it {where}."
-            if s.preset == "style"
+            if s.preset in ("style", "animated_film")
             else f"Do not add a training trigger token; the application adds it {where}."
         )
     return lines

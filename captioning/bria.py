@@ -86,12 +86,39 @@ class CaptionValidationError(UserError):
         self.draft = draft
 
 
-def schema_prompt():
+def schema_prompt(settings=None):
+    style_mode = settings is not None and settings.preset in ("style", "animated_film")
+    if style_mode:
+        subject_rule = (
+            "List the depicted subjects or notable objects in objects (an empty list is valid for a pure landscape or "
+            "interior with no distinct foreground subjects). Each description is a brief generic category, not a "
+            "catalogue of visual style or proportions."
+        )
+        fields_rule = (
+            "Put garments in clothing, posture in pose, visible expression in expression and notable wearable items in "
+            "appearance_details; omit texture, skin_tone_and_texture, style_medium, artistic_style and "
+            "photographic_characteristics when visual style is forbidden. Fill the field of every detail the caption "
+            "rules ask to describe and that is visible."
+            if "style" in settings.omitted_attributes
+            else "Put visible attributes in shape_and_color, texture, skin_tone_and_texture, appearance_details, "
+            "clothing, pose and expression. Fill the field of every detail the caption rules ask to describe and that "
+            "is visible."
+        )
+    else:
+        subject_rule = (
+            "Put the main subject FIRST in objects. Its description is a brief generic category/name, not a catalogue "
+            "of details."
+        )
+        fields_rule = (
+            "Put its identity details in shape_and_color, texture, skin_tone_and_texture; hair and wearable "
+            "accessories in appearance_details; garments in clothing. Fill the field of every detail the caption rules "
+            "ask to describe and that is visible."
+        )
     return "\n".join(
         [
             "Return ONLY one valid BRIA FIBO JSON object, without markdown. Use the exact English field names below.",
-            "Put the main subject FIRST in objects. Its description is a brief generic category/name, not a catalogue of details.",
-            "Put its identity details in shape_and_color, texture, skin_tone_and_texture; hair and wearable accessories in appearance_details; garments in clothing. Fill the field of every detail the caption rules ask to describe and that is visible.",
+            subject_rule,
+            fields_rule,
             "Respect the caption rules in EVERY field, including short_description and context. Do not repeat forbidden details in free text.",
             # "use null for optional fields" alone could read as leaving clothing, pose or expression empty.
             "Use an empty string for required descriptive fields deliberately forbidden by the caption rules or not observable; use null for optional fields only when the caption rules forbid them or they are not observable. Do not invent content to fill the schema.",
@@ -156,8 +183,14 @@ def normalize_json(text: str, settings=None) -> str:
             data.pop("style_medium", None)
             data.pop("artistic_style", None)
             data["aesthetics"]["mood_atmosphere"] = ""
-        # A style LoRA has a palette detail of its own; elsewhere a learned "Visual style" includes it.
-        if "palette" in omitted or ("style" in omitted and settings.preset != "style"):
+            if settings.preset in ("style", "animated_film"):
+                # Rendering textures, skin shader finishes and photographic lens terms leak visual style.
+                data.pop("photographic_characteristics", None)
+                for obj in data["objects"]:
+                    obj.pop("texture", None)
+                    obj.pop("skin_tone_and_texture", None)
+        # Style LoRA types have a palette detail of their own; elsewhere a learned "Visual style" includes it.
+        if "palette" in omitted or ("style" in omitted and settings.preset not in ("style", "animated_film")):
             data["aesthetics"]["color_scheme"] = ""
         if data["objects"]:
             main = data["objects"][0]

@@ -26,15 +26,17 @@ Attribute = Literal[
     "motion",
     "camera_motion",
 ]
-LoraType = Literal["general", "character", "object", "style"]
-ALL_TYPES = ("general", "character", "object", "style")
+LoraType = Literal["general", "character", "object", "style", "animated_film"]
+ALL_TYPES = ("general", "character", "object", "style", "animated_film")
 PEOPLE = ("general", "character")
+STYLE_TYPES = ("style", "animated_film")
 # Details left out by default ("Apply defaults for this LoRA type"); the LoRA learns them.
 TYPE_DEFAULTS: dict[str, list[str]] = {
     "general": [],
     "character": ["identity", "hair_color"],
     "object": ["identity", "object_text"],
     "style": ["style", "palette"],
+    "animated_film": ["style", "palette"],
 }
 # Each detail tells the model exactly what the caption MUST contain when it is switched on and what it must
 # NEVER contain when it is off, with concrete words (Petr, 2026-09-29: the model does not follow general wording
@@ -68,6 +70,16 @@ ATTRIBUTES: list[dict[str, Any]] = [
                 "must": "What is depicted: the people, animals and things in the image, described generically with "
                 "their visible clothing and expression, never as identifiable individuals.",
                 "never": "What is depicted: nothing about the people, animals and things in the image, their "
+                "clothing or expressions.",
+            },
+            "animated_film": {
+                "label": "What is depicted",
+                "detail": "Characters, animals, props and clothing, described generically without stylized proportion words.",
+                "must": "What is depicted: the people, animals, props and objects in the frame, described generically "
+                "with their visible clothing and expression, never as identifiable individuals. In a pure environment "
+                "or landscape shot with no people or animals, describe only the place and objects without inventing a "
+                "subject. Do not describe stylized facial or body proportions.",
+                "never": "What is depicted: nothing about the people, animals, props or objects in the frame, their "
                 "clothing or expressions.",
             },
         },
@@ -164,6 +176,13 @@ ATTRIBUTES: list[dict[str, Any]] = [
                 "never": "Pose and action: nothing about what the depicted people and animals do or how they are "
                 "posed. Never walking, standing, sitting, running, flying, holding or carrying.",
             },
+            "animated_film": {
+                "detail": "What the people and animals are doing and how they are posed.",
+                "must": "Pose and action: what the depicted people and animals do and how they are posed, when any are "
+                "present.",
+                "never": "Pose and action: nothing about what the depicted people and animals do or how they are "
+                "posed. Never walking, standing, sitting, running, flying, holding or carrying.",
+            },
         },
     },
     {
@@ -207,7 +226,15 @@ ATTRIBUTES: list[dict[str, Any]] = [
                 "location, "
                 "background or backdrop color, other objects, people or animals, and never outdoors, indoors, "
                 "studio, scene or background.",
-            }
+            },
+            "animated_film": {
+                "detail": "Location, architecture, interiors, nature and props in the scene.",
+                "must": "Environment and background: the location, architecture, landscape, interior, ground, sky, "
+                "plants, furniture and props in the scene. In a pure environment shot without characters, describe "
+                "the setting thoroughly.",
+                "never": "Environment and background: nothing about the location, room, street, landscape, ground, "
+                "floor, wall, sky, plants, buildings, furniture, props or background, not even a blurred background.",
+            },
         },
     },
     {
@@ -223,12 +250,24 @@ ATTRIBUTES: list[dict[str, Any]] = [
         "by_type": {
             "style": {
                 "label": "Light situation",
-                "detail": "Time of day, weather and visible light sources; how light is rendered belongs to the style.",
-                "must": "Light situation: the time of day, the weather and visible light sources, such as day or "
-                "night, dusk, rain, snow, fog, moonlight or lanterns, not the way light and shadow are rendered.",
-                "never": "Light situation: nothing about the time of day, weather or light sources. No day, night, "
-                "dawn, dusk, sunset, sun, moon, rain, snow, fog, lanterns or fireworks.",
-            }
+                "detail": "Time of day, weather, light sources and direction; how light is rendered belongs to the style.",
+                "must": "Light situation: the time of day, the weather, visible light sources and light direction or "
+                "color, such as day or night, dusk, golden hour, rain, snow, fog, moonlight, warm lantern light, "
+                "side light or backlight, not the way light and shadow are rendered.",
+                "never": "Light situation: nothing about the time of day, weather, light sources, light direction or "
+                "light color. No day, night, dawn, dusk, sunset, golden hour, sun, moon, rain, snow, fog, lanterns, "
+                "fireworks, backlit, side light or warm or cool light.",
+            },
+            "animated_film": {
+                "label": "Light situation",
+                "detail": "Time of day, weather, light sources, direction and color; how light is rendered belongs to the film style.",
+                "must": "Light situation: the time of day, weather, visible light sources, light direction and light "
+                "color, such as daylight, overcast sky, golden hour backlight, warm lamp light from the left or cool "
+                "moonlight at night, never the rendering technique of light, bounce light or shadows.",
+                "never": "Light situation: nothing about the time of day, weather, light sources, light direction or "
+                "light color. No day, night, dawn, dusk, sunset, golden hour, sun, moon, rain, snow, fog, lamps, "
+                "lanterns, backlit, side light or warm or cool light.",
+            },
         },
     },
     {
@@ -242,6 +281,17 @@ ATTRIBUTES: list[dict[str, Any]] = [
         "never": "Composition and camera: nothing about framing, camera or focus. No close-up, medium shot, "
         "full-body shot, portrait framing, eye level, low or high angle, centered, in or out of focus, blurred, "
         "bokeh or depth of field.",
+        "by_type": {
+            "animated_film": {
+                "detail": "Shot size, camera angle and framing, without photographic lens or film terms.",
+                "must": "Composition and camera: the shot size (close-up, medium shot, wide establishing shot, "
+                "full-body shot), framing and subject placement; the camera angle only when clearly low (looking up) "
+                "or high (looking down). Do not describe camera models, lens focal lengths or film depth-of-field look.",
+                "never": "Composition and camera: nothing about framing, camera or focus. No close-up, medium shot, "
+                "wide shot, full-body shot, portrait framing, eye level, low or high angle, centered, in or out of "
+                "focus, blurred, bokeh or depth of field.",
+            }
+        },
     },
     {
         "id": "style",
@@ -268,9 +318,26 @@ ATTRIBUTES: list[dict[str, Any]] = [
                 "texture, grain and the way light and shadow are rendered. Example: 'a watercolor painting with soft "
                 "washes and visible paper texture'.",
                 "never": "Medium and technique: never name or describe the medium or technique. No painting, "
-                "painted, illustration, drawing, sketch, print, woodblock, engraving, render, 3D, CGI, anime, "
-                "cartoon, photo, photograph, cinematic, film still, stylized, brushwork, line work, outlines, "
-                "shading, texture, grain or gradation.",
+                "painted, painterly, illustration, drawing, sketch, print, woodblock, engraving, render, rendered, "
+                "3D, 2D, CGI, animated, animation, Pixar, Disney, DreamWorks, anime, cartoon, cel-shaded, cel shading, "
+                "flat shading, clay, claymation, stop-motion, photo, photograph, cinematic, film still, stylized, "
+                "stylized proportions, brushwork, line work, line weight, outlines, shading, shader, subsurface "
+                "scattering, global illumination, texture, grain or gradation.",
+            },
+            "animated_film": {
+                "label": "Film look, rendering and proportions",
+                "detail": "Animation medium, shaders, surface materials rendering, line work, edge softness and stylized proportions.",
+                "must": "Film look, rendering and proportions: the animation medium and rendering look, such as 3D "
+                "CGI, 2D hand-drawn or stop-motion, shading style, surface material rendering, line weight or edge "
+                "softness, and stylized character proportions.",
+                "never": "Film look, rendering and proportions: never name or describe the animation medium, "
+                "rendering style, shaders, material finish or stylized proportions. No 3D, 2D, CGI, animated, "
+                "animation, animated film, feature film still, Pixar, Disney, DreamWorks, anime, cartoon, cel-shaded, "
+                "cel shading, flat shading, painterly, brushstrokes, hand-drawn, clay, claymation, clay shader, "
+                "stop-motion, miniature, low-poly, render, rendered, stylized, stylized proportions, exaggerated "
+                "proportions, oversized or large expressive eyes, caricature, doll-like, line work, line weight, "
+                "outlines, soft edges, shading, shader, matte or glossy finish, plastic skin, subsurface scattering, "
+                "global illumination, photo, photograph, cinematic, texture or grain.",
             },
         },
     },
@@ -278,7 +345,7 @@ ATTRIBUTES: list[dict[str, Any]] = [
     # reasoning describe the palette when asked (without reasoning Qwen did not); see capabilities.py.
     {
         "id": "palette",
-        "types": ("style",),
+        "types": STYLE_TYPES,
         "label": "Color palette and grading",
         "detail": "The overall color scheme and grading; colors of single things stay described.",
         "must": "Color palette and grading: one phrase about the overall color palette of the whole image: its "
@@ -286,6 +353,17 @@ ATTRIBUTES: list[dict[str, Any]] = [
         "never": "Color palette and grading: nothing about the image's overall colors. No palette, color scheme, "
         "grading, tones, muted, vibrant, pastel, monochrome, warm or cool colors; the colors of single things may "
         "still be named.",
+        "by_type": {
+            "animated_film": {
+                "detail": "The overall film color atmosphere and grading; colors of single garments, props and light sources stay described.",
+                "must": "Color palette and grading: one phrase about the overall film color atmosphere and grading: "
+                "its dominant colors and whether they are muted or saturated, warm or cool.",
+                "never": "Color palette and grading: nothing about the overall color palette, color atmosphere or "
+                "grading of the frame. No palette, color scheme, grading, film look tones, muted, vibrant, pastel, "
+                "monochrome, warm or cool overall palette; the colors of single clothes, objects and light sources may "
+                "still be named.",
+            }
+        },
     },
     # Only for video clips ("media": "clip"); photos never get these instructions.
     {
@@ -302,7 +380,13 @@ ATTRIBUTES: list[dict[str, Any]] = [
                 "must": "Motion: how the main object moves or is handled from the start to the end of the clip, in "
                 "time order.",
                 "never": "Motion: nothing about how the main object moves or is handled over the clip.",
-            }
+            },
+            "animated_film": {
+                "detail": "What people, animals, objects or weather do from the start to the end of the clip.",
+                "must": "Motion: what happens from the start to the end of the clip in time order, including people, "
+                "animals, objects and environmental motion.",
+                "never": "Motion: nothing about movement or what changes over the clip.",
+            },
         },
     },
     {

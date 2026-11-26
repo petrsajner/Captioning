@@ -133,6 +133,7 @@ has its own details, and **Apply defaults for this LoRA type** leaves out the on
 | Character / person, General | **Identity**, **Hair color** (character only), Hairstyle, Clothing, Accessories, Pose and action, Facial expression, Environment, Lighting, Composition and camera, Visual style |
 | Object / product | **Object appearance**, **Logo and text on the object**, Variant and state, Placement and orientation, Use and interaction, Environment, Lighting, Composition and camera, Medium |
 | Visual style | What is depicted, Pose and action, Environment, Light situation, Composition and camera, **Medium and technique**, **Color palette and grading** |
+| Animated film style | What is depicted, Pose and action, Environment, Light situation, Composition and camera, **Film look, rendering and proportions**, **Color palette and grading** |
 
 Clips add **Motion over time** and **Camera movement** for every type. Every type keeps its
 own choices: switching to another type shows that type's details, and switching back
@@ -152,6 +153,7 @@ colorway. Existing recipes keep their choices when upgraded; a style recipe that
 | Character / person | Character name, Character type (`a woman`) | `Velmira, a woman, sits…`, later "the woman" or "she" | face and body, hair color |
 | Object / product | Object name, Object type (`a backpack`) | `Zorbo, a backpack, hangs…`, later "the backpack" or "it" | the object's shape, material, colors and markings; its logo and text |
 | Visual style | Style name | `Zorvak style, a woman sits…` | medium, technique, brushwork, texture; palette and grading |
+| Animated film style | Film style trigger | `myfilm_style, a cobblestone street…` | animation medium, shaders, material finish, line work, stylized proportions; palette and grading |
 | General dataset | Trigger word (optional) | `ohwx, a woman sits…` | nothing in particular |
 
 For a character or an object the model writes a placeholder where it first names the
@@ -159,8 +161,13 @@ subject and never sees the trigger; Caption Studio writes the trigger and the ty
 so the trigger appears exactly once. People who hold or use an object are described in
 their own right. Style captions describe only the content, people generically, and never
 the medium or technique (words such as painting, illustration or photo). A style name that
-already ends in "style" is used as it is. The type is written as entered, so write it in
-the caption language; video model captions are English.
+already ends in "style" (including `_style` or `-style`) is used as it is. **Animated film
+style** is a single-switch preset aligned with LoRA Studio's *Visual Style / Film Look*
+workflow: it inserts the trigger verbatim (`myfilm_style, …`), describes people generically,
+pure environment shots without characters and light direction/color, while omitting animation
+rendering, shaders, surface finish, stylized proportions and overall color palette (and in
+BRIA JSON also removing rendering textures and photographic camera fields). The type is
+written as entered, so write it in the caption language; video model captions are English.
 
 ### Normal captions
 

@@ -533,7 +533,8 @@
     "Who holds, wears or uses the object and how; hands and people described generically.": "Kdo předmět drží, nosí nebo používá a jak; ruce a lidé popsaní obecně.",
     "Location, surface, background and other objects around it.": "Místo, podložka, pozadí a další předměty kolem.",
     "Light situation": "Světelná situace",
-    "Time of day, weather and visible light sources; how light is rendered belongs to the style.": "Denní doba, počasí a viditelné zdroje světla; způsob, jak je světlo vykreslené, patří ke stylu.",
+    "Time of day, weather, light sources and direction; how light is rendered belongs to the style.": "Denní doba, počasí, zdroje a směr světla; způsob vykreslení světla patří ke stylu.",
+    "Time of day, weather, light sources, direction and color; how light is rendered belongs to the film style.": "Denní doba, počasí, zdroje, směr a barva světla; způsob vykreslení světla patří ke stylu filmu.",
     "Medium": "Médium",
     "Photograph, 3D render or illustration.": "Fotografie, 3D render nebo ilustrace.",
     "Medium and technique": "Médium a technika",
@@ -590,7 +591,18 @@
     "{message} Provider: {detail}": "{message} Poskytovatel: {detail}",
     "The word count is a soft target.": "Počet slov je orientační.",
     "{v0} is set.": "Model {v0} je nastavený.",
-    "This local server does not allow reasoning, so captions are less accurate.": "Tento lokální server nedovolí zapnout uvažování, popisky proto budou méně přesné."
+    "This local server does not allow reasoning, so captions are less accurate.": "Tento lokální server nedovolí zapnout uvažování, popisky proto budou méně přesné.",
+    "Animated film style": "Animační styl filmu",
+    "Film style trigger": "Trigger stylu filmu",
+    "e.g. myfilm_style": "např. myfilm_style",
+    "Written verbatim at the start of every caption: “myfilm_style, …”. Describes content and light situation; omits animation rendering, shaders, proportions and palette.": "Zapíše se doslova na začátek každého popisku: „myfilm_style, …“. Popisuje obsah a světelnou situaci; vynechává styl animace, shadery, proporce a paletu.",
+    "Characters, animals, props and clothing, described generically without stylized proportion words.": "Postavy, zvířata, rekvizity a oblečení popsané obecně bez slov o stylizovaných proporcích.",
+    "Location, architecture, interiors, nature and props in the scene.": "Lokace, architektura, interiéry, příroda a rekvizity ve scéně.",
+    "Shot size, camera angle and framing, without photographic lens or film terms.": "Velikost záběru, úhel kamery a kompozice bez fotografických termínů objektivu a filmu.",
+    "Film look, rendering and proportions": "Vzhled filmu, rendering a proporce",
+    "Animation medium, shaders, surface materials rendering, line work, edge softness and stylized proportions.": "Médium animace, shadery, vykreslení povrchů, tloušťka linky, měkkost hran a stylizované proporce.",
+    "The overall film color atmosphere and grading; colors of single garments, props and light sources stay described.": "Celková barevná atmosféra a grading filmu; barvy jednotlivého oblečení, rekvizit a zdrojů světla se dál popisují.",
+    "What people, animals, objects or weather do from the start to the end of the clip.": "Co lidé, zvířata, objekty nebo počasí dělají od začátku do konce klipu."
   },
   "grammar": {
     "dangling_words": [

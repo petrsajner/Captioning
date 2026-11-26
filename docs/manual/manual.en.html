@@ -10,7 +10,7 @@
       <div class="logo">C</div>
       <h1>Caption Studio</h1>
       <p class="subtitle">User manual</p>
-      <p class="meta">Version <span data-version>0.2.9</span> · September 2026 · Windows 10 and 11 (64-bit)</p>
+      <p class="meta">Version <span data-version>0.3.3</span> · November 2026 · Windows 10 and 11 (64-bit)</p>
       <img src="img/en/main.jpg" alt="Caption Studio main window" />
     </section>
 
@@ -62,17 +62,19 @@
     </p>
     <ul>
       <li>
-        <strong>Image models:</strong> plain <code>.txt</code> descriptions or tags (FLUX.2, Klein, Z-Image, Krea 2,
-        Qwen-Image, SDXL and any trainer that reads a <code>.txt</code> file per image) and structured
-        <code>.json</code> for BRIA FIBO.
+        <strong>Image models:</strong> plain <code>.txt</code> descriptions or tags (FLUX.2, FLUX 3, Klein, Z-Image,
+        Krea 2, Qwen-Image, MiniMax P-H3-Image, SDXL and any trainer that reads a <code>.txt</code> file per image) and
+        structured <code>.json</code> for BRIA FIBO 1.5 and 2.0.
       </li>
       <li>
-        <strong>Video models:</strong> a separate caption file for WAN 2.2 (text-to-video and image-to-video), LTX-2.5
-        and MiniMax H3, each in the shape its prompts use. Photos and clips can be in the same dataset.
+        <strong>Video models:</strong> a separate caption file for WAN 2.2 / Wan-Animate 2 (text-to-video and
+        image-to-video), LTX-2.5 and MiniMax H3, each in the shape its prompts use. Photos and clips can be in the same
+        dataset.
       </li>
       <li>
-        <strong>Four kinds of LoRA:</strong> a character or person, an object or product, a visual style, or a general
-        dataset. Each kind names its subject in its own way and offers its own choice of details.
+        <strong>Five kinds of LoRA:</strong> a character or person, an object or product, a visual style, an animated
+        film style, or a general dataset. Each kind names its subject in its own way and sets up its own choice of
+        details automatically.
       </li>
       <li>
         <strong>Three ways to run the vision model:</strong> a cloud API; a local server, above all
@@ -719,8 +721,8 @@
       </li>
       <li>
         <strong>Say what you train.</strong> In <span class="ui">What are you training?</span> choose
-        <em>Character / person</em>, <em>Object / product</em>, <em>Visual style</em> or <em>General dataset</em>, and
-        fill in the name (and, for a character or an object, its type).
+        <em>Character / person</em>, <em>Object / product</em>, <em>Visual style</em>, <em>Animated film style</em> or
+        <em>General dataset</em>, and fill in the name (and, for a character or an object, its type).
       </li>
       <li>
         <strong>Choose the output.</strong> In <span class="ui">Caption output</span> choose the file for the model you
@@ -808,7 +810,7 @@
     <ul>
       <li>
         Use one invented, readable word that the base model does not know: <em>Velmira</em> for a character,
-        <em>Zorbo</em> for an object, <em>Zorvak</em> for a style.
+        <em>Zorbo</em> for an object, <em>Zorvak</em> for a style, or <em>myfilm_style</em> for an animated film look.
       </li>
       <li>
         Avoid short tokens such as <code>sks</code>; trainers also find them inside other words. Avoid names of real
@@ -860,6 +862,11 @@
             <td><code>Zorvak style, a woman sits…</code></td>
           </tr>
           <tr>
+            <td>Animated film style</td>
+            <td>Film style trigger</td>
+            <td><code>myfilm_style, a cobblestone street…</code></td>
+          </tr>
+          <tr>
             <td>General dataset</td>
             <td>Trigger word (optional)</td>
             <td><code>ohwx, a woman sits…</code></td>
@@ -872,7 +879,17 @@
         </p>
         <p>
           <strong>Visual style:</strong> the caption describes only the content (people generically), never the medium
-          or technique, so the style belongs to the name. A name that already ends in “style” is used as it is.
+          or technique, so the style belongs to the name. A name that already ends in “style” (including
+          <code>_style</code> or <code>-style</code>) is used as it is.
+        </p>
+        <p>
+          <strong>Animated film style:</strong> a single-switch preset aligned with LoRA Studio's
+          <em>Visual Style / Film Look</em> workflow (Playbook 3). Your trigger is inserted verbatim at the start (<code
+            >myfilm_style, …</code
+          >), so the exact same trigger works across Caption Studio and LoRA Studio. Captions describe people
+          generically, clothing, pose, props, pure environment shots without characters, framing and light
+          direction/color, while omitting animation medium, shaders, surface finish, stylized proportions and overall
+          color palette.
         </p>
         <p><strong>General:</strong> a plain description; the trigger word, if any, is placed at the start.</p>
       </div>
@@ -899,13 +916,13 @@
           <td>A description or tags, in English or Czech</td>
         </tr>
         <tr>
-          <td>BRIA JSON (FIBO)</td>
+          <td>BRIA JSON (FIBO 1.5 / 2.0)</td>
           <td><code>name.json</code></td>
           <td>photos</td>
           <td>BRIA's structured fields: subject, objects, scene, lighting, composition…</td>
         </tr>
         <tr>
-          <td>WAN 2.2</td>
+          <td>WAN 2.2 / Wan-Animate 2</td>
           <td><code>name.wan.txt</code></td>
           <td>photos, clips</td>
           <td>Plain sentences: subject and action, details, setting, lighting, shot</td>
@@ -1012,6 +1029,13 @@
         </td>
       </tr>
       <tr>
+        <td>Animated film style</td>
+        <td>
+          What is depicted, Pose and action, Environment and background, Light situation, Composition and camera,
+          <strong>Film look, rendering and proportions</strong>, <strong>Color palette and grading</strong>
+        </td>
+      </tr>
+      <tr>
         <td>Clips (any type)</td>
         <td>Motion over time, Camera movement: shown when a video output is selected</td>
       </tr>
@@ -1028,6 +1052,34 @@
       <figure>
         <img src="img/en/details-style.jpg" alt="Style details" />
         <figcaption>Style: medium, technique and palette are learned</figcaption>
+      </figure>
+    </div>
+    <div class="side keep">
+      <div>
+        <h3>Animated film style: ready in one click</h3>
+        <p>
+          Choose <span class="ui">Animated film style</span> to prepare a feature-film Style LoRA dataset without
+          configuring individual switches. The five content details stay ON and the two style details stay OFF:
+        </p>
+        <ul>
+          <li>
+            <strong>Pure environments work naturally:</strong> shots without characters describe architecture, nature,
+            interiors and props directly without inventing a foreground subject.
+          </li>
+          <li>
+            <strong>Light direction and color stay promptable:</strong> golden hour backlight, warm lamps or cool
+            moonlight are described, while how light and shadows are rendered stays in the LoRA.
+          </li>
+          <li>
+            <strong>Shaders, materials finish and stylized proportions are omitted:</strong> terms such as 3D, CGI,
+            Pixar, cel-shaded, clay shader, line weight or oversized eyes are forbidden; BRIA JSON also strips object
+            rendering textures and photographic camera fields.
+          </li>
+        </ul>
+      </div>
+      <figure class="panel">
+        <img src="img/en/details-animated-film.jpg" alt="Animated film style details" />
+        <figcaption>Animated film style: rendering, proportions and palette are learned</figcaption>
       </figure>
     </div>
     <div class="note">
@@ -1054,8 +1106,15 @@
         <em>Variant and state</em> then names the colorway.
       </li>
       <li>
-        <strong>Visual style:</strong> <em>Light situation</em> describes the time of day and light sources; how light
-        is rendered belongs to the style. Colors of single things are still described even with the palette OFF.
+        <strong>Visual style:</strong> <em>Light situation</em> describes the time of day, light sources and direction;
+        how light is rendered belongs to the style. Colors of single things are still described even with the palette
+        OFF.
+      </li>
+      <li>
+        <strong>Animated film style:</strong> enter one unique trigger such as <code>myfilm_style</code> and reuse the
+        exact same trigger in LoRA Studio's <em>Visual Style / Film Look</em> recipe. Generate <code>.txt</code>,
+        <code>.json</code> or video sidecars from the same curated folder of characters, pure environments, action and
+        props.
       </li>
     </ul>
 
@@ -1111,7 +1170,7 @@
         <th>File the trainer reads</th>
       </tr>
       <tr>
-        <td>FLUX.2, FLUX.2 Klein, Z-Image, Krea 2, Qwen-Image (2512, 2.1), SDXL</td>
+        <td>FLUX.2, FLUX 3, Klein, Z-Image, Krea 2, Qwen-Image (2512, 2.1), MiniMax P-H3-Image, SDXL</td>
         <td>Normal</td>
         <td><code>name.txt</code></td>
       </tr>
@@ -1121,13 +1180,13 @@
         <td><code>name.txt</code></td>
       </tr>
       <tr>
-        <td>BRIA FIBO</td>
+        <td>BRIA FIBO 1.5 and FIBO 2.0</td>
         <td>BRIA JSON (FIBO)</td>
         <td><code>name.json</code></td>
       </tr>
       <tr>
-        <td>WAN 2.2 text-to-video (A14B, TI2V-5B)</td>
-        <td>WAN 2.2</td>
+        <td>WAN 2.2 (A14B, TI2V-5B) and Wan-Animate 2</td>
+        <td>WAN 2.2 / Wan-Animate 2</td>
         <td><code>name.wan.txt</code> (photos and clips)</td>
       </tr>
       <tr>
@@ -1453,17 +1512,17 @@
         <th>Uses</th>
       </tr>
       <tr>
-        <td>FLUX.2, Klein, Z-Image, Krea 2, Qwen-Image, SDXL</td>
+        <td>FLUX.2, FLUX 3, Klein, Z-Image, Krea 2, Qwen-Image, MiniMax P-H3-Image, SDXL</td>
         <td><code>name.txt</code></td>
         <td>photos</td>
       </tr>
       <tr>
-        <td>BRIA FIBO</td>
+        <td>BRIA FIBO 1.5 and FIBO 2.0</td>
         <td><code>name.json</code></td>
         <td>photos</td>
       </tr>
       <tr>
-        <td>WAN 2.2 T2V</td>
+        <td>WAN 2.2 (TI2V-5B, A14B) and Wan-Animate 2</td>
         <td><code>name.wan.txt</code></td>
         <td>photos and clips</td>
       </tr>

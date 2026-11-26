@@ -189,6 +189,9 @@ try {
       await recipe.locator('[name=preset]').selectOption('style');
       await recipe.locator('[name=trigger]').fill('Zorvak');
       await shootSpan(page, img('details-style.jpg'), 'aside.recipe', '.label-heading', textCheck, pairs);
+      await recipe.locator('[name=preset]').selectOption('animated_film');
+      await recipe.locator('[name=trigger]').fill('myfilm_style');
+      await shootSpan(page, img('details-animated-film.jpg'), 'aside.recipe', '.label-heading', textCheck, pairs);
       await page.setViewportSize({ width: WIDTH, height: 940 });
 
       // The instructions the model receives.

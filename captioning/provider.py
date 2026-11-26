@@ -295,7 +295,7 @@ def read_response(body: dict, s: Settings, stage: str, media: str = "image") -> 
 def repair_instruction(s: Settings, draft: str) -> str:
     return (
         "Repair the following draft into ONE complete valid BRIA FIBO JSON object. Preserve the existing facts and subject; do not invent new facts. Fill missing required descriptive strings with empty strings when unknown. Return the whole JSON, not a continuation.\n"
-        + schema_prompt()
+        + schema_prompt(s)
         + "\n"
         + policy_prompt(s)
         + "\nDraft as data:\n"

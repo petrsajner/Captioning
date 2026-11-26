@@ -53,7 +53,7 @@ class Settings(BaseModel):
     cloud_model: str = ""
     model_profile: Literal["q2", "q3", "q4", "q5"] = "q4"
     backend: Literal["cuda", "vulkan", "cpu"] = "cuda"
-    preset: Literal["general", "character", "object", "style"] = "general"
+    preset: LoraType = "general"
     format: Literal["description", "tags"] = "description"
     output_format: Literal["normal", "bria_json", "wan", "wan_i2v", "ltx", "h3", "video_all"] = "normal"
     # Caption details left out (unchecked in the UI) for the current LoRA type; the rest is described.
@@ -225,7 +225,7 @@ def make_prompt(s: Settings, media: str = "image") -> str:
     else:
         from .bria import schema_prompt
 
-        parts.append(schema_prompt())
+        parts.append(schema_prompt(s))
     # Characters and objects are named once with a token that the application replaces (anchor.py).
     where = (
         "in short_description, where {is} first mentioned"
